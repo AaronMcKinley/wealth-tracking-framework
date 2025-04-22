@@ -16,4 +16,6 @@ WTF-Wealth is a personal wealth tracking framework designed to help users monito
 
 WTF-Wealth is a personal wealth tracking framework designed to help users monitor and manage their financial data.  It includes a backend (Node.js) for data management, a frontend (React) for user interface, and uses a PostgreSQL database.
 
+test edit to test pushing to git
+
 ## Top-Level Directory Structure
