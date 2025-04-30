@@ -1,0 +1,9 @@
+workflow-aggregator
+blueocean
+git
+allure-jenkins-plugin
+pipeline-utility-steps
+docker-plugin
+docker-workflow
+credentials
+nodejs

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  react-ui:
+    build: ./react-ui
+    container_name: wtf-react
+    ports:
+      - "3000:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./react-ui:/app
+    working_dir: /app
+    command: sh -c "npm install && npm start"
+
+  node-api:
+    build: ./node-api
+    container_name: wtf-api
+    ports:
+      - "5050:5000"
+    volumes:
+      - ./node-api:/app
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+
+  jenkins:
+    build: ./jenkins
+    container_name: wtf-jenkins
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock  # Jenkins can run Docker inside
+
+  allure:
+    image: frankescobar/allure-docker-service
+    container_name: wtf-allure
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./cypress-tests/allure-results:/app/allure-results
+
+
+volumes:
+  jenkins_home:
