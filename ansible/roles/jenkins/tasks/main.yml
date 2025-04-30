@@ -1,0 +1,20 @@
+- name: Pull Jenkins Docker image
+  command: docker pull jenkins/jenkins:lts
+
+- name: Create Jenkins home directory
+  file:
+    path: /var/jenkins_home
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: '0755'
+
+- name: Start Jenkins container
+  docker_container:
+    name: jenkins
+    image: jenkins/jenkins:lts
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/jenkins_home:/var/jenkins_home
+    restart_policy: always

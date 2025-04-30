@@ -1,0 +1,7 @@
+- name: Setup Dev Environment for WTF
+  hosts: localhost
+  become: yes
+
+  roles:
+    - docker
+    - jenkins
