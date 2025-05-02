@@ -8,6 +8,7 @@ module.exports = defineConfig({
       return config;
     },
     specPattern: 'e2e/**/*.cy.js',
-    baseUrl: 'http://localhost:3000'
+    baseUrl: 'http://localhost:3000',
+    supportFile: 'support/e2e.js'  // 👈 this is key
   }
 });

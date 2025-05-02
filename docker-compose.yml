@@ -29,16 +29,16 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock  # Jenkins can run Docker inside
+      - ./jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
 
   allure:
     image: frankescobar/allure-docker-service
     container_name: wtf-allure
     ports:
-      - "5050:5050"
+      - "5252:5050"  # 👈 use 5252 on your host, but 5050 inside the container
     volumes:
-      - ./cypress-tests/allure-results:/app/allure-results
+      - ./cypress/allure-results:/app/allure-results
 
 
 volumes:

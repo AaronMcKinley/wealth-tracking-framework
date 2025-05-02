@@ -1,7 +1,45 @@
-- name: Setup Dev Environment for WTF
+- name: Build and start WTF services
   hosts: localhost
-  become: yes
+  become: false
 
-  roles:
-    - docker
-    - jenkins
+  tasks:
+    - name: Build all Docker Compose services
+      shell: docker compose build
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Start React UI
+      shell: docker compose up -d react-ui
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Open React UI in browser (macOS only)
+      shell: open http://localhost:3000
+      when: ansible_os_family == "Darwin"
+
+    - name: Start Node API
+      shell: docker compose up -d node-api
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Open Node API in browser (macOS only)
+      shell: open http://localhost:5050/api/test
+      when: ansible_os_family == "Darwin"
+
+    - name: Start Jenkins
+      shell: docker compose up -d jenkins
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Open Jenkins in browser (macOS only)
+      shell: open http://localhost:8080
+      when: ansible_os_family == "Darwin"
+
+    - name: Start Allure report viewer
+      shell: docker compose up -d allure
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Open Allure in browser (macOS only)
+      shell: open http://localhost:5252
+      when: ansible_os_family == "Darwin"
