@@ -16,6 +16,10 @@ app.get('/api/status', (req, res) => {
   res.json({ status: 'API is running' });
 });
 
+app.get('/api/test', (req, res) => {
+  res.send('API test route is working!');
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

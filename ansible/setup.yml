@@ -1,0 +1,54 @@
+- name: Install dependencies for WTF project (macOS only)
+  hosts: localhost
+  gather_facts: true
+
+  tasks:
+    - name: Stop all running Docker containers (macOS)
+      shell: |
+        docker ps -q | xargs -r docker stop
+      when: ansible_os_family == "Darwin"
+
+    - name: Install Homebrew packages (macOS)
+      homebrew:
+        name:
+          - node
+          - git
+          - docker
+        state: present
+      when: ansible_os_family == "Darwin"
+
+    - name: Start Docker Desktop (macOS)
+      shell: open -a Docker
+      when: ansible_os_family == "Darwin"
+
+    - name: Wait for Docker to be ready (macOS)
+      shell: >
+        while ! docker system info > /dev/null 2>&1; do
+          sleep 1;
+        done
+      retries: 30
+      delay: 2
+      register: docker_ready
+      until: docker_ready.rc == 0
+      when: ansible_os_family == "Darwin"
+
+    - name: Install npm global tools if not already installed (macOS)
+      shell: |
+        if ! npm list -g nodemon > /dev/null 2>&1; then
+          npm install -g npm nodemon;
+        fi
+      args:
+        executable: /bin/bash
+      when: ansible_os_family == "Darwin"
+
+    - name: Run npm install in backend folder
+      shell: npm install
+      args:
+        chdir: "{{ playbook_dir }}/../node-api"
+      when: ansible_os_family == "Darwin"
+
+    - name: Run npm install in frontend folder
+      shell: npm install
+      args:
+        chdir: "{{ playbook_dir }}/../react-ui"
+      when: ansible_os_family == "Darwin"
