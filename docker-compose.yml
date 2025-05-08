@@ -60,6 +60,12 @@ services:
     volumes:
       - ./cypress/allure-results:/app/allure-results
 
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8081:8080"
+
 volumes:
   jenkins_home:
   postgres_data:

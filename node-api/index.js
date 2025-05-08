@@ -9,13 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // PostgreSQL connection setup (lazy usage in route)
-const pool = new Pool({
-  user: process.env.PGUSER || 'wtfuser',
-  host: process.env.PGHOST || 'localhost',
-  database: process.env.PGDATABASE || 'wtfdb',
-  password: process.env.PGPASSWORD || 'wtfpass',
-  port: process.env.PGPORT || 5432,
-});
+const pool = new Pool(); // uses environment variables by default
 
 // Root route
 app.get('/', (req, res) => {

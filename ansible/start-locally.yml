@@ -8,37 +8,35 @@
       args:
         chdir: "{{ playbook_dir }}/.."
 
-    - name: Start React UI
-      shell: docker compose up -d react-ui
+    - name: Start core services (PostgreSQL, Adminer, Node API, React UI, Jenkins, Allure)
+      shell: docker compose up -d postgres adminer node-api react-ui jenkins allure
       args:
         chdir: "{{ playbook_dir }}/.."
+
+    - name: Run database migrations inside node-api container
+      shell: docker exec wtf-api npm run migrate -- up
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Open Postgres API check in browser (macOS only)
+      shell: open http://localhost:4000/api/db-check
+      when: ansible_os_family == "Darwin"
+
+    - name: Open Adminer in browser (macOS only)
+      shell: open http://localhost:8081
+      when: ansible_os_family == "Darwin"
 
     - name: Open React UI in browser (macOS only)
       shell: open http://localhost:3000
       when: ansible_os_family == "Darwin"
 
-    - name: Start Node API
-      shell: docker compose up -d node-api
-      args:
-        chdir: "{{ playbook_dir }}/.."
-
-    - name: Open Node API in browser (macOS only)
+    - name: Open Node API test route in browser (macOS only)
       shell: open http://localhost:4000/api/test
       when: ansible_os_family == "Darwin"
-
-    - name: Start Jenkins
-      shell: docker compose up -d jenkins
-      args:
-        chdir: "{{ playbook_dir }}/.."
 
     - name: Open Jenkins in browser (macOS only)
       shell: open http://localhost:8080
       when: ansible_os_family == "Darwin"
-
-    - name: Start Allure report viewer
-      shell: docker compose up -d allure
-      args:
-        chdir: "{{ playbook_dir }}/.."
 
     - name: Open Allure in browser (macOS only)
       shell: open http://localhost:5050
