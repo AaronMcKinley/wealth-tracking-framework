@@ -1,19 +1,80 @@
-# WTF-Wealth: Wealth Tracking Framework
+# Wealth Tracking Framework (WTF)
 
-## Overview
+## macOS-Only Setup (for now)
 
-WTF-Wealth is a personal wealth tracking framework designed to help users monitor and manage their financial data. It provides a comprehensive solution for tracking investments, assets, and overall financial health. The application is built using a modern web architecture, combining a robust backend with a user-friendly frontend.
+This project is designed for macOS users only at this stage.
 
-## Key Technologies
+## Project Overview
 
-* Backend: Node.js, Express.js
-* Frontend: React
-* Database: PostgreSQL
-* Infrastructure: Ansible, Docker
-* Testing: Cypress
+The Wealth Tracking Framework is a full-stack, Dockerized investment tracking app built with:
 
-## Description
+* React frontend
+* Node.js backend
+* PostgreSQL database
+* Cypress for end-to-end testing
+* Jenkins for CI/CD automation
+* Allure for test reporting
+* Ansible for system automation and environment setup
 
-WTF-Wealth is a personal wealth tracking framework designed to help users monitor and manage their financial data.  It includes a backend (Node.js) for data management, a frontend (React) for user interface, and uses a PostgreSQL database.
+Users can track a variety of investments: crypto, stocks, fixed savings, or even alternative assets like whiskey or property.
 
-## Top-Level Directory Structure
+## Prerequisites
+
+To run this project, you must have:
+
+* A Mac running macOS 12 or later
+* Homebrew installed
+* Ansible installed (`brew install ansible`)
+
+## Setup Instructions
+
+1. Clone the Repository
+
+   ```bash
+   git clone https://github.com/your-username/wtf-wealth-tracking-framework.git
+   cd wtf-wealth-tracking-framework/ansible
+   ```
+
+2. Run the Setup Playbook
+   This will install all required packages, start Docker, and generate your `.env` file.
+
+   ```bash
+   ansible-playbook -i inventory setup.yml --ask-vault-pass
+   ```
+
+3. Start the Full Stack
+
+   ```bash
+   ansible-playbook start-locally.yml
+   ```
+
+4. Access the App
+
+    * Frontend: [http://localhost:3000](http://localhost:3000)
+    * Backend API: [http://localhost:4000](http://localhost:4000)
+    * Jenkins: [http://localhost:8080](http://localhost:8080)
+    * Allure Report Viewer: [http://localhost:5252](http://localhost:5252)
+
+## Ansible Vault
+
+Ansible Vault is being used for secrets. The encrypted `secrets.yml` is used to dynamically generate the `.env` file during setup.
+
+* No real secrets in `secrets.yml`
+* Only use it for demo or development purposes
+* The vault password must be known or securely stored elsewhere (not committed)
+
+To edit the secrets:
+
+```bash
+ansible-vault edit secrets.yml
+```
+
+## Testing
+
+* Cypess tests in the future
+
+## Coming Soon
+
+* OpenShift deployment support
+* API authentication layer using JWT
+* Investment filtering and analytics features

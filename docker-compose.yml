@@ -17,11 +17,31 @@ services:
     build: ./node-api
     container_name: wtf-api
     ports:
-      - "5050:5000"
+      - "4000:5000"
     volumes:
       - ./node-api:/app
     working_dir: /app
     command: sh -c "npm install && npm run dev"
+    environment:
+      - PGUSER=wtfuser
+      - PGPASSWORD=wtfpass
+      - PGDATABASE=wtfdb
+      - PGHOST=postgres
+      - PGPORT=5432
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    container_name: wtf-postgres
+    environment:
+      POSTGRES_USER: wtfuser
+      POSTGRES_PASSWORD: wtfpass
+      POSTGRES_DB: wtfdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   jenkins:
     build: ./jenkins
@@ -36,10 +56,10 @@ services:
     image: frankescobar/allure-docker-service
     container_name: wtf-allure
     ports:
-      - "5252:5050"  # 👈 use 5252 on your host, but 5050 inside the container
+      - "5050:5050"
     volumes:
       - ./cypress/allure-results:/app/allure-results
 
-
 volumes:
   jenkins_home:
+  postgres_data:
