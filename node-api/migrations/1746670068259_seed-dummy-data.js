@@ -1,11 +1,16 @@
 exports.up = async (pgm) => {
-  // Insert dummy user
+  pgm.addColumn('users', {
+    password: { type: 'varchar(255)', notNull: true }, // Add password field
+  });
+
+  const bcrypt = require('bcryptjs');
+  const hashedPassword = await bcrypt.hash('testpassword', 10); // Hash the test password
+
   await pgm.sql(`
-    INSERT INTO users (email, name)
-    VALUES ('testuser@example.com', 'Test User');
+    INSERT INTO users (email, name, password)
+    VALUES ('testuser@example.com', 'Test User', '${hashedPassword}');
   `);
 
-  // Use subquery to get the inserted user_id
   await pgm.sql(`
     INSERT INTO investments (user_id, type, amount, buy_price, current_value, interest, currency)
     SELECT id, 'crypto', 1.0, 25000.00, 62000.00, 0, 'EUR'

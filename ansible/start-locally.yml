@@ -13,7 +13,12 @@
       args:
         chdir: "{{ playbook_dir }}/.."
 
-    - name: Run database migrations inside node-api container
+    - name: Rollback database migrations inside node-api container
+      shell: docker exec wtf-api npm run migrate -- down
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    - name: Apply database migrations inside node-api container
       shell: docker exec wtf-api npm run migrate -- up
       args:
         chdir: "{{ playbook_dir }}/.."

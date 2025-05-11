@@ -12,39 +12,13 @@ app.use(express.json());
 // PostgreSQL connection setup (uses environment variables by default)
 const pool = new Pool(); // uses environment variables by default
 
-// Root route
-app.get('/', (req, res) => {
-  res.send('Welcome to the Wealth Tracking API!');
-});
-
-// Health check route
-app.get('/api/status', (req, res) => {
-  res.json({ status: 'API is running' });
-});
-
-// Simple test route
-app.get('/api/test', (req, res) => {
-  res.send('API test route is working!');
-});
-
-// PostgreSQL connection test route
-app.get('/api/db-check', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({ dbTime: result.rows[0].now });
-  } catch (err) {
-    console.error('PostgreSQL connection failed:', err.message);
-    res.status(500).json({ error: 'Database not reachable' });
-  }
-});
-
 // Login route
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    // Query to find the user in the database by username
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    // Query to find the user in the database by email
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
     // If user is not found, return error message
     if (result.rows.length === 0) {

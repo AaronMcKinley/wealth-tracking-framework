@@ -3,6 +3,7 @@ exports.up = (pgm) => {
     id: 'id',
     email: { type: 'varchar(100)', notNull: true, unique: true },
     name: { type: 'varchar(100)' },
+    password: { type: 'varchar(255)', notNull: true },
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });
 
