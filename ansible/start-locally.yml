@@ -3,6 +3,12 @@
   become: false
 
   tasks:
+    - name: Remove the PostgreSQL data volume to reset the database
+      shell: docker volume rm wealth-tracking-framework_postgres_data
+      args:
+        chdir: "{{ playbook_dir }}/.."
+      ignore_errors: true  # In case the volume doesn't exist
+
     - name: Build all Docker Compose services
       shell: docker compose build
       args:
