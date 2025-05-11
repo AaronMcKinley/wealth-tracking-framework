@@ -1,18 +1,11 @@
 import React from 'react';
-import './App.css';
+import Login from './Login';  // Import the Login component
 
-function App() {
+const App: React.FC = () => {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>💸 Wealth Tracking Framework</h1>
-        <p>Your personal portfolio, tracked and automated.</p>
-
-        <div style={{ marginTop: '2rem' }}>
-          <button>Add Investment</button>
-          <button style={{ marginLeft: '1rem' }}>View Dashboard</button>
-        </div>
-      </header>
+      <h1>Welcome to the React App</h1>
+      <Login />  {/* Render the Login component */}
     </div>
   );
 }

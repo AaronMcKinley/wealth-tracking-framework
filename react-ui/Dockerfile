@@ -1,17 +1,18 @@
-# Use official Node image
+# Use official Node.js image
 FROM node:18
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy everything into the container
-COPY . .
-
-# Install dependencies
+# Copy package.json and install dependencies
+COPY package*.json ./
 RUN npm install
 
-# Start the React dev server
-CMD ["npm", "start"]
+# Copy the rest of the application code
+COPY . .
 
-# Open port
+# Expose the port the app runs on
 EXPOSE 3000
+
+# Start the app
+CMD ["npm", "start"]

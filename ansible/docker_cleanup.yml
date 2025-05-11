@@ -1,0 +1,49 @@
+---
+- name: Clean up Docker containers and volumes
+  hosts: localhost
+  become: false
+
+  tasks:
+    # Step 1: Check all running and stopped containers
+    - name: Check all containers (running and stopped)
+      shell: docker ps -a
+      register: containers_before_cleanup
+      changed_when: false
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # Step 2: Show all containers before cleanup
+    - name: Show all containers before cleanup
+      debug:
+        var: containers_before_cleanup.stdout
+
+    # Step 3: Stop all running Docker containers
+    - name: Stop all running Docker containers
+      shell: docker ps -q | xargs -r docker stop
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # Step 4: Remove all stopped Docker containers
+    - name: Remove all stopped Docker containers
+      shell: docker ps -aq | xargs -r docker rm
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # Step 5: Remove all unused Docker volumes
+    - name: Remove all unused Docker volumes
+      shell: docker volume prune -f
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # Step 6: Confirm that all containers have been removed
+    - name: Confirm that all containers have been removed
+      shell: docker ps -a
+      register: containers_after_cleanup
+      changed_when: false
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # Step 7: Show containers after cleanup
+    - name: Show removed containers (after cleanup)
+      debug:
+        var: containers_after_cleanup.stdout
