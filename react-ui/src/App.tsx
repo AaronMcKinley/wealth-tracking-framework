@@ -1,13 +1,20 @@
 import React from 'react';
-import Login from './Login';  // Import the Login component
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 
 const App: React.FC = () => {
+  const isLoggedIn = !!localStorage.getItem('user');
+
   return (
-    <div className="App">
-      <h1>Welcome to the React App</h1>
-      <Login />  {/* Render the Login component */}
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;

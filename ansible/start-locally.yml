@@ -3,6 +3,11 @@
   become: false
 
   tasks:
+    - name: Stop all Docker Compose services
+      shell: docker compose down
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
     - name: Remove the PostgreSQL data volume to reset the database
       shell: docker volume rm wealth-tracking-framework_postgres_data
       args:
@@ -19,10 +24,17 @@
       args:
         chdir: "{{ playbook_dir }}/.."
 
-    - name: Rollback database migrations inside node-api container
-      shell: docker exec wtf-api npm run migrate -- down
+    - name: Wait for Postgres to be ready from host
+      shell: |
+        for i in {1..30}; do
+          docker exec wtf-postgres pg_isready -U wtfuser && exit 0
+          sleep 1
+        done
+        exit 1
       args:
         chdir: "{{ playbook_dir }}/.."
+
+
 
     - name: Apply database migrations inside node-api container
       shell: docker exec wtf-api npm run migrate -- up
