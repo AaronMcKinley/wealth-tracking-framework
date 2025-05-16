@@ -8,7 +8,7 @@ exports.up = (pgm) => {
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });
 
-  // Create the investments table
+  // Create the investments table with only name, amount, and buy_price NOT NULL
   pgm.createTable('investments', {
     id: 'id',
     user_id: {
@@ -17,15 +17,15 @@ exports.up = (pgm) => {
       references: '"users"',
       onDelete: 'cascade',
     },
-    name: { type: 'varchar(100)', notNull: true },        // e.g., Bitcoin, Tesla, ETH
-    type: { type: 'varchar(50)', notNull: true },         // e.g., 'crypto', 'stock', 'real_estate'
-    sub_type: { type: 'varchar(50)' },                    // e.g., 'dividend', 'REIT', etc.
+    name: { type: 'varchar(100)', notNull: true },
+    ticker: { type: 'varchar(20)' }, // nullable
+    type: { type: 'varchar(50)' }, // nullable now
     amount: { type: 'numeric', notNull: true },
     buy_price: { type: 'numeric', notNull: true },
-    current_value: { type: 'numeric', notNull: true },
-    interest_rate: { type: 'numeric' },                   // applicable to interest-bearing assets
-    currency: { type: 'varchar(10)', default: 'EUR' },
-    notes: { type: 'text' },
+    current_value: { type: 'numeric' }, // nullable now
+    interest_rate: { type: 'numeric' }, // nullable
+    profit_loss: { type: 'numeric' }, // nullable
+    percent_change_24h: { type: 'numeric' }, // nullable
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });
 };

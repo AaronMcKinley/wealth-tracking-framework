@@ -4,30 +4,21 @@ import axios from 'axios';
 interface Investment {
   id: number;
   name: string;
+  ticker?: string | null;
   type: string;
-  sub_type?: string;
-  amount: number;
-  buy_price: number;
-  current_value: number | null;
-  interest_rate: number | null;
-  currency: string;
+  amount: number | string;
+  buy_price: number | string | null;
+  current_value: number | string | null;
+  interest_rate: number | string | null;
+  profit_loss: number | string | null;
+  percent_change_24h: number | string | null;
   created_at: string;
 }
 
-const formatLabel = (label: string | null | undefined) => {
-  if (!label) return '—';
-  const map: Record<string, string> = {
-    real_estate: 'Real Estate',
-    fixed_deposit: 'Fixed Deposit',
-    dividend: 'Dividend',
-    savings: 'Savings',
-    crypto: 'Crypto',
-    stock: 'Stock',
-    rental: 'Rental',
-  };
-  return map[label] || label
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+const formatNumber = (num: number | string | null | undefined) => {
+  if (num === null || num === undefined) return '—';
+  const n = typeof num === 'number' ? num : Number(num);
+  return isNaN(n) ? '—' : n.toFixed(2);
 };
 
 const Dashboard: React.FC = () => {
@@ -38,15 +29,14 @@ const Dashboard: React.FC = () => {
     axios
       .get<Investment[]>('http://localhost:4000/api/investments')
       .then((res) => {
-        console.log('Fetched investments:', res.data);
         setInvestments(res.data);
       })
       .catch(() => setError('Failed to fetch investments'));
   }, []);
 
-  const totalValue = investments.reduce((sum, inv) => {
-    const value = typeof inv.current_value === 'number' ? inv.current_value : 0;
-    return sum + value;
+  const totalValue = investments.reduce((sum: number, inv: Investment) => {
+    const value = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
+    return sum + (isNaN(value) ? 0 : value);
   }, 0);
 
   return (
@@ -62,13 +52,14 @@ const Dashboard: React.FC = () => {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Ticker</th> {/* Added ticker header */}
             <th>Type</th>
-            <th>Sub-Type</th>
             <th>Amount</th>
             <th>Buy Price</th>
             <th>Current Value</th>
             <th>Interest Rate</th>
-            <th>Currency</th>
+            <th>Profit / Loss</th>
+            <th>% Change 24h</th>
             <th>Date</th>
           </tr>
         </thead>
@@ -76,13 +67,14 @@ const Dashboard: React.FC = () => {
           {investments.map((inv) => (
             <tr key={inv.id}>
               <td>{inv.name}</td>
-              <td>{formatLabel(inv.type)}</td>
-              <td>{formatLabel(inv.sub_type)}</td>
-              <td>{inv.amount}</td>
-              <td>€{inv.buy_price}</td>
-              <td>€{inv.current_value ?? '—'}</td>
-              <td>{inv.interest_rate ?? '—'}%</td>
-              <td>{inv.currency}</td>
+              <td>{inv.ticker ?? '—'}</td> {/* Render ticker */}
+              <td>{inv.type}</td>
+              <td>{formatNumber(inv.amount)}</td>
+              <td>€{formatNumber(inv.buy_price)}</td>
+              <td>€{formatNumber(inv.current_value)}</td>
+              <td>{formatNumber(inv.interest_rate)}%</td>
+              <td>{formatNumber(inv.profit_loss)}</td>
+              <td>{formatNumber(inv.percent_change_24h)}%</td>
               <td>{new Date(inv.created_at).toLocaleDateString()}</td>
             </tr>
           ))}
