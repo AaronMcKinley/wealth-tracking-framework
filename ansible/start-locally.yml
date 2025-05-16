@@ -23,8 +23,8 @@
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]
 
-  - name: Start core services (PostgreSQL, Adminer, Node API, React UI, Jenkins, Allure, CoinGecko)
-    shell: docker compose up -d postgres adminer node-api react-ui jenkins allure coingecko
+  - name: Start core services (PostgreSQL, Adminer, Node API, React UI, Jenkins, Allure)
+    shell: docker compose up -d postgres adminer node-api react-ui jenkins allure
     args:
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]
@@ -45,6 +45,12 @@
     args:
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]
+
+  - name: Start CoinGecko service after migrations complete
+    shell: docker compose up -d coingecko
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [ setup ]
 
   - name: Open Postgres API check in browser (macOS only)
     shell: open http://localhost:4000/api/db-check
