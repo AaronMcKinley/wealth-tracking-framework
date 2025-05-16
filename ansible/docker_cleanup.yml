@@ -4,6 +4,10 @@
   become: false
 
   tasks:
+    - name: Prompt for confirmation
+      pause:
+        prompt: "This will STOP and REMOVE all Docker containers and VOLUMES. Press ENTER to continue or Ctrl+C to abort."
+
     - name: Check all containers (running and stopped)
       shell: docker ps -a
       register: containers_before_cleanup

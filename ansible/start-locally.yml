@@ -8,11 +8,12 @@
       args:
         chdir: "{{ playbook_dir }}/.."
 
-    - name: Remove the PostgreSQL data volume to reset the database
+    - name: Remove the PostgreSQL data volume to reset the database (optional)
       shell: docker volume rm wealth-tracking-framework_postgres_data
       args:
         chdir: "{{ playbook_dir }}/.."
-      ignore_errors: true  # In case the volume doesn't exist
+      when: reset_db | default(false)
+      ignore_errors: true
 
     - name: Build all Docker Compose services
       shell: docker compose build
