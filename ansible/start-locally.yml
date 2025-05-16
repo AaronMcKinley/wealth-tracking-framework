@@ -3,65 +3,76 @@
   become: false
 
   tasks:
-    - name: Stop all Docker Compose services
-      shell: docker compose down
-      args:
-        chdir: "{{ playbook_dir }}/.."
+  - name: Stop all Docker Compose services
+    shell: docker compose down
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [setup]
 
-    - name: Remove the PostgreSQL data volume to reset the database (optional)
-      shell: docker volume rm wealth-tracking-framework_postgres_data
-      args:
-        chdir: "{{ playbook_dir }}/.."
-      when: reset_db | default(false)
-      ignore_errors: true
+  - name: Remove the PostgreSQL data volume to reset the database (optional)
+    shell: docker volume rm wealth-tracking-framework_postgres_data
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    when: reset_db | default(false)
+    ignore_errors: true
+    tags: [setup]
 
-    - name: Build all Docker Compose services
-      shell: docker compose build
-      args:
-        chdir: "{{ playbook_dir }}/.."
+  - name: Build all Docker Compose services
+    shell: docker compose build
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [setup]
 
-    - name: Start core services (PostgreSQL, Adminer, Node API, React UI, Jenkins, Allure)
-      shell: docker compose up -d postgres adminer node-api react-ui jenkins allure
-      args:
-        chdir: "{{ playbook_dir }}/.."
+  - name: Start core services (PostgreSQL, Adminer, Node API, React UI, Jenkins, Allure, CoinGecko)
+    shell: docker compose up -d postgres adminer node-api react-ui jenkins allure coingecko
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [setup]
 
-    - name: Wait for Postgres to be ready from host
-      shell: |
-        for i in {1..30}; do
-          docker exec wtf-postgres pg_isready -U wtfuser && exit 0
-          sleep 1
-        done
-        exit 1
-      args:
-        chdir: "{{ playbook_dir }}/.."
+  - name: Wait for Postgres to be ready from host
+    shell: |
+      for i in {1..30}; do
+        docker exec wtf-postgres pg_isready -U wtfuser && exit 0
+        sleep 1
+      done
+      exit 1
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [setup]
 
+  - name: Apply database migrations inside node-api container
+    shell: docker exec wtf-api npm run migrate -- up
+    args:
+      chdir: "{{ playbook_dir }}/.."
+    tags: [setup]
 
+  - name: Open Postgres API check in browser (macOS only)
+    shell: open http://localhost:4000/api/db-check
+    when: ansible_os_family == "Darwin"
+    tags: [open_api_check]
 
-    - name: Apply database migrations inside node-api container
-      shell: docker exec wtf-api npm run migrate -- up
-      args:
-        chdir: "{{ playbook_dir }}/.."
+  - name: Open Adminer in browser (macOS only)
+    shell: open http://localhost:8081
+    when: ansible_os_family == "Darwin"
+    tags: [open_adminer]
 
-    - name: Open Postgres API check in browser (macOS only)
-      shell: open http://localhost:4000/api/db-check
-      when: ansible_os_family == "Darwin"
+  - name: Open React UI in browser (macOS only)
+    shell: open http://localhost:3000
+    when: ansible_os_family == "Darwin"
+    tags: [open_ui]
 
-    - name: Open Adminer in browser (macOS only)
-      shell: open http://localhost:8081
-      when: ansible_os_family == "Darwin"
+  - name: Open Node API test route in browser (macOS only)
+    shell: open http://localhost:4000/api/test
+    when: ansible_os_family == "Darwin"
+    tags: [open_api_test]
 
-    - name: Open React UI in browser (macOS only)
-      shell: open http://localhost:3000
-      when: ansible_os_family == "Darwin"
+  - name: Open Jenkins in browser (macOS only)
+    shell: open http://localhost:8080
+    when: ansible_os_family == "Darwin"
+    tags: [open_jenkins]
 
-    - name: Open Node API test route in browser (macOS only)
-      shell: open http://localhost:4000/api/test
-      when: ansible_os_family == "Darwin"
+  - name: Open Allure in browser (macOS only)
+    shell: open http://localhost:5050
+    when: ansible_os_family == "Darwin"
+    tags: [open_allure]
 
-    - name: Open Jenkins in browser (macOS only)
-      shell: open http://localhost:8080
-      when: ansible_os_family == "Darwin"
-
-    - name: Open Allure in browser (macOS only)
-      shell: open http://localhost:5050
-      when: ansible_os_family == "Darwin"

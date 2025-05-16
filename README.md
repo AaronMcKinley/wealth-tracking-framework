@@ -28,40 +28,49 @@ To run this project, you must have:
 
 ## Setup Instructions
 
-1. Clone the Repository
+### 1. Clone the Repository
 
-   ```bash
-   git clone https://github.com/your-username/wtf-wealth-tracking-framework.git
-   cd wtf-wealth-tracking-framework/ansible
-   ```
+```bash
+git clone https://github.com/your-username/wtf-wealth-tracking-framework.git
+cd wtf-wealth-tracking-framework/ansible
+```
 
-2. Run the Setup Playbook
-   This will install all required packages, start Docker, and generate your `.env` file.
+### 2. Run the Setup Playbook
 
-   ```bash
-   ansible-playbook -i inventory setup.yml --ask-vault-pass
-   ```
+This will install all required packages, start Docker, and generate your `.env` file.
 
-3. Start the Full Stack
+```bash
+ansible-playbook -i inventory setup.yml --ask-vault-pass
+```
 
-   ```bash
-   ansible-playbook start-locally.yml
-   ```
+### 3. Start the Full Stack
 
-4. Access the App
+```bash
+ansible-playbook start-locally.yml
+```
 
-    * Frontend: [http://localhost:3000](http://localhost:3000)
-    * Backend API: [http://localhost:4000](http://localhost:4000)
-    * Jenkins: [http://localhost:8080](http://localhost:8080)
-    * Allure Report Viewer: [http://localhost:5252](http://localhost:5252)
+### 4. Reset the Database (Optional)
+
+If you need to reset and recreate the database schema:
+
+```bash
+ansible-playbook start-locally.yml -e reset_db=true
+```
+
+## Access the App
+
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend API: [http://localhost:4000](http://localhost:4000)
+- Jenkins: [http://localhost:8080](http://localhost:8080)
+- Allure Report Viewer: [http://localhost:5252](http://localhost:5252)
 
 ## Ansible Vault
 
 Ansible Vault is being used for secrets. The encrypted `secrets.yml` is used to dynamically generate the `.env` file during setup.
 
-* No real secrets in `secrets.yml`
-* Only use it for demo or development purposes
-* The vault password must be known or securely stored elsewhere (not committed)
+- No real secrets in `secrets.yml`
+- Only use it for demo or development purposes
+- The vault password must be known or securely stored elsewhere (not committed)
 
 To edit the secrets:
 
@@ -71,10 +80,10 @@ ansible-vault edit secrets.yml
 
 ## Testing
 
-* Cypess tests in the future
+- Cypress tests in the future
 
 ## Coming Soon
 
-* OpenShift deployment support
-* API authentication layer using JWT
-* Investment filtering and analytics features
+- OpenShift deployment support
+- API authentication layer using JWT
+- Investment filtering and analytics features  

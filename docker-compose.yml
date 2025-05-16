@@ -79,6 +79,7 @@ services:
       PGDATABASE: ${PGDATABASE}
       PGHOST: ${PGHOST}
       PGPORT: ${PGPORT}
+      TZ: Europe/Dublin
     depends_on:
       - postgres
 

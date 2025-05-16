@@ -6,8 +6,8 @@ COPY fetchWtfCoins.ts .
 COPY coinList.ts .
 COPY tsconfig.json .
 
-# Install runtime dependencies (manual install since no package.json)
-RUN npm install typescript ts-node axios @types/node
+# Install runtime dependencies (including pg and dotenv)
+RUN npm install typescript ts-node axios pg dotenv @types/node @types/pg @types/dotenv
 
 # Create data folder for JSON output
 RUN mkdir -p ./data
