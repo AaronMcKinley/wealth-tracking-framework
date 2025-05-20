@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Sidebar from '../components/Sidebar';
 
 interface Investment {
   id: number;
@@ -40,61 +41,68 @@ const Dashboard: React.FC = () => {
   }, 0);
 
   return (
-    <main className="max-w-6xl mx-auto p-6 bg-cardBg text-white rounded-lg shadow-lg">
-      <h2 className="text-3xl font-bold mb-6 text-center">Dashboard</h2>
+    <div className="flex min-h-screen bg-darkBg text-white">
+      <Sidebar />
 
-      {error && <p className="text-red-500 mb-4 text-center" role="alert">{error}</p>}
+      <main className="flex-1 p-6 overflow-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
 
-      <div className="summary mb-6 text-xl font-semibold text-primaryGreen text-center">
-        Total Portfolio Value: €{totalValue.toFixed(2)}
-      </div>
+        {error && <p className="text-red-500 mb-4 text-center" role="alert">{error}</p>}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse border border-green-600" aria-label="Investments table">
-          <thead className="bg-cardBg">
-            <tr>
-              {[
-                'Name',
-                'Ticker',
-                'Type',
-                'Amount',
-                'Buy Price',
-                'Current Value',
-                'Interest Rate',
-                'Profit / Loss',
-                '% Change 24h',
-                'Date',
-              ].map((header) => (
-                <th
-                  key={header}
-                  className="border border-green-600 px-4 py-2 text-left text-white"
-                  scope="col"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
+        <div className="summary mb-6 text-xl font-semibold text-primaryGreen text-center">
+          Total Portfolio Value: €{totalValue.toFixed(2)}
+        </div>
 
-          <tbody>
-            {investments.map((inv) => (
-              <tr key={inv.id} className="odd:bg-gray-900 even:bg-gray-800">
-                <td className="border border-green-600 px-4 py-2">{inv.name}</td>
-                <td className="border border-green-600 px-4 py-2">{inv.ticker ?? '—'}</td>
-                <td className="border border-green-600 px-4 py-2">{inv.type}</td>
-                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.amount)}</td>
-                <td className="border border-green-600 px-4 py-2">€{formatNumber(inv.buy_price)}</td>
-                <td className="border border-green-600 px-4 py-2">€{formatNumber(inv.current_value)}</td>
-                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.interest_rate)}%</td>
-                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.profit_loss)}</td>
-                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.percent_change_24h)}%</td>
-                <td className="border border-green-600 px-4 py-2">{new Date(inv.created_at).toLocaleDateString()}</td>
+        <div className="overflow-x-auto rounded-lg shadow-lg border border-primaryGreen">
+          <table className="min-w-full divide-y divide-primaryGreen" aria-label="Investments table">
+            <thead className="bg-cardBg">
+              <tr>
+                {[
+                  'Name',
+                  'Ticker',
+                  'Type',
+                  'Amount',
+                  'Buy Price',
+                  'Current Value',
+                  'Interest Rate',
+                  'Profit / Loss',
+                  '% Change 24h',
+                  'Date',
+                ].map((header) => (
+                  <th
+                    key={header}
+                    scope="col"
+                    className="px-6 py-3 text-left text-white font-semibold tracking-wide"
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </main>
+            </thead>
+
+            <tbody className="bg-darkBg divide-y divide-primaryGreen">
+              {investments.map((inv) => (
+                <tr
+                  key={inv.id}
+                  className="hover:bg-primaryGreen/20 transition-colors duration-200"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">{inv.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{inv.ticker ?? '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{inv.type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.amount)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.buy_price)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.current_value)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.interest_rate)}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.profit_loss)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.percent_change_24h)}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{new Date(inv.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
   );
 };
 
