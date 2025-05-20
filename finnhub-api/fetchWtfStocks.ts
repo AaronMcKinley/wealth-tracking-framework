@@ -1,62 +1,54 @@
 import axios from 'axios';
-import { Pool } from 'pg';
 import fs from 'fs';
-import path from 'path';
 import dotenv from 'dotenv';
+import path from 'path';
+import ALL_SYMBOLS from './stocksList';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const API_KEY = process.env.FINNHUB_API_KEY!;
-const SYMBOLS = ['AAPL', 'TSLA', 'GOOGL', 'MSFT', 'AMZN'];
-
-async function fetchStocks() {
-  const results: any[] = [];
-
-  for (const symbol of SYMBOLS) {
-    try {
-      const { data } = await axios.get('https://finnhub.io/api/v1/quote', {
-        params: {
-          symbol,
-          token: API_KEY,
-        },
-      });
-
-      const now = new Date();
-      results.push({ symbol, ...data, date: now });
-
-      await pool.query(`
-        INSERT INTO stocks (symbol, name, open, high, low, close, volume, date)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (symbol) DO UPDATE SET
-          open = EXCLUDED.open,
-          high = EXCLUDED.high,
-          low = EXCLUDED.low,
-          close = EXCLUDED.close,
-          volume = EXCLUDED.volume,
-          date = EXCLUDED.date;
-      `, [
-        symbol,
-        symbol,
-        data.o,
-        data.h,
-        data.l,
-        data.c,
-        data.v || 0,
-        now,
-      ]);
-
-    } catch (error) {
-      console.error(`Error fetching ${symbol}:`, error.message);
-    }
-  }
-
-  fs.writeFileSync('wtfStocks.json', JSON.stringify(results, null, 2));
-  console.log('Stock data saved and DB updated.');
-  await pool.end();
+const API_KEY = process.env.FINNHUB_API_KEY;
+if (!API_KEY) {
+  console.error('FINNHUB_API_KEY not found in environment. Check your .env file.');
+  process.exit(1);
 }
 
-fetchStocks().catch(console.error);
+const OUTPUT_FILE = path.resolve(__dirname, './data/allAssets.json');
+
+async function fetchAll() {
+  const results: any[] = [];
+
+  for (const { symbol, type } of ALL_SYMBOLS) {
+    try {
+      const response = await axios.get('https://finnhub.io/api/v1/quote', {
+        params: { symbol, token: API_KEY }
+      });
+
+      const data = response.data;
+      results.push({
+        symbol,
+        type,
+        open: data.o,
+        high: data.h,
+        low: data.l,
+        current_price: data.c,
+        previous_close: data.pc,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log(`Successfully fetched quote for ${symbol}`);
+    } catch (error: any) {
+      console.error(`Error fetching ${symbol}:`, error.response?.status || error.message);
+    }
+
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(results, null, 2));
+  console.log(`Saved ${results.length} assets to ${OUTPUT_FILE}`);
+}
+
+fetchAll().catch(err => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
