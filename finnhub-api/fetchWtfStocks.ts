@@ -45,8 +45,14 @@ async function fetchAndUpsertAssets() {
         });
         const profileData = profileResponse.data;
 
+        // Use ticker as fallback if name is missing or empty
+        const assetName =
+          profileData.name && profileData.name.trim() !== ''
+            ? profileData.name
+            : ticker;
+
         const asset: Asset = {
-          name: profileData.name || 'Unknown',
+          name: assetName,
           ticker,
           type,
           open: quoteData.o,
