@@ -3,12 +3,6 @@
   become: false
 
   tasks:
-  - name: Stop all Docker Compose services
-    shell: docker compose down
-    args:
-      chdir: "{{ playbook_dir }}/.."
-    tags: [setup]
-
   - name: Remove the PostgreSQL data volume to reset the database (optional)
     shell: docker volume rm wealth-tracking-framework_postgres_data
     args:
@@ -46,8 +40,8 @@
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]
 
-  - name: Start CoinGecko service after migrations complete
-    shell: docker compose up -d coingecko
+  - name: Start all API fetcher services after migrations complete
+    shell: docker compose up -d coingecko finnhub
     args:
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]

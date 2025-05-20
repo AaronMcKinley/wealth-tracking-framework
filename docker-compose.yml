@@ -83,6 +83,24 @@ services:
     depends_on:
       - postgres
 
+  finnhub:
+    build: ./finnhub-api
+    container_name: finnhub
+    restart: always
+    volumes:
+      - ./finnhub-api/data:/app/data
+    environment:
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGDATABASE: ${PGDATABASE}
+      PGHOST: ${PGHOST}
+      PGPORT: ${PGPORT}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      TZ: Europe/Dublin
+    depends_on:
+      - postgres
+    command: sh -c "npm install && npm run fetch"
+
 volumes:
   jenkins_home:
   postgres_data:

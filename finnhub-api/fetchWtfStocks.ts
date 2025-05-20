@@ -1,5 +1,5 @@
 import axios from 'axios';
-import fs from 'fs';
+import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import path from 'path';
 import ALL_SYMBOLS from './stocksList';
@@ -12,43 +12,81 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const OUTPUT_FILE = path.resolve(__dirname, './data/allAssets.json');
+const pool = new Pool();
 
-async function fetchAll() {
-  const results: any[] = [];
-
-  for (const { symbol, type } of ALL_SYMBOLS) {
-    try {
-      const response = await axios.get('https://finnhub.io/api/v1/quote', {
-        params: { symbol, token: API_KEY }
-      });
-
-      const data = response.data;
-      results.push({
-        symbol,
-        type,
-        open: data.o,
-        high: data.h,
-        low: data.l,
-        current_price: data.c,
-        previous_close: data.pc,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`Successfully fetched quote for ${symbol}`);
-    } catch (error: any) {
-      console.error(`Error fetching ${symbol}:`, error.response?.status || error.message);
-    }
-
-    await new Promise(r => setTimeout(r, 150));
-  }
-
-  fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(results, null, 2));
-  console.log(`Saved ${results.length} assets to ${OUTPUT_FILE}`);
+interface Asset {
+  ticker: string;
+  type: string;
+  open?: number;
+  high?: number;
+  low?: number;
+  current_price: number;
+  previous_close?: number;
+  timestamp?: string;
 }
 
-fetchAll().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+async function fetchAndUpsertAssets() {
+  console.log('Fetching Finnhub data and updating DB...');
+
+  try {
+    for (const { ticker, type } of ALL_SYMBOLS) {
+      try {
+        const response = await axios.get('https://finnhub.io/api/v1/quote', {
+          params: { symbol: ticker, token: API_KEY },
+        });
+        const data = response.data;
+
+        const asset: Asset = {
+          ticker,
+          type,
+          open: data.o,
+          high: data.h,
+          low: data.l,
+          current_price: data.c,
+          previous_close: data.pc,
+          timestamp: new Date().toISOString(),
+        };
+
+        await pool.query(
+          `
+          INSERT INTO market_assets (
+            ticker, type, open, high, low, current_price, previous_close, timestamp
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+          )
+          ON CONFLICT (ticker) DO UPDATE SET
+            type = EXCLUDED.type,
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            current_price = EXCLUDED.current_price,
+            previous_close = EXCLUDED.previous_close,
+            timestamp = EXCLUDED.timestamp;
+          `,
+          [
+            asset.ticker,
+            asset.type,
+            asset.open,
+            asset.high,
+            asset.low,
+            asset.current_price,
+            asset.previous_close,
+            asset.timestamp,
+          ]
+        );
+
+        console.log(`Upserted ${ticker} successfully.`);
+      } catch (innerErr: any) {
+        console.error(`Error fetching/updating ${ticker}:`, innerErr.message || innerErr);
+      }
+
+      await new Promise((r) => setTimeout(r, 150)); // Rate limit delay
+    }
+  } catch (err: any) {
+    console.error('Fatal error during fetch and DB update:', err);
+  } finally {
+    await pool.end();
+  }
+}
+
+fetchAndUpsertAssets();
