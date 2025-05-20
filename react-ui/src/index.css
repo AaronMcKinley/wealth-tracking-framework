@@ -1,6 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   font-family: Arial, sans-serif;
-  background-color: #f4f4f4;
+  background-color: #2e2e2e; /* Charcoal grey */
+  color: #ffffff; /* White text */
   margin: 0;
   padding: 0;
 }
@@ -9,52 +14,59 @@ body {
 .dashboard {
   max-width: 600px;
   margin: 40px auto;
-  background: #fff;
+  background: #1f1f1f; /* Dark card bg */
   padding: 20px;
   border-radius: 8px;
+  color: #ffffff; /* White text */
 }
 
 form label {
   display: block;
   margin-top: 10px;
+  color: #ffffff; /* White text */
 }
 
 input {
   width: 100%;
   padding: 10px;
   margin: 6px 0 16px;
-  border: 1px solid #ccc;
+  border: 1px solid #00cc66; /* New green border */
   border-radius: 4px;
+  background-color: #2e2e2e;
+  color: #ffffff; /* White input text */
 }
 
 button {
   padding: 10px;
   width: 100%;
-  background-color: #4CAF50;
-  color: white;
+  background-color: #00cc66; /* New green button bg */
+  color: #2e2e2e; /* Dark text on button */
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 button:hover {
-  background-color: #45a049;
+  background-color: #00994d; /* Darker green on hover */
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  color: #ffffff; /* White table text */
 }
 
 th,
 td {
-  border: 1px solid #ddd;
+  border: 1px solid #00cc66; /* New green border */
   padding: 8px;
+  color: #ffffff; /* White text */
 }
 
 th {
-  background-color: #f0f0f0;
+  background-color: #1f1f1f;
   text-align: left;
 }
 
@@ -62,4 +74,5 @@ th {
   margin: 10px 0;
   font-size: 1.1rem;
   font-weight: bold;
+  color: #ffffff; /* White text */
 }

@@ -35,18 +35,48 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="login-container">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <label>Email</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+    <div className="login-container max-w-md mx-auto bg-cardBg p-8 rounded-lg mt-20 shadow-lg text-white">
+      <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <div>
+          <label htmlFor="email" className="block mb-2 text-white font-semibold">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full p-3 rounded border border-green-600 bg-darkBg text-white focus:outline-none focus:ring-2 focus:ring-primaryGreen"
+            autoComplete="username"
+          />
+        </div>
 
-        <label>Password</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <div>
+          <label htmlFor="password" className="block mb-2 text-white font-semibold">Password</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full p-3 rounded border border-green-600 bg-darkBg text-white focus:outline-none focus:ring-2 focus:ring-primaryGreen"
+            autoComplete="current-password"
+          />
+        </div>
 
-        <button type="submit">Login</button>
+        <button
+          type="submit"
+          className="w-full py-3 bg-primaryGreen text-darkBg font-semibold rounded hover:bg-primaryGreenHover transition-colors"
+        >
+          Login
+        </button>
       </form>
-      {message && <p>{message}</p>}
+
+      {message && (
+        <p className="mt-4 text-center text-red-500 font-semibold" role="alert" aria-live="polite">
+          {message}
+        </p>
+      )}
     </div>
   );
 };

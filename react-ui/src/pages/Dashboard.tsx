@@ -40,47 +40,61 @@ const Dashboard: React.FC = () => {
   }, 0);
 
   return (
-    <div className="dashboard">
-      <h2>Dashboard</h2>
-      {error && <p>{error}</p>}
+    <main className="max-w-6xl mx-auto p-6 bg-cardBg text-white rounded-lg shadow-lg">
+      <h2 className="text-3xl font-bold mb-6 text-center">Dashboard</h2>
 
-      <div className="summary">
-        <strong>Total Portfolio Value:</strong> €{totalValue.toFixed(2)}
+      {error && <p className="text-red-500 mb-4 text-center" role="alert">{error}</p>}
+
+      <div className="summary mb-6 text-xl font-semibold text-primaryGreen text-center">
+        Total Portfolio Value: €{totalValue.toFixed(2)}
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Ticker</th> {/* Added ticker header */}
-            <th>Type</th>
-            <th>Amount</th>
-            <th>Buy Price</th>
-            <th>Current Value</th>
-            <th>Interest Rate</th>
-            <th>Profit / Loss</th>
-            <th>% Change 24h</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {investments.map((inv) => (
-            <tr key={inv.id}>
-              <td>{inv.name}</td>
-              <td>{inv.ticker ?? '—'}</td> {/* Render ticker */}
-              <td>{inv.type}</td>
-              <td>{formatNumber(inv.amount)}</td>
-              <td>€{formatNumber(inv.buy_price)}</td>
-              <td>€{formatNumber(inv.current_value)}</td>
-              <td>{formatNumber(inv.interest_rate)}%</td>
-              <td>{formatNumber(inv.profit_loss)}</td>
-              <td>{formatNumber(inv.percent_change_24h)}%</td>
-              <td>{new Date(inv.created_at).toLocaleDateString()}</td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse border border-green-600" aria-label="Investments table">
+          <thead className="bg-cardBg">
+            <tr>
+              {[
+                'Name',
+                'Ticker',
+                'Type',
+                'Amount',
+                'Buy Price',
+                'Current Value',
+                'Interest Rate',
+                'Profit / Loss',
+                '% Change 24h',
+                'Date',
+              ].map((header) => (
+                <th
+                  key={header}
+                  className="border border-green-600 px-4 py-2 text-left text-white"
+                  scope="col"
+                >
+                  {header}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+
+          <tbody>
+            {investments.map((inv) => (
+              <tr key={inv.id} className="odd:bg-gray-900 even:bg-gray-800">
+                <td className="border border-green-600 px-4 py-2">{inv.name}</td>
+                <td className="border border-green-600 px-4 py-2">{inv.ticker ?? '—'}</td>
+                <td className="border border-green-600 px-4 py-2">{inv.type}</td>
+                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.amount)}</td>
+                <td className="border border-green-600 px-4 py-2">€{formatNumber(inv.buy_price)}</td>
+                <td className="border border-green-600 px-4 py-2">€{formatNumber(inv.current_value)}</td>
+                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.interest_rate)}%</td>
+                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.profit_loss)}</td>
+                <td className="border border-green-600 px-4 py-2">{formatNumber(inv.percent_change_24h)}%</td>
+                <td className="border border-green-600 px-4 py-2">{new Date(inv.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
   );
 };
 
