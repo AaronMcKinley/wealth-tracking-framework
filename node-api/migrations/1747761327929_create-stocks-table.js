@@ -1,8 +1,8 @@
 exports.up = (pgm) => {
-  pgm.createTable('market_assets', {
+  pgm.createTable('stocks_and_funds', {
+    name: { type: 'varchar(100)', notNull: true },
     ticker: { type: 'text', primaryKey: true },
     type: { type: 'varchar(20)', notNull: true },
-    name: { type: 'varchar(100)' },
     current_price: { type: 'numeric', notNull: true },
     open: { type: 'numeric' },
     high: { type: 'numeric' },
@@ -13,5 +13,5 @@ exports.up = (pgm) => {
 };
 
 exports.down = (pgm) => {
-  pgm.dropTable('market_assets');
+  pgm.dropTable('stocks_and_funds');
 };

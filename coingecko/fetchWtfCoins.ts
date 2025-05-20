@@ -43,11 +43,8 @@ const fetchSelectedCoins = async () => {
       },
     });
 
-    // Save raw API data for debugging (with symbol from CoinGecko)
     writeFileSync('./data/wtfCoins.json', JSON.stringify(rawData, null, 2));
     console.log(`Saved full CoinGecko data for ${rawData.length} coins.`);
-
-    // Map CoinGecko's symbol to ticker internally
     const dataForDb: Coin[] = rawData.map((coin: any) => ({
       id: coin.id,
       ticker: coin.symbol,

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { writeFileSync } from 'fs';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -15,6 +16,7 @@ if (!API_KEY) {
 const pool = new Pool();
 
 interface Asset {
+  name: string;
   ticker: string;
   type: string;
   open?: number;
@@ -28,33 +30,44 @@ interface Asset {
 async function fetchAndUpsertAssets() {
   console.log('Fetching Finnhub data and updating DB...');
 
+  const results: Asset[] = [];
+
   try {
     for (const { ticker, type } of ALL_SYMBOLS) {
       try {
-        const response = await axios.get('https://finnhub.io/api/v1/quote', {
+        const quoteResponse = await axios.get('https://finnhub.io/api/v1/quote', {
           params: { symbol: ticker, token: API_KEY },
         });
-        const data = response.data;
+        const quoteData = quoteResponse.data;
+
+        const profileResponse = await axios.get('https://finnhub.io/api/v1/stock/profile2', {
+          params: { symbol: ticker, token: API_KEY },
+        });
+        const profileData = profileResponse.data;
 
         const asset: Asset = {
+          name: profileData.name || 'Unknown',
           ticker,
           type,
-          open: data.o,
-          high: data.h,
-          low: data.l,
-          current_price: data.c,
-          previous_close: data.pc,
+          open: quoteData.o,
+          high: quoteData.h,
+          low: quoteData.l,
+          current_price: quoteData.c,
+          previous_close: quoteData.pc,
           timestamp: new Date().toISOString(),
         };
 
+        results.push(asset);
+
         await pool.query(
           `
-          INSERT INTO market_assets (
-            ticker, type, open, high, low, current_price, previous_close, timestamp
+          INSERT INTO stocks_and_funds (
+            name, ticker, type, open, high, low, current_price, previous_close, timestamp
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8
+            $1, $2, $3, $4, $5, $6, $7, $8, $9
           )
           ON CONFLICT (ticker) DO UPDATE SET
+            name = EXCLUDED.name,
             type = EXCLUDED.type,
             open = EXCLUDED.open,
             high = EXCLUDED.high,
@@ -64,6 +77,7 @@ async function fetchAndUpsertAssets() {
             timestamp = EXCLUDED.timestamp;
           `,
           [
+            asset.name,
             asset.ticker,
             asset.type,
             asset.open,
@@ -75,7 +89,7 @@ async function fetchAndUpsertAssets() {
           ]
         );
 
-        console.log(`Upserted ${ticker} successfully.`);
+        console.log(`Upserted ${ticker} (${asset.name}) successfully.`);
       } catch (innerErr: any) {
         console.error(`Error fetching/updating ${ticker}:`, innerErr.message || innerErr);
       }
@@ -85,6 +99,11 @@ async function fetchAndUpsertAssets() {
   } catch (err: any) {
     console.error('Fatal error during fetch and DB update:', err);
   } finally {
+    // Save JSON file after all done
+    const outputPath = path.resolve(__dirname, './data/allAssets.json');
+    writeFileSync(outputPath, JSON.stringify(results, null, 2));
+    console.log(`Saved ${results.length} assets to ${outputPath}`);
+
     await pool.end();
   }
 }

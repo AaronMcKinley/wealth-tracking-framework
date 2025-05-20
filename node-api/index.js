@@ -29,7 +29,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Get all investments route
 app.get('/api/investments', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM investments');
@@ -40,39 +39,63 @@ app.get('/api/investments', async (req, res) => {
   }
 });
 
-// addInvestment function to insert a new investment with autofill from cryptocurrencies table
-const addInvestment = async (pool, { user_id, name, amount, buy_price }) => {
-  if (!user_id || !name || !amount || !buy_price) {
+const addInvestment = async (pool, { user_id, name, amount, buy_price, type }) => {
+  if (!user_id || !name || !amount || !buy_price || !type) {
     throw new Error('Missing required fields');
   }
 
-  // Lookup crypto info by name (case-insensitive)
-  const cryptoResult = await pool.query(
-    `SELECT name, ticker, current_price, price_change_percentage_24h
-     FROM cryptocurrencies
-     WHERE LOWER(name) = LOWER($1)`,
-    [name]
-  );
+  const normalizedType = type.toLowerCase();
 
-  if (cryptoResult.rows.length === 0) {
-    throw new Error(`Cryptocurrency name '${name}' not found`);
+  let assetResult;
+
+  switch (normalizedType) {
+    case 'crypto':
+      assetResult = await pool.query(
+        `SELECT name, ticker, current_price, price_change_percentage_24h
+         FROM cryptocurrencies
+         WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1)
+         LIMIT 1`,
+        [name]
+      );
+      break;
+
+    case 'stock':
+    case 'etf':
+    case 'bond':
+    case 'reit':
+    case 'commodity':
+      assetResult = await pool.query(
+        `SELECT name, ticker, current_price, previous_close AS price_change_percentage_24h
+         FROM stocks_and_funds
+         WHERE (LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1))
+           AND type = $2
+         LIMIT 1`,
+        [name, normalizedType]
+      );
+      break;
+
+    default:
+      throw new Error(`Unsupported investment type '${type}'`);
   }
 
-  const crypto = cryptoResult.rows[0];
+  if (assetResult.rows.length === 0) {
+    throw new Error(`Asset '${name}' not found for type '${type}'`);
+  }
 
-  // Convert to numbers explicitly
-  const current_price = Number(crypto.current_price);
+  const asset = assetResult.rows[0];
+  const current_price = Number(asset.current_price);
   const amountNum = Number(amount);
   const buyPriceNum = Number(buy_price);
-  const priceChangePct24h = Number(crypto.price_change_percentage_24h) || 0;
+  const priceChangePct24h = Number(asset.price_change_percentage_24h) || 0;
 
   const current_value = current_price * amountNum;
   const profit_loss = (current_price - buyPriceNum) * amountNum;
 
   console.log('Inserting investment:', {
     user_id,
-    name: crypto.name,
-    ticker: crypto.ticker,
+    name: asset.name,
+    ticker: asset.ticker,
+    type: normalizedType,
     amount: amountNum,
     buy_price: buyPriceNum,
     current_value,
@@ -80,17 +103,17 @@ const addInvestment = async (pool, { user_id, name, amount, buy_price }) => {
     percent_change_24h: priceChangePct24h,
   });
 
-  // Insert investment
   const insertResult = await pool.query(
     `INSERT INTO investments (
       user_id, name, ticker, type, amount, buy_price,
       current_value, profit_loss, percent_change_24h
-    ) VALUES ($1, $2, $3, 'crypto', $4, $5, $6, $7, $8)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id`,
     [
       user_id,
-      crypto.name,
-      crypto.ticker,
+      asset.name,
+      asset.ticker,
+      normalizedType,
       amountNum,
       buyPriceNum,
       current_value,
@@ -102,18 +125,22 @@ const addInvestment = async (pool, { user_id, name, amount, buy_price }) => {
   return insertResult.rows[0];
 };
 
-// POST route to add investment
 app.post('/api/investments', async (req, res) => {
   try {
     const investment = await addInvestment(pool, req.body);
     res.status(201).json({ message: 'Investment added', id: investment.id });
   } catch (err) {
-    console.error('Add investment error:', err.message);
+    console.error('Add investment error:', err.message || err);
     res.status(400).json({ message: err.message || 'Failed to add investment' });
   }
 });
 
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Internal server error' });
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });

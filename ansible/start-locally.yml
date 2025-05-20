@@ -3,8 +3,9 @@
   become: false
 
   tasks:
-  - name: Remove the PostgreSQL data volume to reset the database (optional)
-    shell: docker volume rm wealth-tracking-framework_postgres_data
+  - name: Stop and remove postgres container, then remove volume (optional)
+    shell: |
+      docker stop wtf-postgres && docker rm wtf-postgres && docker volume rm wealth-tracking-framework_postgres_data
     args:
       chdir: "{{ playbook_dir }}/.."
     when: reset_db | default(false)
