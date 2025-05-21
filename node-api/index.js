@@ -94,7 +94,34 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/investments', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM investments');
+    // TODO: Replace 1 with authenticated user ID
+    const userId = 1;
+
+    const query = `
+      SELECT
+        i.id,
+        i.user_id,
+        i.asset_name,
+        i.asset_ticker,
+        i.type,
+        i.total_quantity,
+        i.average_buy_price,
+        COALESCE(m.current_price, 0) AS current_price,
+        COALESCE(m.percent_change_24h, 0) AS percent_change_24h,
+        (COALESCE(m.current_price, 0) * i.total_quantity) AS current_value,
+        ((COALESCE(m.current_price, 0) - i.average_buy_price) * i.total_quantity) AS profit_loss,
+        i.created_at
+      FROM investments i
+      LEFT JOIN (
+        SELECT ticker, current_price, price_change_percentage_24h AS percent_change_24h FROM cryptocurrencies
+        UNION ALL
+        SELECT ticker, current_price, previous_close AS percent_change_24h FROM stocks_and_funds
+      ) m ON i.asset_ticker = m.ticker
+      WHERE i.user_id = $1
+      ORDER BY i.created_at DESC
+    `;
+
+    const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching investments:', err.message);
