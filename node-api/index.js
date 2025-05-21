@@ -94,8 +94,7 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/investments', async (req, res) => {
   try {
-    // TODO: Replace 1 with authenticated user ID
-    const userId = 1;
+    const userId = 1; // TODO: use authenticated user
 
     const query = `
       SELECT
@@ -129,20 +128,52 @@ app.get('/api/investments', async (req, res) => {
   }
 });
 
+app.get('/api/transactions/:userId/:ticker', async (req, res) => {
+  try {
+    const { userId, ticker } = req.params;
+    if (!userId || !ticker) {
+      return res.status(400).json({ message: 'Missing userId or ticker' });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         id,
+         transaction_type,
+         quantity,
+         price_per_unit,
+         total_value,
+         fees,
+         transaction_date
+       FROM transactions
+       WHERE user_id = $1
+         AND LOWER(asset_ticker) = LOWER($2)
+       ORDER BY transaction_date DESC`,
+      [userId, ticker]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching transactions:', err);
+    res.status(500).json({ message: 'Failed to fetch transactions' });
+  }
+});
+
 app.post('/api/investments', async (req, res) => {
   try {
     const { user_id, name, type, amount, buy_price } = req.body;
-
     if (!user_id || !name || !type || !amount || !buy_price) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
     let assetResult;
-
     switch (type.toLowerCase()) {
       case 'crypto':
         assetResult = await pool.query(
-          `SELECT name, ticker FROM cryptocurrencies WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1) LIMIT 1`,
+          `SELECT name, ticker
+           FROM cryptocurrencies
+           WHERE LOWER(name) = LOWER($1)
+              OR LOWER(ticker) = LOWER($1)
+           LIMIT 1`,
           [name]
         );
         break;
@@ -152,7 +183,12 @@ app.post('/api/investments', async (req, res) => {
       case 'reit':
       case 'commodity':
         assetResult = await pool.query(
-          `SELECT name, ticker FROM stocks_and_funds WHERE (LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1)) AND type = $2 LIMIT 1`,
+          `SELECT name, ticker
+           FROM stocks_and_funds
+           WHERE (LOWER(name) = LOWER($1)
+                  OR LOWER(ticker) = LOWER($1))
+             AND type = $2
+           LIMIT 1`,
           [name, type.toLowerCase()]
         );
         break;
@@ -165,7 +201,6 @@ app.post('/api/investments', async (req, res) => {
     }
 
     const asset = assetResult.rows[0];
-
     const transaction = await addTransaction(pool, {
       user_id,
       asset_name: asset.name,
@@ -188,7 +223,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
