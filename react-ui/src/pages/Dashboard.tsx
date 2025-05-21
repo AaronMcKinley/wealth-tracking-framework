@@ -30,6 +30,9 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const user = localStorage.getItem('user');
+  const userId = user ? JSON.parse(user).id : null;
+
   useEffect(() => {
     if (location.state?.newInvestment) {
       setInvestments((prev) => [...prev, location.state.newInvestment]);
@@ -98,7 +101,14 @@ const Dashboard: React.FC = () => {
               {investments.map((inv) => (
                 <tr
                   key={inv.id}
-                  className="hover:bg-primaryGreen/20 transition-colors duration-200"
+                  className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
+                  onClick={() => {
+                    if (!userId) {
+                      alert('User not logged in');
+                      return;
+                    }
+                    navigate(`/transactions/${userId}/${inv.asset_ticker}`);
+                  }}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">{inv.asset_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{inv.asset_ticker}</td>

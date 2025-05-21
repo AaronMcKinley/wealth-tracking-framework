@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AddInvestment from './pages/AddInvestment';
+import Transactions from './pages/Transactions';
 
 const App: React.FC = () => {
   const isLoggedIn = !!localStorage.getItem('user');
@@ -12,16 +13,14 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
 
-        {/* Protected routes */}
         {isLoggedIn && (
           <>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/addinvestment" element={<AddInvestment />} />
-            {/* Add more routes here */}
+            <Route path="/transactions/:userId/:ticker" element={<Transactions />} />
           </>
         )}
 
-        {/* Redirect unknown routes */}
         <Route path="*" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>
