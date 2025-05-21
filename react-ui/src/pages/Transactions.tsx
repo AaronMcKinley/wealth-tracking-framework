@@ -56,7 +56,8 @@ const Transactions: React.FC = () => {
     <div className="flex min-h-screen bg-darkBg text-white">
       <Sidebar menuItems={menuItems} />
 
-      <main className="flex-1 p-6 overflow-auto max-w-xl mx-auto">
+      {/* Removed max-width constraint to allow full width */}
+      <main className="flex-1 p-6 overflow-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">{ticker?.toUpperCase()} Transactions</h1>
 
         {loading && <p className="text-center">Loading transactions...</p>}
@@ -68,10 +69,20 @@ const Transactions: React.FC = () => {
 
         {!loading && !error && transactions.length > 0 && (
           <div className="overflow-x-auto rounded-lg shadow-lg border border-primaryGreen mb-6">
+            {/* Added table-fixed and w-full for consistent column widths */}
             <table
-              className="min-w-full divide-y divide-primaryGreen"
+              className="table-fixed w-full divide-y divide-primaryGreen"
               aria-label="Transactions table"
             >
+              <colgroup>
+                <col className="w-1/6" />   {/* Type */}
+                <col className="w-1/6" />   {/* Quantity */}
+                <col className="w-1/6" />   {/* Price per Unit */}
+                <col className="w-1/6" />   {/* Total Value */}
+                <col className="w-1/6" />   {/* Fees */}
+                <col className="w-1/6" />   {/* Date */}
+                <col className="w-1/6" />   {/* Notes */}
+              </colgroup>
               <thead className="bg-cardBg">
                 <tr>
                   {[
@@ -85,7 +96,7 @@ const Transactions: React.FC = () => {
                   ].map((header) => (
                     <th
                       key={header}
-                      className="px-6 py-3 text-left text-white font-semibold tracking-wide"
+                      className="px-4 py-3 text-left text-white font-semibold tracking-wide"
                     >
                       {header}
                     </th>
@@ -99,15 +110,15 @@ const Transactions: React.FC = () => {
                     key={tx.id}
                     className="hover:bg-primaryGreen/20 transition-colors duration-200"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">{tx.transaction_type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatNumber(tx.quantity)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatNumber(tx.price_per_unit)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatNumber(tx.total_value)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatNumber(tx.fees)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap">{tx.transaction_type}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{formatNumber(tx.quantity)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{formatNumber(tx.price_per_unit)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{formatNumber(tx.total_value)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{formatNumber(tx.fees)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {new Date(tx.transaction_date).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{tx.notes || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{tx.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>
