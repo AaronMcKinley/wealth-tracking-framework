@@ -3,28 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 
 interface Asset {
-  name: string;
-  ticker?: string;
+  name: string;      // ticker, used for searches and API
+  fullName: string;  // full descriptive name, for display only
   type: string;
 }
 
-// Your static asset list (replace with DB fetch later)
 const ASSETS: Asset[] = [
-  { name: 'Bitcoin', ticker: 'BTC', type: 'crypto' },
-  { name: 'Ethereum', ticker: 'ETH', type: 'crypto' },
-  { name: 'Cardano', ticker: 'ADA', type: 'crypto' },
-  { name: 'Solana', ticker: 'SOL', type: 'crypto' },
-  { name: 'Ripple', ticker: 'XRP', type: 'crypto' },
-  { name: 'Apple', ticker: 'AAPL', type: 'stock' },
-  { name: 'Microsoft', ticker: 'MSFT', type: 'stock' },
-  { name: 'Tesla', ticker: 'TSLA', type: 'stock' },
-  { name: 'Amazon', ticker: 'AMZN', type: 'stock' },
-  { name: 'Google', ticker: 'GOOGL', type: 'stock' },
-  { name: 'SPY', ticker: 'SPY', type: 'etf' },
-  { name: 'VOO', ticker: 'VOO', type: 'etf' },
-  { name: 'US Treasury 10yr', ticker: undefined, type: 'bond' },
-  { name: 'Vanguard REIT ETF', ticker: undefined, type: 'reit' },
-  { name: 'Gold', ticker: undefined, type: 'commodity' },
+  { name: 'BTC', fullName: 'Bitcoin', type: 'crypto' },
+  { name: 'ETH', fullName: 'Ethereum', type: 'crypto' },
+  { name: 'ADA', fullName: 'Cardano', type: 'crypto' },
+  { name: 'SOL', fullName: 'Solana', type: 'crypto' },
+  { name: 'XRP', fullName: 'Ripple', type: 'crypto' },
+  { name: 'AAPL', fullName: 'Apple Inc.', type: 'stock' },
+  { name: 'MSFT', fullName: 'Microsoft Corp.', type: 'stock' },
+  { name: 'TSLA', fullName: 'Tesla Inc.', type: 'stock' },
+  { name: 'AMZN', fullName: 'Amazon.com Inc.', type: 'stock' },
+  { name: 'GOOGL', fullName: 'Alphabet Inc.', type: 'stock' },
+  { name: 'SPY', fullName: 'SPDR S&P 500 ETF Trust', type: 'etf' },
+  { name: 'VOO', fullName: 'Vanguard S&P 500 ETF', type: 'etf' },
+  { name: 'UST10Y', fullName: 'US Treasury 10yr', type: 'bond' },
+  { name: 'VNQ', fullName: 'Vanguard REIT ETF', type: 'reit' },
+  { name: 'GOLD', fullName: 'Gold', type: 'commodity' },
 ];
 
 const AddInvestment: React.FC = () => {
@@ -39,14 +38,13 @@ const AddInvestment: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Filter assets as user types
   useEffect(() => {
     if (searchInput) {
       const filtered = ASSETS.filter(a => {
         const searchLower = searchInput.toLowerCase();
         return (
-          a.name.toLowerCase().includes(searchLower) ||
-          (a.ticker && a.ticker.toLowerCase().includes(searchLower))
+          a.fullName.toLowerCase().includes(searchLower) ||
+          a.name.toLowerCase().includes(searchLower)
         );
       });
       setSuggestions(filtered);
@@ -60,13 +58,14 @@ const AddInvestment: React.FC = () => {
   const onSelectSuggestion = (asset: Asset) => {
     setSelectedAsset(asset);
     setType(asset.type);
-    setSearchInput(asset.name);
+    setSearchInput(`${asset.fullName} (${asset.name})`);
     setSuggestions([]);
     setError('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedAsset) {
       setError('Please select a valid asset from the suggestions.');
       return;
@@ -79,33 +78,50 @@ const AddInvestment: React.FC = () => {
       setError('Please enter a valid buy price (greater than 0).');
       return;
     }
+
     setError('');
     setShowConfirm(true);
   };
 
-  const confirmAddInvestment = () => {
+  const confirmAddInvestment = async () => {
     setShowConfirm(false);
 
-    const newInvestment = {
-      id: Date.now(),
-      name: selectedAsset?.name || '',
-      ticker: selectedAsset?.ticker || null,
-      type,
-      amount: Number(amount),
-      buy_price: Number(buyPrice),
-      current_value: null,
-      interest_rate: null,
-      profit_loss: null,
-      percent_change_24h: null,
-      created_at: new Date().toISOString(),
-    };
+    // Get user from localStorage
+    const user = localStorage.getItem('user');
+    if (!user) {
+      setError('User not logged in');
+      return;
+    }
+    const userObj = JSON.parse(user);
 
-    navigate('/dashboard', { state: { newInvestment } });
+    try {
+      await fetch('http://localhost:4000/api/investments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userObj.id,
+          name: selectedAsset?.name,  // ticker sent to backend
+          amount: Number(amount),
+          buy_price: Number(buyPrice),
+          type,
+        }),
+      });
+      // Navigate back to dashboard after adding
+      navigate('/dashboard');
+    } catch (e) {
+      setError('Failed to add investment.');
+    }
   };
 
   const cancelConfirm = () => setShowConfirm(false);
 
-  const menuItems = ['Dashboard', 'Investments', 'Reports', 'Settings', 'Logout'];
+  const menuItems = [
+    'Dashboard',
+    'Investments',
+    'Reports',
+    'Settings',
+    'Logout',
+  ];
 
   return (
     <div className="flex min-h-screen bg-darkBg text-white">
@@ -155,7 +171,7 @@ const AddInvestment: React.FC = () => {
               >
                 {suggestions.map((asset) => (
                   <li
-                    key={`${asset.name}-${asset.ticker}`}
+                    key={asset.name}
                     role="option"
                     aria-selected={selectedAsset?.name === asset.name}
                     className="px-4 py-2 hover:bg-primaryGreen cursor-pointer"
@@ -168,7 +184,7 @@ const AddInvestment: React.FC = () => {
                       }
                     }}
                   >
-                    <strong>{asset.name}</strong> {asset.ticker && `(${asset.ticker})`} - {asset.type}
+                    <strong>{asset.fullName}</strong> ({asset.name}) - {asset.type}
                   </li>
                 ))}
               </ul>
@@ -224,8 +240,8 @@ const AddInvestment: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-4">Confirm Investment</h2>
                 <p className="mb-4">
                   Type: <strong>{type}</strong><br />
-                  Name: <strong>{selectedAsset?.name}</strong><br />
-                  Ticker: <strong>{selectedAsset?.ticker || 'N/A'}</strong><br />
+                  Name: <strong>{selectedAsset?.fullName}</strong><br />
+                  Ticker: <strong>{selectedAsset?.name}</strong><br />
                   Amount: <strong>{amount}</strong><br />
                   Buy Price: <strong>€{buyPrice}</strong>
                 </p>
@@ -237,7 +253,7 @@ const AddInvestment: React.FC = () => {
                     Confirm
                   </button>
                   <button
-                    onClick={() => setShowConfirm(false)}
+                    onClick={cancelConfirm}
                     className="bg-red-600 px-6 py-2 rounded font-semibold hover:bg-red-700 transition-colors"
                   >
                     Cancel
