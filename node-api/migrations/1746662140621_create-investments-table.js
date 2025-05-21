@@ -1,5 +1,4 @@
 exports.up = (pgm) => {
-  // Create the users table
   pgm.createTable('users', {
     id: 'id',
     email: { type: 'varchar(100)', notNull: true, unique: true },
@@ -8,7 +7,29 @@ exports.up = (pgm) => {
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });
 
-  // Create the investments table with only name, amount, and buy_price NOT NULL
+  pgm.createTable('transactions', {
+    id: 'id',
+    user_id: {
+      type: 'integer',
+      notNull: true,
+      references: '"users"',
+      onDelete: 'cascade',
+    },
+    asset_ticker: { type: 'varchar(20)', notNull: true },
+    transaction_type: { type: 'varchar(20)', notNull: true },
+    quantity: { type: 'numeric', notNull: true },
+    price_per_unit: { type: 'numeric', notNull: true },
+    total_value: { type: 'numeric', notNull: true },
+    fees: { type: 'numeric', default: 0 },
+    transaction_date: {
+      type: 'timestamp',
+      notNull: true,
+      default: pgm.func('current_timestamp'),
+    },
+    created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
+    updated_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
+  });
+
   pgm.createTable('investments', {
     id: 'id',
     user_id: {
@@ -17,20 +38,27 @@ exports.up = (pgm) => {
       references: '"users"',
       onDelete: 'cascade',
     },
-    name: { type: 'varchar(100)', notNull: true },
-    ticker: { type: 'varchar(20)' }, // nullable
-    type: { type: 'varchar(50)' }, // nullable now
-    amount: { type: 'numeric', notNull: true },
-    buy_price: { type: 'numeric', notNull: true },
-    current_value: { type: 'numeric' }, // nullable now
-    interest_rate: { type: 'numeric' }, // nullable
-    profit_loss: { type: 'numeric' }, // nullable
-    percent_change_24h: { type: 'numeric' }, // nullable
+    asset_ticker: { type: 'varchar(20)', notNull: true },
+    asset_name: { type: 'varchar(255)', notNull: false },
+    type: { type: 'varchar(50)', notNull: false },
+    total_quantity: { type: 'numeric', notNull: true, default: 0 },
+    average_buy_price: { type: 'numeric', notNull: true, default: 0 },
+    current_price: { type: 'numeric', notNull: false },
+    current_value: { type: 'numeric', notNull: false },
+    profit_loss: { type: 'numeric', notNull: false },
+    percent_change_24h: { type: 'numeric', notNull: false },
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
+    updated_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
+  });
+
+  pgm.addConstraint('investments', 'unique_user_asset', {
+    unique: ['user_id', 'asset_ticker'],
   });
 };
 
 exports.down = (pgm) => {
+  pgm.dropConstraint('investments', 'unique_user_asset');
   pgm.dropTable('investments');
+  pgm.dropTable('transactions');
   pgm.dropTable('users');
 };
