@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface Investment {
   id: number;
@@ -27,20 +27,7 @@ const Dashboard: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    axios
-      .get<Investment[]>('http://localhost:4000/api/investments')
-      .then((res) => {
-        setInvestments(res.data);
-      })
-      .catch(() => setError('Failed to fetch investments'));
-  }, []);
-
-  const totalValue = investments.reduce((sum: number, inv: Investment) => {
-    const value = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
-    return sum + (isNaN(value) ? 0 : value);
-  }, 0);
+  const location = useLocation();
 
   const menuItems = [
     'Dashboard',
@@ -49,6 +36,26 @@ const Dashboard: React.FC = () => {
     'Settings',
     'Logout',
   ];
+
+  // Refetch investments whenever location changes (like returning from AddInvestment)
+  useEffect(() => {
+    fetchInvestments();
+  }, [location]);
+
+  const fetchInvestments = () => {
+    axios
+      .get<Investment[]>('http://localhost:4000/api/investments')
+      .then((res) => {
+        setInvestments(res.data);
+        setError('');
+      })
+      .catch(() => setError('Failed to fetch investments'));
+  };
+
+  const totalValue = investments.reduce((sum: number, inv: Investment) => {
+    const value = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
+    return sum + (isNaN(value) ? 0 : value);
+  }, 0);
 
   return (
     <div className="flex min-h-screen bg-darkBg text-white">
