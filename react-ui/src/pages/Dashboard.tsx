@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
+import { useNavigate } from 'react-router-dom';
 
 interface Investment {
   id: number;
@@ -25,6 +26,7 @@ const formatNumber = (num: number | string | null | undefined) => {
 const Dashboard: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     axios
@@ -40,9 +42,17 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(value) ? 0 : value);
   }, 0);
 
+  const menuItems = [
+    'Dashboard',
+    'Investments',
+    'Reports',
+    'Settings',
+    'Logout',
+  ];
+
   return (
     <div className="flex min-h-screen bg-darkBg text-white">
-      <Sidebar />
+      <Sidebar menuItems={menuItems} />
 
       <main className="flex-1 p-6 overflow-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
@@ -53,7 +63,7 @@ const Dashboard: React.FC = () => {
           Total Portfolio Value: €{totalValue.toFixed(2)}
         </div>
 
-        <div className="overflow-x-auto rounded-lg shadow-lg border border-primaryGreen">
+        <div className="overflow-x-auto rounded-lg shadow-lg border border-primaryGreen mb-6">
           <table className="min-w-full divide-y divide-primaryGreen" aria-label="Investments table">
             <thead className="bg-cardBg">
               <tr>
@@ -100,6 +110,15 @@ const Dashboard: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={() => navigate('/addinvestment')}
+            className="px-6 py-3 bg-primaryGreen text-darkBg font-semibold rounded hover:bg-primaryGreenHover transition-colors"
+          >
+            Add Investment
+          </button>
         </div>
       </main>
     </div>
