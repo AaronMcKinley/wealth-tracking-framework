@@ -9,9 +9,72 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool(); // uses env vars for DB
+const pool = new Pool();
 
-// Login route
+const addTransaction = async (
+  pool,
+  {
+    user_id,
+    asset_name,
+    asset_ticker,
+    type,
+    quantity,
+    price_per_unit,
+    transaction_type = 'buy',
+    fees = 0,
+    transaction_date = new Date(),
+  }
+) => {
+  if (!user_id || !asset_ticker || !type || !quantity || !price_per_unit || !transaction_type) {
+    throw new Error('Missing required fields');
+  }
+
+  const total_value = Number(quantity) * Number(price_per_unit);
+
+  const insertTx = await pool.query(
+    `INSERT INTO transactions
+      (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, transaction_date)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     RETURNING *`,
+    [user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, transaction_date]
+  );
+
+  const aggResult = await pool.query(
+    `SELECT
+      COALESCE(SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE -quantity END), 0) AS total_quantity,
+      CASE WHEN SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE 0 END) = 0 THEN 0 ELSE
+        SUM(CASE WHEN transaction_type = 'buy' THEN quantity * price_per_unit ELSE 0 END) /
+        SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE 0 END)
+      END AS average_buy_price
+     FROM transactions
+     WHERE user_id = $1 AND asset_ticker = $2`,
+    [user_id, asset_ticker]
+  );
+
+  const { total_quantity, average_buy_price } = aggResult.rows[0];
+
+  if (total_quantity <= 0) {
+    await pool.query(
+      `DELETE FROM investments WHERE user_id = $1 AND asset_ticker = $2`,
+      [user_id, asset_ticker]
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO investments
+        (user_id, asset_ticker, asset_name, type, total_quantity, average_buy_price, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       ON CONFLICT (user_id, asset_ticker)
+       DO UPDATE SET
+         total_quantity = EXCLUDED.total_quantity,
+         average_buy_price = EXCLUDED.average_buy_price,
+         updated_at = NOW()`,
+      [user_id, asset_ticker, asset_name, type, total_quantity, average_buy_price]
+    );
+  }
+
+  return insertTx.rows[0];
+};
+
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -39,99 +102,57 @@ app.get('/api/investments', async (req, res) => {
   }
 });
 
-const addInvestment = async (pool, { user_id, name, amount, buy_price, type }) => {
-  if (!user_id || !name || !amount || !buy_price || !type) {
-    throw new Error('Missing required fields');
-  }
-
-  const normalizedType = type.toLowerCase();
-
-  let assetResult;
-
-  switch (normalizedType) {
-    case 'crypto':
-      assetResult = await pool.query(
-        `SELECT name, ticker, current_price, price_change_percentage_24h
-         FROM cryptocurrencies
-         WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1)
-         LIMIT 1`,
-        [name]
-      );
-      break;
-
-    case 'stock':
-    case 'etf':
-    case 'bond':
-    case 'reit':
-    case 'commodity':
-      assetResult = await pool.query(
-        `SELECT name, ticker, current_price, previous_close AS price_change_percentage_24h
-         FROM stocks_and_funds
-         WHERE (LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1))
-           AND type = $2
-         LIMIT 1`,
-        [name, normalizedType]
-      );
-      break;
-
-    default:
-      throw new Error(`Unsupported investment type '${type}'`);
-  }
-
-  if (assetResult.rows.length === 0) {
-    throw new Error(`Asset '${name}' not found for type '${type}'`);
-  }
-
-  const asset = assetResult.rows[0];
-  const current_price = Number(asset.current_price);
-  const amountNum = Number(amount);
-  const buyPriceNum = Number(buy_price);
-  const priceChangePct24h = Number(asset.price_change_percentage_24h) || 0;
-
-  const current_value = current_price * amountNum;
-  const profit_loss = (current_price - buyPriceNum) * amountNum;
-
-  console.log('Inserting investment:', {
-    user_id,
-    name: asset.name,
-    ticker: asset.ticker,
-    type: normalizedType,
-    amount: amountNum,
-    buy_price: buyPriceNum,
-    current_value,
-    profit_loss,
-    percent_change_24h: priceChangePct24h,
-  });
-
-  const insertResult = await pool.query(
-    `INSERT INTO investments (
-      user_id, name, ticker, type, amount, buy_price,
-      current_value, profit_loss, percent_change_24h
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id`,
-    [
-      user_id,
-      asset.name,
-      asset.ticker,
-      normalizedType,
-      amountNum,
-      buyPriceNum,
-      current_value,
-      profit_loss,
-      priceChangePct24h,
-    ]
-  );
-
-  return insertResult.rows[0];
-};
-
 app.post('/api/investments', async (req, res) => {
   try {
-    const investment = await addInvestment(pool, req.body);
-    res.status(201).json({ message: 'Investment added', id: investment.id });
+    const { user_id, name, type, amount, buy_price } = req.body;
+
+    if (!user_id || !name || !type || !amount || !buy_price) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    let assetResult;
+
+    switch (type.toLowerCase()) {
+      case 'crypto':
+        assetResult = await pool.query(
+          `SELECT name, ticker FROM cryptocurrencies WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1) LIMIT 1`,
+          [name]
+        );
+        break;
+      case 'stock':
+      case 'etf':
+      case 'bond':
+      case 'reit':
+      case 'commodity':
+        assetResult = await pool.query(
+          `SELECT name, ticker FROM stocks_and_funds WHERE (LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1)) AND type = $2 LIMIT 1`,
+          [name, type.toLowerCase()]
+        );
+        break;
+      default:
+        return res.status(400).json({ message: `Unsupported type: ${type}` });
+    }
+
+    if (assetResult.rows.length === 0) {
+      return res.status(404).json({ message: `Asset '${name}' not found` });
+    }
+
+    const asset = assetResult.rows[0];
+
+    const transaction = await addTransaction(pool, {
+      user_id,
+      asset_name: asset.name,
+      asset_ticker: asset.ticker,
+      type: type.toLowerCase(),
+      quantity: Number(amount),
+      price_per_unit: Number(buy_price),
+      transaction_type: 'buy',
+    });
+
+    res.status(201).json({ message: 'Transaction added', transaction });
   } catch (err) {
-    console.error('Add investment error:', err.message || err);
-    res.status(400).json({ message: err.message || 'Failed to add investment' });
+    console.error('Error adding transaction:', err);
+    res.status(500).json({ message: err.message || 'Failed to add transaction' });
   }
 });
 
