@@ -1,27 +1,41 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate
+} from 'react-router-dom';
+
+import Homepage from './pages/Homepage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AddInvestment from './pages/AddInvestment';
 import Transactions from './pages/Transactions';
 
 const App: React.FC = () => {
-  const isLoggedIn = !!localStorage.getItem('user');
+  const isLoggedIn = Boolean(localStorage.getItem('user'));
 
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
-
         {isLoggedIn && (
           <>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/addinvestment" element={<AddInvestment />} />
-            <Route path="/transactions/:userId/:ticker" element={<Transactions />} />
+            <Route path="/add-investment" element={<AddInvestment />} />
+            <Route
+              path="/transactions/:userId/:ticker"
+              element={<Transactions />}
+            />
           </>
         )}
-
-        <Route path="*" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />} />
+        <Route
+          path="*"
+          element={
+            <Navigate to={isLoggedIn ? '/dashboard' : '/'} replace />
+          }
+        />
       </Routes>
     </Router>
   );
