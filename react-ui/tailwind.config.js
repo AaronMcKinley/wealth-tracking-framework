@@ -10,6 +10,8 @@ module.exports = {
         borderGreen:        '#275559',
         textLight:          '#ffffff',
         textMuted:          '#a0a0a0',
+        redSoft: '#f87171',
+
       },
     },
   },

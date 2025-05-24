@@ -154,10 +154,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="text-center">
-          <button
-            onClick={() => navigate('/add-investment')}
-            className="btn btn-primary"
-          >
+          <button onClick={() => navigate('/add-investment')} className="btn btn-primary">
             Add Investment
           </button>
         </div>

@@ -118,10 +118,6 @@ const AddInvestment: React.FC = () => {
               autoComplete="off"
               className="input"
               placeholder="Type name or ticker"
-              aria-autocomplete="list"
-              aria-controls="asset-suggestion-list"
-              aria-expanded={suggestions.length > 0}
-              aria-haspopup="listbox"
             />
             {suggestions.length > 0 && (
               <ul
@@ -133,16 +129,8 @@ const AddInvestment: React.FC = () => {
                   <li
                     key={asset.ticker}
                     role="option"
-                    aria-selected={selectedAsset?.ticker === asset.ticker}
                     className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
                     onClick={() => onSelectSuggestion(asset)}
-                    tabIndex={0}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onSelectSuggestion(asset);
-                      }
-                    }}
                   >
                     <strong>{asset.fullName}</strong> ({asset.ticker}) — {asset.type}
                   </li>
@@ -180,7 +168,14 @@ const AddInvestment: React.FC = () => {
               className="input"
             />
           </div>
-          <div className="text-right">
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-2 rounded bg-red-400 hover:bg-red-500 text-white font-semibold transition-colors"
+            >
+              Cancel
+            </button>
             <button type="submit" className="btn btn-primary">
               Add Investment
             </button>
@@ -197,16 +192,10 @@ const AddInvestment: React.FC = () => {
                   Buy Price: <strong>€{buyPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
-                  <button
-                    onClick={confirmAddInvestment}
-                    className="btn btn-primary"
-                  >
+                  <button onClick={confirmAddInvestment} className="btn btn-primary">
                     Confirm
                   </button>
-                  <button
-                    onClick={cancelConfirm}
-                    className="bg-red-600 px-6 py-2 rounded font-semibold hover:bg-red-700 transition-colors"
-                  >
+                  <button onClick={cancelConfirm} className="px-6 py-2 rounded bg-red-400 hover:bg-red-500 text-white font-semibold transition-colors">
                     Cancel
                   </button>
                 </div>
