@@ -4,75 +4,37 @@
 
 body {
   font-family: Arial, sans-serif;
-  background-color: #2e2e2e; /* Charcoal grey */
-  color: #ffffff; /* White text */
+  background-color: theme('colors.darkBg');
+  color: theme('colors.textLight');
   margin: 0;
   padding: 0;
 }
 
-.login-container,
-.dashboard {
-  max-width: 600px;
-  margin: 40px auto;
-  background: #1f1f1f; /* Dark card bg */
-  padding: 20px;
-  border-radius: 8px;
-  color: #ffffff; /* White text */
+.btn {
+  @apply px-6 py-3 font-semibold rounded-md transition-colors ease-in-out;
+}
+.btn-primary {
+  @apply bg-primaryGreenHover text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover;
+}
+.btn-secondary {
+  @apply border-2 border-borderGreen text-primaryGreenHover opacity-50 cursor-not-allowed;
 }
 
-form label {
-  display: block;
-  margin-top: 10px;
-  color: #ffffff; /* White text */
+.input {
+  @apply w-full px-4 py-2 bg-darkBg border-2 border-borderGreen text-textLight rounded focus:outline-none focus:ring-2 focus:ring-primaryGreen;
 }
 
-input {
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0 16px;
-  border: 1px solid #00cc66; /* New green border */
-  border-radius: 4px;
-  background-color: #2e2e2e;
-  color: #ffffff; /* White input text */
+.card {
+  @apply bg-cardBg p-8 rounded-lg shadow-lg;
 }
 
-button {
-  padding: 10px;
-  width: 100%;
-  background-color: #00cc66; /* New green button bg */
-  color: #2e2e2e; /* Dark text on button */
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.table {
+  @apply w-full border-2 border-borderGreen border-collapse text-textLight;
 }
-
-button:hover {
-  background-color: #00994d; /* Darker green on hover */
+.table th,
+.table td {
+  @apply border border-borderGreen p-2;
 }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-  color: #ffffff; /* White table text */
-}
-
-th,
-td {
-  border: 1px solid #00cc66; /* New green border */
-  padding: 8px;
-  color: #ffffff; /* White text */
-}
-
-th {
-  background-color: #1f1f1f;
-  text-align: left;
-}
-
-.summary {
-  margin: 10px 0;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #ffffff; /* White text */
+.table tr:hover {
+  @apply bg-primaryGreen/20;
 }

@@ -35,7 +35,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (location.state?.newInvestment) {
-      setInvestments((prev) => [...prev, location.state.newInvestment]);
+      setInvestments(prev => [...prev, location.state.newInvestment]);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     axios
       .get<Investment[]>('http://localhost:4000/api/investments')
-      .then((res) => setInvestments(res.data))
+      .then(res => setInvestments(res.data))
       .catch(() => setError('Failed to fetch investments'));
   }, []);
 
@@ -55,23 +55,36 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-  const menuItems = ['Dashboard', 'Investments', 'Reports', 'Settings', 'Logout'];
+  const menuItems = [
+    'Dashboard',
+    'Add Investment',
+    'Investments',
+    'Reports',
+    'Settings',
+    'Logout'
+  ];
 
   return (
-    <div className="flex min-h-screen bg-darkBg text-white">
+    <div className="flex min-h-screen bg-darkBg text-textLight">
       <Sidebar menuItems={menuItems} />
 
       <main className="flex-1 p-6 overflow-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          Wealth Tracking Framework
+        </h1>
 
-        {error && <p className="text-red-500 mb-4 text-center" role="alert">{error}</p>}
+        {error && (
+          <p className="text-red-500 mb-4 text-center" role="alert">
+            {error}
+          </p>
+        )}
 
-        <div className="summary mb-6 text-xl font-semibold text-primaryGreen text-center">
+        <div className="mb-6 text-xl font-semibold text-primaryGreen text-center">
           Total Portfolio Value: €{totalValue.toFixed(2)}
         </div>
 
-        <div className="overflow-x-auto rounded-lg shadow-lg border border-primaryGreen mb-6">
-          <table className="min-w-full divide-y divide-primaryGreen" aria-label="Investments table">
+        <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
+          <table className="table">
             <thead className="bg-cardBg">
               <tr>
                 {[
@@ -84,21 +97,19 @@ const Dashboard: React.FC = () => {
                   'Current Value',
                   'Profit / Loss',
                   '% Change 24h',
-                  'Date Added',
-                ].map((header) => (
+                  'Date Added'
+                ].map(header => (
                   <th
                     key={header}
-                    scope="col"
-                    className="px-6 py-3 text-left text-white font-semibold tracking-wide"
+                    className="px-6 py-3 text-left font-semibold"
                   >
                     {header}
                   </th>
                 ))}
               </tr>
             </thead>
-
-            <tbody className="bg-darkBg divide-y divide-primaryGreen">
-              {investments.map((inv) => (
+            <tbody>
+              {investments.map(inv => (
                 <tr
                   key={inv.id}
                   className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
@@ -107,19 +118,35 @@ const Dashboard: React.FC = () => {
                       alert('User not logged in');
                       return;
                     }
-                    navigate(`/transactions/${userId}/${inv.asset_ticker}`);
+                    navigate(
+                      `/transactions/${userId}/${inv.asset_ticker}`
+                    );
                   }}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">{inv.asset_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{inv.asset_ticker}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{inv.type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.total_quantity)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.average_buy_price)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.current_price)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.current_value)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">€{formatNumber(inv.profit_loss)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{formatNumber(inv.percent_change_24h)}%</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{new Date(inv.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">{inv.asset_name}</td>
+                  <td className="px-6 py-4">{inv.asset_ticker}</td>
+                  <td className="px-6 py-4">{inv.type}</td>
+                  <td className="px-6 py-4">
+                    {formatNumber(inv.total_quantity)}
+                  </td>
+                  <td className="px-6 py-4">
+                    €{formatNumber(inv.average_buy_price)}
+                  </td>
+                  <td className="px-6 py-4">
+                    €{formatNumber(inv.current_price)}
+                  </td>
+                  <td className="px-6 py-4">
+                    €{formatNumber(inv.current_value)}
+                  </td>
+                  <td className="px-6 py-4">
+                    €{formatNumber(inv.profit_loss)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {formatNumber(inv.percent_change_24h)}%
+                  </td>
+                  <td className="px-6 py-4">
+                    {new Date(inv.created_at).toLocaleDateString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -128,8 +155,8 @@ const Dashboard: React.FC = () => {
 
         <div className="text-center">
           <button
-            onClick={() => navigate('/addinvestment')}
-            className="px-6 py-3 bg-primaryGreen text-darkBg font-semibold rounded hover:bg-primaryGreenHover transition-colors"
+            onClick={() => navigate('/add-investment')}
+            className="btn btn-primary"
           >
             Add Investment
           </button>

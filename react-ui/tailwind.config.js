@@ -3,13 +3,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        darkBg: '#2e2e2e',           // Charcoal grey background
-        cardBg: '#1f1f1f',           // Darker grey card background
-        primaryGreen: '#00cc66',     // Vibrant green (buttons/accents)
-        primaryGreenHover: '#00994d',// Darker green for hover states
-        borderGreen: '#00cc66',      // Green for borders
-        textLight: '#ffffff',        // White text
-        textMuted: '#a0a0a0',        // Muted gray for less emphasis
+        darkBg:             '#2e2e2e',
+        cardBg:             '#1f1f1f',
+        primaryGreen:       '#bffcaf',   // light mint
+        primaryGreenHover:  '#275559',   // dark teal
+        borderGreen:        '#275559',
+        textLight:          '#ffffff',
+        textMuted:          '#a0a0a0',
       },
     },
   },

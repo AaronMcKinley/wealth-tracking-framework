@@ -71,11 +71,11 @@ const AddInvestment: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userObj.id,
-          name: selectedAsset!.ticker,    // use 'name' per backend contract
+          name: selectedAsset!.ticker,
           amount: Number(amount),
           buy_price: Number(buyPrice),
           type,
-          location: null                 // adjust or prompt for location field later
+          location: null
         }),
       });
       navigate('/dashboard');
@@ -85,16 +85,15 @@ const AddInvestment: React.FC = () => {
   };
 
   const cancelConfirm = () => setShowConfirm(false);
-  const menuItems = ['Dashboard','Investments','Reports','Settings','Logout'];
+  const menuItems = ['Dashboard', 'Investments', 'Reports', 'Settings', 'Logout'];
 
   return (
-    <div className="flex min-h-screen bg-darkBg text-white">
+    <div className="flex min-h-screen bg-darkBg text-textLight">
       <Sidebar menuItems={menuItems} />
       <main className="flex-1 p-6 overflow-auto max-w-xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Add Investment</h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
-        <form onSubmit={handleSubmit} className="bg-cardBg p-6 rounded-lg shadow-lg space-y-6 relative" noValidate>
-          {/* Type field */}
+        <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
           <div>
             <label className="block mb-2 font-semibold">Type *</label>
             <input
@@ -102,11 +101,10 @@ const AddInvestment: React.FC = () => {
               value={type ? type.charAt(0).toUpperCase() + type.slice(1) : ''}
               readOnly
               placeholder="Select an asset"
-              className="w-full p-3 rounded border border-primaryGreen bg-darkBg text-white cursor-not-allowed"
+              className="input cursor-not-allowed"
               aria-label="Investment type"
             />
           </div>
-          {/* Search autocomplete */}
           <div className="relative">
             <label htmlFor="searchInput" className="block mb-2 font-semibold">
               Search Name or Ticker <span className="text-red-500">*</span>
@@ -118,7 +116,7 @@ const AddInvestment: React.FC = () => {
               onChange={e => setSearchInput(e.target.value)}
               required
               autoComplete="off"
-              className="w-full p-3 rounded border border-primaryGreen bg-darkBg text-white focus:outline-none focus:ring-2 focus:ring-primaryGreen"
+              className="input"
               placeholder="Type name or ticker"
               aria-autocomplete="list"
               aria-controls="asset-suggestion-list"
@@ -126,38 +124,70 @@ const AddInvestment: React.FC = () => {
               aria-haspopup="listbox"
             />
             {suggestions.length > 0 && (
-              <ul id="asset-suggestion-list" role="listbox" className="absolute z-20 bg-cardBg border border-primaryGreen mt-1 rounded max-h-40 overflow-auto w-full">
+              <ul
+                id="asset-suggestion-list"
+                role="listbox"
+                className="absolute z-20 bg-cardBg border border-borderGreen mt-1 rounded max-h-40 overflow-auto w-full"
+              >
                 {suggestions.map(asset => (
                   <li
                     key={asset.ticker}
                     role="option"
                     aria-selected={selectedAsset?.ticker === asset.ticker}
-                    className="px-4 py-2 hover:bg-primaryGreen cursor-pointer"
+                    className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
                     onClick={() => onSelectSuggestion(asset)}
                     tabIndex={0}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSuggestion(asset); } }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectSuggestion(asset);
+                      }
+                    }}
                   >
-                    <strong>{asset.fullName}</strong> ({asset.ticker}) - {asset.type}
+                    <strong>{asset.fullName}</strong> ({asset.ticker}) — {asset.type}
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          {/* Amount and Price */}
           <div>
-            <label htmlFor="amount" className="block mb-2 font-semibold">Amount <span className="text-red-500">*</span></label>
-            <input id="amount" type="number" step="any" value={amount} onChange={e => setAmount(e.target.value)} required min="0" className="w-full p-3 rounded border border-primaryGreen bg-darkBg text-white focus:outline-none focus:ring-2 focus:ring-primaryGreen" />
+            <label htmlFor="amount" className="block mb-2 font-semibold">
+              Amount <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="amount"
+              type="number"
+              step="any"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              required
+              min="0"
+              className="input"
+            />
           </div>
           <div>
-            <label htmlFor="buyPrice" className="block mb-2 font-semibold">Buy Price (€) <span className="text-red-500">*</span></label>
-            <input id="buyPrice" type="number" step="any" value={buyPrice} onChange={e => setBuyPrice(e.target.value)} required min="0" className="w-full p-3 rounded border border-primaryGreen bg-darkBg text-white focus:outline-none focus:ring-2 focus:ring-primaryGreen" />
+            <label htmlFor="buyPrice" className="block mb-2 font-semibold">
+              Buy Price (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="buyPrice"
+              type="number"
+              step="any"
+              value={buyPrice}
+              onChange={e => setBuyPrice(e.target.value)}
+              required
+              min="0"
+              className="input"
+            />
           </div>
           <div className="text-right">
-            <button type="submit" className="px-8 py-3 bg-primaryGreen text-darkBg font-semibold rounded hover:bg-primaryGreenHover transition-colors">Add Investment</button>
+            <button type="submit" className="btn btn-primary">
+              Add Investment
+            </button>
           </div>
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
-              <div className="bg-cardBg rounded-lg p-6 max-w-md w-full text-center">
+              <div className="card text-center max-w-md w-full">
                 <h2 className="text-2xl font-bold mb-4">Confirm Investment</h2>
                 <p className="mb-4">
                   Type: <strong>{type}</strong><br />
@@ -167,8 +197,18 @@ const AddInvestment: React.FC = () => {
                   Buy Price: <strong>€{buyPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
-                  <button onClick={confirmAddInvestment} className="bg-primaryGreen px-6 py-2 rounded font-semibold hover:bg-primaryGreenHover transition-colors">Confirm</button>
-                  <button onClick={cancelConfirm} className="bg-red-600 px-6 py-2 rounded font-semibold hover:bg-red-700 transition-colors">Cancel</button>
+                  <button
+                    onClick={confirmAddInvestment}
+                    className="btn btn-primary"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={cancelConfirm}
+                    className="bg-red-600 px-6 py-2 rounded font-semibold hover:bg-red-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
