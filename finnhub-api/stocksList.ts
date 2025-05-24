@@ -32,7 +32,7 @@ const ALL_tickerS = [
   { ticker: 'RYAAY', type: 'stock' },
   { ticker: 'CRH', type: 'stock' },
   { ticker: 'PDYPY', type: 'stock' },
-  { ticker: 'MCD', type: 'stock' }, // Added McDonald’s here
+  { ticker: 'MCD', type: 'stock' },
 
   // ETFs
   { ticker: 'VT', type: 'etf' },

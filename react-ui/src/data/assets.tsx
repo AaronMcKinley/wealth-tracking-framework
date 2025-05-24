@@ -1,15 +1,12 @@
-// src/data/assets.ts
-
 export type AssetType = 'crypto' | 'stock' | 'etf' | 'reit' | 'commodity' | 'bond';
 
 export interface Asset {
-  ticker: string;      // ticker or coin ID
-  fullName: string;    // display name
+  ticker: string;
+  fullName: string;
   type: AssetType;
 }
 
 export const ASSETS: Asset[] = [
-  // Stocks
   { ticker: 'AAPL', fullName: 'Apple Inc.', type: 'stock' },
   { ticker: 'MSFT', fullName: 'Microsoft Corp.', type: 'stock' },
   { ticker: 'GOOGL', fullName: 'Alphabet Inc.', type: 'stock' },
