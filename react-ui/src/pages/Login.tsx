@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface LoginResponse {
   message: string;
+  token: string;
   user: {
     id: number;
     email: string;
     name: string;
-    password: string;
-    created_at: string;
   };
 }
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +27,13 @@ const Login: React.FC = () => {
         'http://localhost:4000/api/login',
         { email, password }
       );
+      localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      // full reload so App picks up localStorage
-      window.location.href = '/dashboard';
+      login(res.data.token);
+      navigate('/dashboard');
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Login failed');
+      const errorMsg = err.response?.data?.message || 'Login failed';
+      setMessage(errorMsg);
     }
   };
 

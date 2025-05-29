@@ -60,24 +60,34 @@ const AddInvestment: React.FC = () => {
   const confirmAddInvestment = async () => {
     setShowConfirm(false);
     const user = localStorage.getItem('user');
-    if (!user) {
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
       setError('User not logged in');
       return;
     }
     const userObj = JSON.parse(user);
     try {
-      await fetch('http://localhost:4000/api/investments', {
+      const response = await fetch('http://localhost:4000/api/investments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           user_id: userObj.id,
           name: selectedAsset!.ticker,
           amount: Number(amount),
           buy_price: Number(buyPrice),
           type,
-          location: null
+          location: null,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to add investment');
+      }
+
       navigate('/dashboard');
     } catch {
       setError('Failed to add investment.');

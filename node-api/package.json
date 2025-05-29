@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "migrate": "node-pg-migrate -f migration.config.js",
+    "migrate": "node-pg-migrate up -f migration.config.js",
     "migrate-down": "node-pg-migrate down -f migration.config.js"
   },
   "keywords": [],
@@ -17,6 +17,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.15.6"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 
 interface Transaction {
@@ -16,26 +16,33 @@ interface Transaction {
 const formatNumber = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
-  if (isNaN(n)) return '—';
-  return n.toFixed(2);
+  return isNaN(n) ? '—' : n.toFixed(2);
 };
 
 const Transactions: React.FC = () => {
-  const { userId, ticker } = useParams<{ userId: string; ticker: string }>();
+  const { ticker } = useParams<{ ticker: string }>();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!userId || !ticker) {
-      setError('Missing user or asset ticker');
+    if (!ticker) {
+      setError('Missing asset ticker');
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    fetch(`http://localhost:4000/api/transactions/${userId}/${ticker}`)
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
+
+    fetch(`http://localhost:4000/api/transactions/${ticker}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch transactions');
         return res.json();
@@ -48,7 +55,7 @@ const Transactions: React.FC = () => {
         setError('Failed to load transactions');
         setLoading(false);
       });
-  }, [userId, ticker]);
+  }, [ticker]);
 
   const menuItems = ['Dashboard', 'Investments', 'Reports', 'Settings', 'Logout'];
 
@@ -76,13 +83,9 @@ const Transactions: React.FC = () => {
           <div className="overflow-x-auto rounded-lg shadow-lg card mb-6">
             <table className="table-fixed table" aria-label="Transactions table">
               <colgroup>
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <col key={i} className="w-1/6" />
+                ))}
               </colgroup>
               <thead className="bg-cardBg">
                 <tr>
@@ -95,10 +98,7 @@ const Transactions: React.FC = () => {
                     'Date',
                     'Notes',
                   ].map((header) => (
-                    <th
-                      key={header}
-                      className="px-4 py-3 text-left font-semibold"
-                    >
+                    <th key={header} className="px-4 py-3 text-left font-semibold">
                       {header}
                     </th>
                   ))}
@@ -106,10 +106,7 @@ const Transactions: React.FC = () => {
               </thead>
               <tbody>
                 {transactions.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    className="hover:bg-primaryGreen/20 transition-colors duration-200"
-                  >
+                  <tr key={tx.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
                     <td className="px-4 py-3">{tx.transaction_type}</td>
                     <td className="px-4 py-3">{formatNumber(tx.quantity)}</td>
                     <td className="px-4 py-3">{formatNumber(tx.price_per_unit)}</td>

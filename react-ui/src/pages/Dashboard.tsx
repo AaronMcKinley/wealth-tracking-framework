@@ -20,8 +20,7 @@ interface Investment {
 const formatNumber = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
-  if (isNaN(n)) return '—';
-  return n.toFixed(2);
+  return isNaN(n) ? '—' : n.toFixed(2);
 };
 
 const Dashboard: React.FC = () => {
@@ -31,47 +30,42 @@ const Dashboard: React.FC = () => {
   const location = useLocation();
 
   const user = localStorage.getItem('user');
+  const token = localStorage.getItem('token');
   const userId = user ? JSON.parse(user).id : null;
 
   useEffect(() => {
-    if (location.state?.newInvestment) {
-      setInvestments(prev => [...prev, location.state.newInvestment]);
-      window.history.replaceState({}, document.title);
+    if (!token) {
+      setError('User not logged in');
+      return;
     }
-  }, [location.state]);
-
-  useEffect(() => {
     axios
-      .get<Investment[]>('http://localhost:4000/api/investments')
-      .then(res => setInvestments(res.data))
-      .catch(() => setError('Failed to fetch investments'));
-  }, []);
+      .get<Investment[]>('http://localhost:4000/api/investments', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then(res => {
+        setInvestments(res.data);
+        if (location.state?.newInvestment) {
+          window.history.replaceState({}, document.title);
+        }
+      })
+      .catch(() => {
+        setError('Failed to fetch investments');
+      });
+  }, [location.state, token]);
 
   const totalValue = investments.reduce((sum, inv) => {
     const val =
-      typeof inv.current_value === 'number'
-        ? inv.current_value
-        : Number(inv.current_value);
+      typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-  const menuItems = [
-    'Dashboard',
-    'Add Investment',
-    'Investments',
-    'Reports',
-    'Settings',
-    'Logout'
-  ];
-
   return (
     <div className="flex min-h-screen bg-darkBg text-textLight">
-      <Sidebar menuItems={menuItems} />
-
+      <Sidebar menuItems={["Dashboard", "Add Investment", "Logout"]} />
       <main className="flex-1 p-6 overflow-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          Wealth Tracking Framework
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
 
         {error && (
           <p className="text-red-500 mb-4 text-center" role="alert">
@@ -88,21 +82,18 @@ const Dashboard: React.FC = () => {
             <thead className="bg-cardBg">
               <tr>
                 {[
-                  'Name',
-                  'Ticker',
-                  'Type',
-                  'Quantity',
-                  'Avg Buy Price',
-                  'Current Price',
-                  'Current Value',
-                  'Profit / Loss',
-                  '% Change 24h',
-                  'Date Added'
+                  "Name",
+                  "Ticker",
+                  "Type",
+                  "Quantity",
+                  "Avg Buy Price",
+                  "Current Price",
+                  "Current Value",
+                  "Profit / Loss",
+                  "% Change 24h",
+                  "Date Added",
                 ].map(header => (
-                  <th
-                    key={header}
-                    className="px-6 py-3 text-left font-semibold"
-                  >
+                  <th key={header} className="px-6 py-3 text-left font-semibold">
                     {header}
                   </th>
                 ))}
@@ -113,40 +104,18 @@ const Dashboard: React.FC = () => {
                 <tr
                   key={inv.id}
                   className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
-                  onClick={() => {
-                    if (!userId) {
-                      alert('User not logged in');
-                      return;
-                    }
-                    navigate(
-                      `/transactions/${userId}/${inv.asset_ticker}`
-                    );
-                  }}
+                  onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
                 >
                   <td className="px-6 py-4">{inv.asset_name}</td>
                   <td className="px-6 py-4">{inv.asset_ticker}</td>
                   <td className="px-6 py-4">{inv.type}</td>
-                  <td className="px-6 py-4">
-                    {formatNumber(inv.total_quantity)}
-                  </td>
-                  <td className="px-6 py-4">
-                    €{formatNumber(inv.average_buy_price)}
-                  </td>
-                  <td className="px-6 py-4">
-                    €{formatNumber(inv.current_price)}
-                  </td>
-                  <td className="px-6 py-4">
-                    €{formatNumber(inv.current_value)}
-                  </td>
-                  <td className="px-6 py-4">
-                    €{formatNumber(inv.profit_loss)}
-                  </td>
-                  <td className="px-6 py-4">
-                    {formatNumber(inv.percent_change_24h)}%
-                  </td>
-                  <td className="px-6 py-4">
-                    {new Date(inv.created_at).toLocaleDateString()}
-                  </td>
+                  <td className="px-6 py-4">{formatNumber(inv.total_quantity)}</td>
+                  <td className="px-6 py-4">€{formatNumber(inv.average_buy_price)}</td>
+                  <td className="px-6 py-4">€{formatNumber(inv.current_price)}</td>
+                  <td className="px-6 py-4">€{formatNumber(inv.current_value)}</td>
+                  <td className="px-6 py-4">€{formatNumber(inv.profit_loss)}</td>
+                  <td className="px-6 py-4">{formatNumber(inv.percent_change_24h)}%</td>
+                  <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
