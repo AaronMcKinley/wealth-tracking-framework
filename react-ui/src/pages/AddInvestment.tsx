@@ -182,7 +182,7 @@ const AddInvestment: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="px-6 py-2 rounded bg-red-400 hover:bg-red-500 text-white font-semibold transition-colors"
+              className="btn btn-negative"
             >
               Cancel
             </button>
@@ -202,11 +202,11 @@ const AddInvestment: React.FC = () => {
                   Buy Price: <strong>€{buyPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
+                  <button onClick={cancelConfirm} className="btn btn-negative">
+                    Cancel
+                  </button>
                   <button onClick={confirmAddInvestment} className="btn btn-primary">
                     Confirm
-                  </button>
-                  <button onClick={cancelConfirm} className="px-6 py-2 rounded bg-red-400 hover:bg-red-500 text-white font-semibold transition-colors">
-                    Cancel
                   </button>
                 </div>
               </div>

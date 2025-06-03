@@ -37,6 +37,10 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleCancel = () => {
+    navigate('/');
+  };
+
   return (
     <div className="card max-w-md mx-auto mt-20 text-textLight">
       <h2 className="text-3xl font-bold mb-6 text-center">
@@ -71,9 +75,14 @@ const Login: React.FC = () => {
             className="input"
           />
         </div>
-        <button type="submit" className="btn btn-primary w-full">
-          Login
-        </button>
+        <div className="flex justify-between gap-4">
+          <button type="submit" className="btn btn-primary w-1/2">
+            Login
+          </button>
+          <button type="button" onClick={handleCancel} className="btn btn-negative w-1/2">
+            Cancel
+          </button>
+        </div>
       </form>
       {message && (
         <p

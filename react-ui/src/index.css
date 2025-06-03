@@ -20,6 +20,10 @@ body {
   @apply border-2 border-borderGreen text-primaryGreenHover opacity-50 cursor-not-allowed;
 }
 
+.btn-negative {
+  @apply bg-negative text-white hover:bg-negativeHover font-semibold rounded-md transition-colors ease-in-out;
+}
+
 .input {
   @apply w-full px-4 py-2 bg-darkBg border-2 border-borderGreen text-textLight rounded focus:outline-none focus:ring-2 focus:ring-primaryGreen;
 }

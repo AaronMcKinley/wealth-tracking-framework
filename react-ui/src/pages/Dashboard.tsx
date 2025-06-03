@@ -17,10 +17,10 @@ interface Investment {
   created_at: string;
 }
 
-const formatNumber = (num?: number | string | null) => {
+const formatNumberWithCommas = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
-  return isNaN(n) ? '—' : n.toFixed(2);
+  return isNaN(n) ? '—' : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const Dashboard: React.FC = () => {
@@ -56,10 +56,17 @@ const Dashboard: React.FC = () => {
   }, [location.state, token]);
 
   const totalValue = investments.reduce((sum, inv) => {
-    const val =
-      typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
+    const val = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
+
+  const totalCost = investments.reduce((sum, inv) => {
+    const quantity = typeof inv.total_quantity === 'number' ? inv.total_quantity : Number(inv.total_quantity);
+    const avgPrice = typeof inv.average_buy_price === 'number' ? inv.average_buy_price : Number(inv.average_buy_price);
+    return sum + (isNaN(quantity * avgPrice) ? 0 : quantity * avgPrice);
+  }, 0);
+
+  const profitLoss = totalValue - totalCost;
 
   return (
     <div className="flex min-h-screen bg-darkBg text-textLight">
@@ -73,8 +80,19 @@ const Dashboard: React.FC = () => {
           </p>
         )}
 
-        <div className="mb-6 text-xl font-semibold text-primaryGreen text-center">
-          Total Portfolio Value: €{totalValue.toFixed(2)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-center">
+          <div className="card p-6">
+            <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
+            <p className="text-3xl font-bold text-primaryGreen">
+              €{formatNumberWithCommas(totalValue)}
+            </p>
+          </div>
+          <div className="card p-6">
+            <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
+            <p className={`text-3xl font-bold ${profitLoss < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
+              €{formatNumberWithCommas(profitLoss)}
+            </p>
+          </div>
         </div>
 
         <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
@@ -109,12 +127,12 @@ const Dashboard: React.FC = () => {
                   <td className="px-6 py-4">{inv.asset_name}</td>
                   <td className="px-6 py-4">{inv.asset_ticker}</td>
                   <td className="px-6 py-4">{inv.type}</td>
-                  <td className="px-6 py-4">{formatNumber(inv.total_quantity)}</td>
-                  <td className="px-6 py-4">€{formatNumber(inv.average_buy_price)}</td>
-                  <td className="px-6 py-4">€{formatNumber(inv.current_price)}</td>
-                  <td className="px-6 py-4">€{formatNumber(inv.current_value)}</td>
-                  <td className="px-6 py-4">€{formatNumber(inv.profit_loss)}</td>
-                  <td className="px-6 py-4">{formatNumber(inv.percent_change_24h)}%</td>
+                  <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
+                  <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
                   <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
