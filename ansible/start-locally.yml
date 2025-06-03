@@ -40,6 +40,7 @@
     retries: 5
     delay: 3
     until: migrate_result.rc == 0
+    when: reset_db | default(false)
     tags: [setup]
 
   - name: Start all API fetcher services after migrations complete

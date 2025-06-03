@@ -6,7 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AddInvestment from './pages/AddInvestment';
 import Transactions from './pages/Transactions';
-import NotFound from './pages/NotFound';
+import NotFoundRoute from './routes/NotFoundRoute';
 
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './routes/PrivateRoute';
@@ -20,7 +20,7 @@ const App: React.FC = () => (
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/add-investment" element={<PrivateRoute><AddInvestment /></PrivateRoute>} />
         <Route path="/transactions/:userId/:ticker" element={<PrivateRoute><Transactions /></PrivateRoute>} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
     </Router>
   </AuthProvider>
