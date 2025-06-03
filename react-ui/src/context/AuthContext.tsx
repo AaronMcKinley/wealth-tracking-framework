@@ -29,10 +29,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    setAuthLoading(false);
+    window.location.href = '/';
   };
 
   const login = (jwt: string) => {
     console.log("Logging in with token");
+    setUser(null);
+    setToken(null);
+    setAuthLoading(true);
     localStorage.setItem("token", jwt);
     setToken(jwt);
   };
@@ -64,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!token && !!user;
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, authLoading, login, logout }} >
+    <AuthContext.Provider value={{ token, user, isAuthenticated, authLoading, login, logout, }} >
       {children}
     </AuthContext.Provider>
   );

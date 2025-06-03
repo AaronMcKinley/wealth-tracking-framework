@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   menuItems: string[];
@@ -7,6 +8,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleNavigation = (item: string) => {
     switch (item) {
@@ -14,11 +16,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
         navigate('/dashboard');
         break;
       case 'Logout':
-        localStorage.removeItem('user');
+        logout();
         navigate('/');
         break;
       default:
-        // other items not wired up yet
         break;
     }
   };
@@ -26,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
   return (
     <aside className="w-64 bg-cardBg p-6 flex flex-col space-y-4 shadow-lg">
       <h2 className="text-2xl font-bold text-textLight">Menu</h2>
-      {menuItems.map(item => (
+      {menuItems.map((item) => (
         <button
           key={item}
           onClick={() => handleNavigation(item)}
