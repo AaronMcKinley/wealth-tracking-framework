@@ -24,21 +24,22 @@
       chdir: "{{ playbook_dir }}/.."
     tags: [setup]
 
-  - name: Wait for Postgres to be ready from host
-    shell: |
-      for i in {1..30}; do
-        docker exec wtf-postgres pg_isready -U wtfuser && exit 0
-        sleep 1
-      done
-      exit 1
-    args:
-      chdir: "{{ playbook_dir }}/.."
+  - name: Wait for Postgres to respond to pg_isready
+    shell: docker exec wtf-postgres pg_isready -U wtfuser
+    register: pg_ready
+    retries: 30
+    delay: 2
+    until: pg_ready.rc == 0
     tags: [setup]
 
   - name: Apply database migrations inside node-api container
-    shell: docker exec wtf-api npm run migrate -- up
+    shell: docker exec wtf-api npm run migrate
     args:
       chdir: "{{ playbook_dir }}/.."
+    register: migrate_result
+    retries: 5
+    delay: 3
+    until: migrate_result.rc == 0
     tags: [setup]
 
   - name: Start all API fetcher services after migrations complete
@@ -49,30 +50,30 @@
 
   - name: Open Postgres API check in browser (macOS only)
     shell: open http://localhost:4000/api/db-check
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_api_check]
 
   - name: Open Adminer in browser (macOS only)
     shell: open http://localhost:8081
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_adminer]
 
   - name: Open React UI in browser (macOS only)
     shell: open http://localhost:3000
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_ui]
 
   - name: Open Node API test route in browser (macOS only)
     shell: open http://localhost:4000/api/test
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_api_test]
 
   - name: Open Jenkins in browser (macOS only)
     shell: open http://localhost:8080
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_jenkins]
 
   - name: Open Allure in browser (macOS only)
     shell: open http://localhost:5050
-    when: ansible_os_family == "Darwin"
+    when: ansible_system == "Darwin"
     tags: [open_allure]

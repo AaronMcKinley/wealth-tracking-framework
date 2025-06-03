@@ -3,7 +3,7 @@ require('dotenv').config();
 module.exports = {
   direction: 'up',
   migrationsTable: 'pgmigrations',
-  migrationsDirectory: './migrations',
+  dir: './migrations',
   databaseUrl: {
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
