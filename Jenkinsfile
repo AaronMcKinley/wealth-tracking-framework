@@ -16,18 +16,7 @@ pipeline {
     stage('Install Cypress Dependencies') {
       steps {
         dir('cypress') {
-          sh '''
-            npm ci
-            npm install wait-on
-          '''
-        }
-      }
-    }
-
-    stage('Wait for Frontend') {
-      steps {
-        dir('cypress') {
-          sh 'npx wait-on $CYPRESS_BASE_URL'
+          sh 'npm ci'
         }
       }
     }
