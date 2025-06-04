@@ -2,6 +2,7 @@ pipeline {
   agent any
 
   environment {
+    TERM = 'xterm'
     CYPRESS_BASE_URL = 'http://wtf-react:3000'
   }
 
