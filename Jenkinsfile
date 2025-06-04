@@ -15,7 +15,10 @@ pipeline {
     stage('Install Cypress Dependencies') {
       steps {
         dir('cypress') {
-          sh 'npm ci'
+          sh '''
+            npm ci
+            npm install wait-on
+          '''
         }
       }
     }
