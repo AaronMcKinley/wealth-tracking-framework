@@ -1,6 +1,10 @@
 pipeline {
   agent any
 
+  environment {
+    CYPRESS_BASE_URL = 'http://wtf-react:3000'
+  }
+
   stages {
     stage('Checkout') {
       steps {
@@ -12,6 +16,14 @@ pipeline {
       steps {
         dir('cypress') {
           sh 'npm ci'
+        }
+      }
+    }
+
+    stage('Wait for Frontend') {
+      steps {
+        dir('cypress') {
+          sh 'npx wait-on $CYPRESS_BASE_URL'
         }
       }
     }
