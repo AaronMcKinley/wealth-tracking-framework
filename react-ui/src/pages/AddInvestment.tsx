@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
 import { ASSETS, Asset } from '../data/assets';
+import Layout from '../components/Layout';
 
 const AddInvestment: React.FC = () => {
   const navigate = useNavigate();
@@ -95,12 +95,10 @@ const AddInvestment: React.FC = () => {
   };
 
   const cancelConfirm = () => setShowConfirm(false);
-  const menuItems = ['Dashboard', 'Investments', 'Reports', 'Settings', 'Logout'];
 
   return (
-    <div className="flex min-h-screen bg-darkBg text-textLight">
-      <Sidebar menuItems={menuItems} />
-      <main className="flex-1 p-6 overflow-auto max-w-xl mx-auto">
+    <Layout>
+      <div className="max-w-xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Add Investment</h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
@@ -213,8 +211,8 @@ const AddInvestment: React.FC = () => {
             </div>
           )}
         </form>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

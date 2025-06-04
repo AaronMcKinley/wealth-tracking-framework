@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
+import Layout from '../components/Layout';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface Investment {
@@ -20,7 +20,9 @@ interface Investment {
 const formatNumberWithCommas = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
-  return isNaN(n) ? '—' : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return isNaN(n)
+    ? '—'
+    : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const Dashboard: React.FC = () => {
@@ -40,9 +42,7 @@ const Dashboard: React.FC = () => {
     }
     axios
       .get<Investment[]>('http://localhost:4000/api/investments', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
       .then(res => {
         setInvestments(res.data);
@@ -69,84 +69,81 @@ const Dashboard: React.FC = () => {
   const profitLoss = totalValue - totalCost;
 
   return (
-    <div className="flex min-h-screen bg-darkBg text-textLight">
-      <Sidebar menuItems={["Dashboard", "Add Investment", "Logout"]} />
-      <main className="flex-1 p-6 overflow-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
+    <Layout>
+      <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
 
-        {error && (
-          <p className="text-red-500 mb-4 text-center" role="alert">
-            {error}
+      {error && (
+        <p className="text-red-500 mb-4 text-center" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-center">
+        <div className="card p-6">
+          <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
+          <p className="text-3xl font-bold text-primaryGreen">
+            €{formatNumberWithCommas(totalValue)}
           </p>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-center">
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
-            <p className="text-3xl font-bold text-primaryGreen">
-              €{formatNumberWithCommas(totalValue)}
-            </p>
-          </div>
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
-            <p className={`text-3xl font-bold ${profitLoss < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
-              €{formatNumberWithCommas(profitLoss)}
-            </p>
-          </div>
         </div>
+        <div className="card p-6">
+          <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
+          <p className={`text-3xl font-bold ${profitLoss < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
+            €{formatNumberWithCommas(profitLoss)}
+          </p>
+        </div>
+      </div>
 
-        <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
-          <table className="table">
-            <thead className="bg-cardBg">
-              <tr>
-                {[
-                  "Name",
-                  "Ticker",
-                  "Type",
-                  "Quantity",
-                  "Avg Buy Price",
-                  "Current Price",
-                  "Current Value",
-                  "Profit / Loss",
-                  "% Change 24h",
-                  "Date Added",
-                ].map(header => (
-                  <th key={header} className="px-6 py-3 text-left font-semibold">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {investments.map(inv => (
-                <tr
-                  key={inv.id}
-                  className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
-                  onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
-                >
-                  <td className="px-6 py-4">{inv.asset_name}</td>
-                  <td className="px-6 py-4">{inv.asset_ticker}</td>
-                  <td className="px-6 py-4">{inv.type}</td>
-                  <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
-                  <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
-                  <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
-                </tr>
+      <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
+        <table className="table">
+          <thead className="bg-cardBg">
+            <tr>
+              {[
+                "Name",
+                "Ticker",
+                "Type",
+                "Quantity",
+                "Avg Buy Price",
+                "Current Price",
+                "Current Value",
+                "Profit / Loss",
+                "% Change 24h",
+                "Date Added",
+              ].map(header => (
+                <th key={header} className="px-6 py-3 text-left font-semibold">
+                  {header}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {investments.map(inv => (
+              <tr
+                key={inv.id}
+                className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
+                onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
+              >
+                <td className="px-6 py-4">{inv.asset_name}</td>
+                <td className="px-6 py-4">{inv.asset_ticker}</td>
+                <td className="px-6 py-4">{inv.type}</td>
+                <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
+                <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
+                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
+                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
+                <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
+                <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
+                <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="text-center">
-          <button onClick={() => navigate('/add-investment')} className="btn btn-primary">
-            Add Investment
-          </button>
-        </div>
-      </main>
-    </div>
+      <div className="text-center">
+        <button onClick={() => navigate('/add-investment')} className="btn btn-primary">
+          Add Investment
+        </button>
+      </div>
+    </Layout>
   );
 };
 
