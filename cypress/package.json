@@ -13,7 +13,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@shelex/cypress-allure-plugin": "^2.41.1",
+    "@shelex/cypress-allure-plugin": "^2.41.2",
     "cypress": "^14.3.2"
   }
 }

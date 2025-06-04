@@ -7,8 +7,13 @@ module.exports = defineConfig({
       allureWriter(on, config);
       return config;
     },
-    specPattern: 'e2e/**/*.cy.js',
+    specPattern: 'smoke/**/*.cy.js',
     baseUrl: 'http://localhost:3000',
-    supportFile: 'support/e2e.js'  // 👈 this is key
+    supportFile: 'support/e2e.js'
+  },
+  reporterOptions: {
+    outputDir: 'allure-results',
+    disableWebdriverStepsReporting: true,
+    disableWebdriverScreenshotsReporting: false
   }
 });
