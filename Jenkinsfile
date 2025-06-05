@@ -43,9 +43,9 @@ pipeline {
             --network=wtfnet \
             -e CYPRESS_BASE_URL=http://wtf-react:3000 \
             -v $PWD:/e2e \
-            -w /e2e/cypress \
+            -w /e2e \
             cypress/included:13.7.3 \
-            npx cypress run --spec "smoke/**/*.cy.js"
+            npx cypress run --spec "cypress/smoke/**/*.cy.js"
         '''
       }
     }
