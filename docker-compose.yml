@@ -116,4 +116,5 @@ volumes:
 
 networks:
   wtfnet:
+    name: wtfnet
     driver: bridge
