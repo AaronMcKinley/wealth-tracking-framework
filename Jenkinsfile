@@ -45,7 +45,7 @@ pipeline {
             -v $PWD:/e2e \
             -w /e2e/cypress \
             cypress/included:13.7.3 \
-            npx cypress run --spec smoke/**/*.cy.js
+            cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
         '''
       }
     }
