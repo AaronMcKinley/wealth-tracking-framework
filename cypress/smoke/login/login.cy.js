@@ -12,7 +12,6 @@ describe('Authentication', { tags: ['@regression', '@auth'] }, () => {
   it('shows an error for invalid login', () => {
     cy.allure().tag('negative');
     cy.allure().link('C000002', { type: 'issue' });
-
     Login.loginWithInvalidCredentials(users.invalidUser.email, users.invalidUser.password);
   });
 });

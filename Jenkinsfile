@@ -3,7 +3,7 @@ pipeline {
 
   environment {
     TERM = 'xterm'
-    CYPRESS_BASE_URL = 'http://wtf-react:3000'
+    CYPRESS_BASE_URL = 'http://react-ui:3000'
   }
 
   stages {
