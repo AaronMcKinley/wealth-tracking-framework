@@ -13,6 +13,16 @@ pipeline {
       }
     }
 
+    stage('Debug Environment') {
+      steps {
+        echo '🔍 Debugging Environment Info...'
+        sh 'uname -a'
+        sh 'echo Hostname: $(hostname)'
+        sh 'hostname -I || echo "No IP found"'
+        sh 'printenv | grep CYPRESS'
+      }
+    }
+
     stage('Install Cypress Dependencies') {
       steps {
         dir('cypress') {
