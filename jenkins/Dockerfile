@@ -2,6 +2,11 @@ FROM jenkins/jenkins:lts
 
 USER root
 
+addARG DOCKER_GID=999
+
+RUN groupadd -for -g ${DOCKER_GID} docker && \
+    usermod -aG docker jenkins
+
 RUN apt-get update && apt-get install -y \
     curl \
     git \
