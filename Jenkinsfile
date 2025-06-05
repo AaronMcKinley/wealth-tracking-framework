@@ -3,7 +3,6 @@ pipeline {
 
   environment {
     TERM = 'xterm'
-    CYPRESS_BASE_URL = 'http://localhost:3000'
   }
 
   stages {
@@ -19,7 +18,6 @@ pipeline {
         sh 'uname -a'
         sh 'echo Hostname: $(hostname)'
         sh 'hostname -I || echo "No IP found"'
-        sh 'printenv | grep CYPRESS'
       }
     }
 
@@ -33,9 +31,15 @@ pipeline {
 
     stage('Run Smoke Tests') {
       steps {
-        dir('cypress') {
-          sh 'npx cypress run --spec "smoke/**/*.cy.js"'
-        }
+        sh '''
+          docker run --rm \
+            --network=wtfnet \
+            -e CYPRESS_BASE_URL=http://wtf-react:3000 \
+            -v $PWD/cypress:/e2e \
+            -w /e2e \
+            cypress/included:13.7.3 \
+            npx cypress run --spec "smoke/**/*.cy.js"
+        '''
       }
     }
   }
