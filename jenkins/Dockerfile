@@ -2,7 +2,7 @@ FROM jenkins/jenkins:lts
 
 USER root
 
-addARG DOCKER_GID=999
+ARG DOCKER_GID=20
 
 RUN groupadd -for -g ${DOCKER_GID} docker && \
     usermod -aG docker jenkins

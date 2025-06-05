@@ -14,10 +14,17 @@ pipeline {
 
     stage('Debug Environment') {
       steps {
-        echo '🔍 Debugging Environment Info...'
+        echo 'Debugging Environment Info...'
         sh 'uname -a'
         sh 'echo Hostname: $(hostname)'
         sh 'hostname -I || echo "No IP found"'
+      }
+    }
+
+    stage('Ensure Docker Network Exists') {
+      steps {
+        echo 'Ensuring Docker network `wtfnet` exists...'
+        sh 'docker network inspect wtfnet >/dev/null 2>&1 || docker network create wtfnet'
       }
     }
 
