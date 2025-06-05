@@ -42,10 +42,10 @@ pipeline {
           docker run --rm \
             --network=wtfnet \
             -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-            -v $PWD/cypress:/tests \
-            -w /tests \
+            -v $PWD:/tests \
+            -w /tests/cypress \
             cypress/included:13.7.3 \
-            cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
+            cypress run --config-file ../cypress/cypress.config.js --spec smoke/**/*.cy.js
         '''
       }
     }
