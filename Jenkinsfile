@@ -31,6 +31,8 @@ pipeline {
     stage('Install Cypress Dependencies') {
       steps {
         dir('cypress-wtf') {
+          sh 'rm -rf cypress-wtf/node_modules'
+          sh 'rm -rf cypress-wtf/cypress'
           sh 'npm ci'
         }
       }
