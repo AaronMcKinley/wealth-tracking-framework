@@ -42,10 +42,10 @@ pipeline {
         docker run --rm \
           --network=wealth-tracking-framework_wtfnet \
           -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-          -v /var/jenkins_home/workspace/wtf-smoke:/smoke \
-          -w /smoke/cypress \
+          -v $WORKSPACE/cypress:/app \
+          -w /app \
           cypress/included:13.7.3 \
-          npx cypress run --spec smoke/**/*.cy.js
+          cypress run --config-file cypress.config.js --spec cypress/smoke/**/*.cy.js
         '''
       }
     }
