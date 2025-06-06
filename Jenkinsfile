@@ -30,7 +30,7 @@ pipeline {
 
     stage('Install Cypress Dependencies') {
       steps {
-        dir('cypress') {
+        dir('cypress-wtf') {
           sh 'npm ci'
         }
       }
