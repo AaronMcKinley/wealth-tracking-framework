@@ -37,26 +37,22 @@ pipeline {
     }
 
     stage('Run Smoke Tests') {
-      steps {
-        echo '--- Verifying Cypress Files in /app and Running Tests ---'
-        sh '''
-          echo "--- Listing all files in /app ---"
-          docker run --rm \
-            -v "$PWD/cypress:/app" \
-            -w /app \
-            alpine \
-            sh -c "find . -type f"
+        steps {
+            echo '--- Verifying Cypress Files in /app and Running Tests ---'
+            sh '''
+                echo --- Listing all files in /app ---
+                docker run --rm -v /var/jenkins_home/workspace/wtf-smoke/cypress-wtf:/app -w /app alpine sh -c "find . -type f"
 
-          echo "--- Running Cypress Tests ---"
-          docker run --rm \
-            --network=wealth-tracking-framework_wtfnet \
-            -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-            -v "$PWD/cypress:/app" \
-            -w /app \
-            cypress/included:13.7.3 \
-            cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
-        '''
-      }
+                echo --- Running Cypress Tests ---
+                docker run --rm \
+                  --network=wealth-tracking-framework_wtfnet \
+                  -e CYPRESS_BASE_URL=http://wtf-react:3000 \
+                  -v /var/jenkins_home/workspace/wtf-smoke/cypress-wtf:/app \
+                  -w /app \
+                  cypress/included:13.7.3 \
+                  cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
+            '''
+        }
     }
   }
 
