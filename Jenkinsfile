@@ -36,7 +36,7 @@ pipeline {
       }
     }
 
-    stage('Run Smoke Tests') {
+    stage('Verify Cypress Files in Container') {
       steps {
         echo '--- Copying Cypress Files and Verifying Contents ---'
         sh '''
