@@ -41,7 +41,7 @@ pipeline {
         echo '--- Copying Cypress Files and Verifying Contents ---'
         sh '''
           docker run --rm \
-            -v $PWD/cypress:/app \
+            -v /var/jenkins_home/workspace/wtf-smoke/cypress:/app \
             -w /app \
             alpine \
             sh -c "echo '--- Listing all files in /app ---' && find . -type f"
