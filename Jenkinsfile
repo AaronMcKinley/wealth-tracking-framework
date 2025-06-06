@@ -40,16 +40,16 @@ pipeline {
       steps {
         sh '''
         echo --- Debug: Listing contents of /app ---
-        docker run --rm -v $PWD/cypress:/app alpine ls -la /app
+        docker run --rm -v $PWD:/app alpine ls -la /app
 
         echo --- Running Cypress ---
         docker run --rm \
           --network=wealth-tracking-framework_wtfnet \
           -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-          -v $PWD/cypress:/app \
-          -w /app \
+          -v $PWD:/app \
+          -w /app/cypress \
           cypress/included:13.7.3 \
-          cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
+          cypress run --config-file ../cypress.config.js --spec smoke/**/*.cy.js
         '''
       }
     }
