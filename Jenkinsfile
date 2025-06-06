@@ -36,15 +36,25 @@ pipeline {
       }
     }
 
-    stage('Verify Cypress Files in Container') {
+    stage('Run Smoke Tests') {
       steps {
-        echo '--- Copying Cypress Files and Verifying Contents ---'
+        echo '--- Verifying Cypress Files in /app and Running Tests ---'
         sh '''
+          echo "--- Listing all files in /app ---"
           docker run --rm \
-            -v /var/jenkins_home/workspace/wtf-smoke/cypress:/app \
+            -v "$PWD/cypress:/app" \
             -w /app \
             alpine \
-            sh -c "echo '--- Listing all files in /app ---' && find . -type f"
+            sh -c "find . -type f"
+
+          echo "--- Running Cypress Tests ---"
+          docker run --rm \
+            --network=wealth-tracking-framework_wtfnet \
+            -e CYPRESS_BASE_URL=http://wtf-react:3000 \
+            -v "$PWD/cypress:/app" \
+            -w /app \
+            cypress/included:13.7.3 \
+            cypress run --config-file cypress.config.js --spec smoke/**/*.cy.js
         '''
       }
     }
