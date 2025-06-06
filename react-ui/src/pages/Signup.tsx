@@ -161,12 +161,10 @@ const Signup: React.FC = () => {
               />
             </div>
 
-            {/* Error */}
             {error && (
               <p className="text-sm text-negative -mt-2 mb-1">{error}</p>
             )}
 
-            {/* Submit + Cancel */}
             <div className="flex flex-col gap-2">
               <button
                 type="submit"
