@@ -4,15 +4,25 @@ import {
   useState,
   useEffect,
   ReactNode,
+  Dispatch,
+  SetStateAction,
 } from "react";
+
+interface UserType {
+  id: number;
+  email: string;
+  name: string;
+  [key: string]: any;
+}
 
 interface AuthContextType {
   token: string | null;
-  user: any;
+  user: UserType | null;
   isAuthenticated: boolean;
   authLoading: boolean;
   login: (jwt: string) => void;
   logout: () => void;
+  setUser: Dispatch<SetStateAction<UserType | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,11 +31,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem("token")
   );
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserType | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const logout = () => {
-    console.log("Logging out");
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
@@ -34,7 +43,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = (jwt: string) => {
-    console.log("Logging in with token");
     setUser(null);
     setToken(null);
     setAuthLoading(true);
@@ -49,16 +57,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const payload = JSON.parse(atob(token.split(".")[1]));
           const now = Math.floor(Date.now() / 1000);
           if (payload.exp && payload.exp < now) {
-            console.log("Token expired");
             logout();
           } else {
             setUser(payload);
-            console.log("User set from token:", payload);
           }
         } catch (err) {
-          console.error("Token parsing failed:", err);
           logout();
         }
+      } else {
+        setUser(null);
       }
       setAuthLoading(false);
     };
@@ -69,7 +76,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!token && !!user;
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, authLoading, login, logout, }} >
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        isAuthenticated,
+        authLoading,
+        login,
+        logout,
+        setUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

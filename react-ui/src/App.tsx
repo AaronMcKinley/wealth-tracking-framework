@@ -9,6 +9,7 @@ import Signup from './pages/Signup';
 import NotFound from './pages/NotFound';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import PrivateRoute from './routes/PrivateRoute';
+import Settings from './pages/Settings';
 
 const ConditionalFallback = () => {
   const { isAuthenticated } = useAuth();
@@ -25,6 +26,7 @@ const App: React.FC = () => (
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/add-investment" element={<PrivateRoute><AddInvestment /></PrivateRoute>} />
         <Route path="/transactions/:userId/:ticker" element={<PrivateRoute><Transactions /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         <Route path="*" element={<ConditionalFallback />} />
       </Routes>
     </Router>

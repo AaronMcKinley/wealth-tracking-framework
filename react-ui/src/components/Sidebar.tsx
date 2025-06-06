@@ -15,6 +15,9 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
       case 'Dashboard':
         navigate('/dashboard');
         break;
+      case 'Settings':
+        navigate('/settings');
+        break;
       case 'Logout':
         logout();
         navigate('/');

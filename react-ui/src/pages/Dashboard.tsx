@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface Investment {
   id: number;
@@ -31,17 +32,17 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const user = localStorage.getItem('user');
-  const token = localStorage.getItem('token');
-  const userId = user ? JSON.parse(user).id : null;
+  const { user, token, isAuthenticated } = useAuth();
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated || !token) {
       setError('User not logged in');
       return;
     }
+
     axios
-      .get<Investment[]>('http://localhost:4000/api/investments', {
+      .get<Investment[]>('/api/investments', {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(res => {
@@ -53,7 +54,7 @@ const Dashboard: React.FC = () => {
       .catch(() => {
         setError('Failed to fetch investments');
       });
-  }, [location.state, token]);
+  }, [location.state, token, isAuthenticated]);
 
   const totalValue = investments.reduce((sum, inv) => {
     const val = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
