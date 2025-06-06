@@ -30,9 +30,11 @@ export default function Homepage() {
                 Login
               </button>
             </Link>
-            <button className="btn btn-secondary w-1/2">
-              Sign Up
-            </button>
+            <Link to="/signup" className="w-1/2">
+              <button className="btn btn-primary w-full">
+                Sign Up
+              </button>
+            </Link>
           </div>
         </div>
       </main>
