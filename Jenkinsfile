@@ -51,7 +51,7 @@ pipeline {
             -e CYPRESS_BASE_URL=http://wtf-react:3000 \
             -v "$(pwd)/cypress-wtf:/app" \
             -w /app \
-            cypress/included:13.7.3 \
+            cypress/included:13.11.0 \
             cypress run \
             --config-file /app/cypress.config.js \
             --spec "smoke/**/*.cy.js"
