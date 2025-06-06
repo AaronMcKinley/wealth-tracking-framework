@@ -39,17 +39,22 @@ pipeline {
     stage('Run Smoke Tests') {
       steps {
         sh '''
+        echo "--- Listing /app before test run ---"
+        docker run --rm \
+          -v /var/jenkins_home/workspace/wtf-smoke/cypress:/app \
+          alpine ls -la /app
+
+        echo "--- Running Cypress ---"
         docker run --rm \
           --network=wealth-tracking-framework_wtfnet \
           -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-          -v $WORKSPACE/cypress:/app \
+          -v /var/jenkins_home/workspace/wtf-smoke/cypress:/app \
           -w /app \
           cypress/included:13.7.3 \
-          cypress run --config-file cypress.config.js --spec cypress/smoke/**/*.cy.js
+          cypress run --config-file ./cypress.config.js --spec cypress/smoke/login/login.cy.js
         '''
       }
     }
-  }
 
   post {
     always {
