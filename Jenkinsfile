@@ -28,13 +28,10 @@ pipeline {
       }
     }
 
-    stage('Install Cypress Dependencies') {
+    stage('Build Custom Cypress Image') {
       steps {
-        dir('cypress-wtf') {
-          sh 'rm -rf cypress-wtf/node_modules'
-          sh 'rm -rf cypress-wtf/cypress'
-          sh 'npm ci'
-        }
+        echo 'Building custom Cypress Docker image...'
+        sh 'docker build -t custom-cypress:13.11 ./cypress-wtf'
       }
     }
 
@@ -42,19 +39,10 @@ pipeline {
       steps {
         echo "--- Running Cypress Tests ---"
         sh '''
-          echo "--- Verifying config presence ---"
-          ls -l $(pwd)/cypress-wtf
-          cat $(pwd)/cypress-wtf/cypress.config.js | head -n 10
-
           docker run --rm \
             --network=wealth-tracking-framework_wtfnet \
             -e CYPRESS_BASE_URL=http://wtf-react:3000 \
-            -v "$(pwd)/cypress-wtf:/app" \
-            -w /app \
-            cypress/included:13.11.0 \
-            cypress run \
-            --config-file /app/cypress.config.js \
-            --spec "smoke/**/*.cy.js"
+            custom-cypress:13.11
         '''
       }
     }
@@ -62,8 +50,8 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'cypress/cypress/screenshots/**/*.*', allowEmptyArchive: true
-      archiveArtifacts artifacts: 'cypress/cypress/videos/**/*.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'cypress-wtf/cypress/screenshots/**/*.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'cypress-wtf/cypress/videos/**/*.*', allowEmptyArchive: true
     }
     failure {
       echo 'Smoke tests failed.'
