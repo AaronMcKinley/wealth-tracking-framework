@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -45,14 +46,21 @@ const Signup: React.FC = () => {
     if (name === 'password') validatePasswordStrength(value);
   };
 
+  const isNameValid = (name: string) => /^[A-Za-z\s'-]+$/.test(name);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const { email, password, confirmPassword } = formData;
+    const { name, email, password, confirmPassword } = formData;
 
-    if (!email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('All fields are required.');
+      return;
+    }
+
+    if (!isNameValid(name)) {
+      setError('Name can only contain letters, spaces, hyphens, and apostrophes.');
       return;
     }
 
@@ -79,7 +87,19 @@ const Signup: React.FC = () => {
           <h2 className="mb-6 text-center text-2xl font-bold">Sign Up</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+            {/* Name */}
+            <div>
+              <label className="block text-sm text-textMuted">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-borderGreen bg-darkBg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primaryGreen"
+              />
+            </div>
+
             <div>
               <label className="block text-sm text-textMuted">Email</label>
               <input
@@ -92,7 +112,6 @@ const Signup: React.FC = () => {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label className="flex items-center text-sm text-textMuted">
                 Password
@@ -130,7 +149,6 @@ const Signup: React.FC = () => {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label className="block text-sm text-textMuted">Confirm Password</label>
               <input
@@ -150,12 +168,12 @@ const Signup: React.FC = () => {
 
             {/* Submit + Cancel */}
             <div className="flex flex-col gap-2">
-                <button
-                  type="submit"
-                  className="w-full rounded-lg bg-primaryGreenHover text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover px-4 py-2 transition-colors duration-150"
-                >
-                  Create Account
-                </button>
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-primaryGreenHover text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover px-4 py-2 transition-colors duration-150"
+              >
+                Create Account
+              </button>
 
               <button
                 type="button"
