@@ -99,16 +99,16 @@ const Dashboard: React.FC = () => {
           <thead className="bg-cardBg">
             <tr>
               {[
-                "Name",
-                "Ticker",
-                "Type",
-                "Quantity",
-                "Avg Buy Price",
-                "Current Price",
-                "Current Value",
-                "Profit / Loss",
-                "% Change 24h",
-                "Date Added",
+                'Name',
+                'Ticker',
+                'Type',
+                'Quantity',
+                'Avg Buy Price',
+                'Current Price',
+                'Current Value',
+                'Profit / Loss',
+                '% Change 24h',
+                'Date Added',
               ].map(header => (
                 <th key={header} className="px-6 py-3 text-left font-semibold">
                   {header}

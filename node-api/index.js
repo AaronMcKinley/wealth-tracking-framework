@@ -1,4 +1,5 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -9,11 +10,18 @@ const authenticateToken = require('./middleware/authenticateToken');
 const app = express();
 const pool = new Pool();
 
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not defined in environment variables.');
+  process.exit(1);
+}
+
 app.use(cors());
 app.use(express.json());
 
-const handleError = (res, msg = 'Internal server error', code = 500) =>
-  res.status(code).json({ message: msg });
+const handleError = (res, msg = 'Internal server error', code = 500) => {
+  console.error(msg);
+  return res.status(code).json({ message: msg });
+};
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -25,13 +33,19 @@ app.post('/api/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return handleError(res, 'Invalid credentials', 400);
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
     res.json({
       message: 'Login successful',
       token,
       user: { id: user.id, email: user.email, name: user.name },
     });
-  } catch {
+  } catch (err) {
+    console.error('Login error:', err.stack || err);
     handleError(res);
   }
 });
@@ -39,6 +53,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/investments', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
+
     const query = `
       SELECT
         i.id, i.user_id, i.asset_name, i.asset_ticker, i.type,
@@ -57,9 +72,11 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
       WHERE i.user_id = $1
       ORDER BY i.created_at DESC
     `;
+
     const result = await pool.query(query, [userId]);
     res.json(result.rows);
-  } catch {
+  } catch (err) {
+    console.error('Error fetching investments:', err.stack || err);
     handleError(res, 'Failed to fetch investments');
   }
 });
@@ -68,15 +85,18 @@ app.get('/api/transactions/:ticker', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const { ticker } = req.params;
+
     const query = `
       SELECT id, transaction_type, quantity, price_per_unit, total_value, fees, transaction_date
       FROM transactions
       WHERE user_id = $1 AND LOWER(asset_ticker) = LOWER($2)
       ORDER BY transaction_date DESC
     `;
+
     const result = await pool.query(query, [userId, ticker]);
     res.json(result.rows);
-  } catch {
+  } catch (err) {
+    console.error('Error fetching transactions:', err.stack || err);
     handleError(res, 'Failed to fetch transactions');
   }
 });
@@ -86,11 +106,13 @@ app.post('/api/investments', authenticateToken, async (req, res) => {
     const user_id = req.user.userId;
     const { name, type, amount, buy_price } = req.body;
 
-    if (!name || !type || !amount || !buy_price)
+    if (!name || !type || !amount || !buy_price) {
       return handleError(res, 'Missing required fields', 400);
+    }
 
     let assetResult;
     const lowerType = type.toLowerCase();
+
     if (lowerType === 'crypto') {
       assetResult = await pool.query(
         `SELECT name, ticker FROM cryptocurrencies WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1) LIMIT 1`,
@@ -105,8 +127,9 @@ app.post('/api/investments', authenticateToken, async (req, res) => {
       return handleError(res, `Unsupported type: ${type}`, 400);
     }
 
-    if (assetResult.rows.length === 0)
+    if (assetResult.rows.length === 0) {
       return handleError(res, `Asset '${name}' not found`, 404);
+    }
 
     const asset = assetResult.rows[0];
     const total_value = Number(amount) * Number(buy_price);
@@ -146,11 +169,15 @@ app.post('/api/investments', authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: 'Investment and transaction recorded' });
   } catch (err) {
+    console.error('Error adding investment:', err.stack || err);
     handleError(res, err.message || 'Failed to add investment');
   }
 });
 
-app.use((err, req, res, next) => handleError(res));
+app.use((err, req, res, next) => {
+  console.error('Unhandled server error:', err.stack || err);
+  handleError(res);
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
