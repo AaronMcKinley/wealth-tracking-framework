@@ -76,14 +76,9 @@ const Transactions: React.FC = () => {
       )}
 
       {!loading && !error && transactions.length > 0 && (
-        <div className="overflow-x-auto rounded-lg shadow-lg card mb-6">
-          <table className="table-fixed table" aria-label="Transactions table">
-            <colgroup>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <col key={i} className="w-1/6" />
-              ))}
-            </colgroup>
-            <thead className="bg-cardBg">
+        <div className="overflow-x-auto shadow-lg rounded-lg card mb-6">
+          <table className="table">
+            <thead>
               <tr>
                 {[
                   'Type',
@@ -94,7 +89,7 @@ const Transactions: React.FC = () => {
                   'Date',
                   'Notes',
                 ].map((header) => (
-                  <th key={header} className="px-4 py-3 text-left font-semibold">
+                  <th key={header} className="px-6 py-3 text-left font-semibold">
                     {header}
                   </th>
                 ))}
@@ -102,16 +97,19 @@ const Transactions: React.FC = () => {
             </thead>
             <tbody>
               {transactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
-                  <td className="px-4 py-3">{tx.transaction_type}</td>
-                  <td className="px-4 py-3">{formatNumber(tx.quantity)}</td>
-                  <td className="px-4 py-3">{formatNumber(tx.price_per_unit)}</td>
-                  <td className="px-4 py-3">{formatNumber(tx.total_value)}</td>
-                  <td className="px-4 py-3">{formatNumber(tx.fees)}</td>
-                  <td className="px-4 py-3">
+                <tr
+                  key={tx.id}
+                  className="hover:bg-primaryGreen/20 transition-colors duration-200"
+                >
+                  <td className="px-6 py-4">{tx.transaction_type}</td>
+                  <td className="px-6 py-4">{formatNumber(tx.quantity)}</td>
+                  <td className="px-6 py-4">{formatNumber(tx.price_per_unit)}</td>
+                  <td className="px-6 py-4">{formatNumber(tx.total_value)}</td>
+                  <td className="px-6 py-4">{formatNumber(tx.fees)}</td>
+                  <td className="px-6 py-4">
                     {new Date(tx.transaction_date).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3">{tx.notes || '—'}</td>
+                  <td className="px-6 py-4">{tx.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -19,7 +19,6 @@ body {
 .btn-secondary {
   @apply border-2 border-borderGreen text-primaryGreenHover opacity-50 cursor-not-allowed;
 }
-
 .btn-negative {
   @apply bg-negative text-white hover:bg-negativeHover font-semibold rounded-md transition-colors ease-in-out;
 }
@@ -35,10 +34,16 @@ body {
 .table {
   @apply w-full border-2 border-borderGreen border-collapse text-textLight;
 }
+
+.table thead tr {
+  @apply bg-cardBg;
+}
+
 .table th,
 .table td {
-  @apply border border-borderGreen p-2;
+  @apply border border-borderGreen px-6 py-4;
 }
-.table tr:hover {
+
+.table tbody tr:hover {
   @apply bg-primaryGreen/20;
 }

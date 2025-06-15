@@ -31,7 +31,6 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-
   const { user, token, isAuthenticated } = useAuth();
   const userId = user?.id ?? null;
 
@@ -95,7 +94,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
-        <table className="table">
+        <table className="table w-full">
           <thead className="bg-cardBg">
             <tr>
               {[
