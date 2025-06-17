@@ -70,11 +70,21 @@ pipeline {
       archiveArtifacts artifacts: 'cypress-wtf/cypress/videos/**/*.*', allowEmptyArchive: true
 
       script {
-        echo 'Attempting to create Allure project and generate report...'
+        echo 'Creating Allure project, uploading results, and generating report...'
         try {
-          sh '''
+          // Create the Allure project (first time only)
+          sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
+          """
 
+          // Upload results to Allure
+          sh """
+            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
+              -F "results=@$ALLURE_RESULTS_DIR" || true
+          """
+
+          // Generate report from uploaded results
+          sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
               -H "Content-Type: application/json" \
               -d "{
@@ -82,10 +92,11 @@ pipeline {
                     \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
                     \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
                   }" || true
-          '''
-          echo "Allure Report available at: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+          """
+
+          echo "✅ Allure Report available at: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
         } catch (Exception e) {
-          echo "Allure report generation failed: ${e.message}"
+          echo "⚠️ Allure report generation failed: ${e.message}"
         }
       }
     }
