@@ -71,7 +71,7 @@ services:
     ports:
       - "5050:5050"
     volumes:
-      - ./cypress/allure-results:/app/allure-results
+      - ./cypress-wtf/allure-results:/app/allure-results
     networks:
       - wtfnet
 

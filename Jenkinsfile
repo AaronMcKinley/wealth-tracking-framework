@@ -5,6 +5,9 @@ pipeline {
     TERM = 'xterm'
     DOCKER_NETWORK = 'wtfnet'
     CYPRESS_BASE_URL = 'http://wtf-react:3000'
+    ALLURE_SERVICE_URL = 'http://wtf-allure:5050'
+    ALLURE_RESULTS_DIR = 'cypress-wtf/allure-results'
+    ALLURE_PROJECT_ID = 'wtf'
   }
 
   stages {
@@ -54,8 +57,20 @@ pipeline {
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
+            -v $PWD/$ALLURE_RESULTS_DIR:/app/allure-results \
             custom-cypress:13.11
         '''
+      }
+    }
+
+    stage('Generate Allure Report') {
+      steps {
+        echo 'Creating Allure project and generating report...'
+        sh '''
+          curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
+          curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID"
+        '''
+        echo "Allure Report URL: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
       }
     }
   }
