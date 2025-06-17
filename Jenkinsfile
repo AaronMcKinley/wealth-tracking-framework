@@ -69,19 +69,25 @@ pipeline {
       archiveArtifacts artifacts: 'cypress-wtf/cypress/screenshots/**/*.*', allowEmptyArchive: true
       archiveArtifacts artifacts: 'cypress-wtf/cypress/videos/**/*.*', allowEmptyArchive: true
 
-      echo 'Creating Allure project and generating report...'
-      sh '''
-        curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
+      script {
+        echo 'Attempting to create Allure project and generate report...'
+        try {
+          sh '''
+            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
 
-        curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
-          -H "Content-Type: application/json" \
-          -d "{
-                \\"reportName\\": \\"Smoke Tests\\",
-                \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
-                \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
-              }" || true
-      '''
-      echo "Allure Report URL: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
+              -H "Content-Type: application/json" \
+              -d "{
+                    \\"reportName\\": \\"Smoke Tests\\",
+                    \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
+                    \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
+                  }" || true
+          '''
+          echo "Allure Report available at: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+        } catch (Exception e) {
+          echo "Allure report generation failed: ${e.message}"
+        }
+      }
     }
 
     failure {
