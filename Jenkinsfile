@@ -3,6 +3,8 @@ pipeline {
 
   environment {
     TERM = 'xterm'
+    DOCKER_NETWORK = 'wtfnet'
+    CYPRESS_BASE_URL = 'http://wtf-react:3000'
   }
 
   stages {
@@ -23,8 +25,11 @@ pipeline {
 
     stage('Ensure Docker Network Exists') {
       steps {
-        echo 'Ensuring Docker network `wtfnet` exists...'
-        sh 'docker network inspect wtfnet >/dev/null 2>&1 || docker network create wtfnet'
+        echo 'Ensuring Docker network exists...'
+        sh '''
+          docker network inspect $DOCKER_NETWORK >/dev/null 2>&1 || \
+          docker network create $DOCKER_NETWORK
+        '''
       }
     }
 
@@ -37,11 +42,18 @@ pipeline {
 
     stage('Run Smoke Tests') {
       steps {
-        echo "--- Running Cypress Tests ---"
+        echo '--- Waiting for React App to Be Ready ---'
         sh '''
+          echo "Polling $CYPRESS_BASE_URL until ready..."
+          until curl -s $CYPRESS_BASE_URL > /dev/null; do
+            echo "Waiting for $CYPRESS_BASE_URL..."
+            sleep 2
+          done
+
+          echo '--- Running Cypress Smoke Tests ---'
           docker run --rm \
-            --network=wtfnet \
-            -e CYPRESS_BASE_URL=http://wtf-react:3000 \
+            --network=$DOCKER_NETWORK \
+            -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
             custom-cypress:13.11
         '''
       }
