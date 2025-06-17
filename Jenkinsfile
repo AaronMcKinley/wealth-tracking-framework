@@ -40,7 +40,7 @@ pipeline {
         echo "--- Running Cypress Tests ---"
         sh '''
           docker run --rm \
-            --network=wealth-tracking-framework_wtfnet \
+            --network=wtfnet \
             -e CYPRESS_BASE_URL=http://wtf-react:3000 \
             custom-cypress:13.11
         '''
