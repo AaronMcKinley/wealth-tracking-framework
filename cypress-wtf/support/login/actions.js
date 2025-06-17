@@ -3,6 +3,7 @@ import LoginLocators from './locators';
 const Login = {
   visitLoginPage() {
     cy.visit('/login');
+    cy.get('#email', { timeout: 10000 }).should('be.visible');
   },
 
   fillCredentials(email, password) {
