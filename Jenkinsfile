@@ -79,7 +79,7 @@ pipeline {
                 \\"reportName\\": \\"Smoke Tests\\",
                 \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
                 \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
-              }"
+              }" || true
       '''
       echo "Allure Report URL: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
     }
