@@ -63,23 +63,24 @@ pipeline {
       }
     }
 
-   stage('Generate Allure Report') {
-     steps {
-       echo 'Creating Allure project and generating report...'
-       sh '''
-         curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
+    stage('Generate Allure Report') {
+      steps {
+        echo 'Creating Allure project and generating report...'
+        sh '''
+          curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
 
-         curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
-           -H "Content-Type: application/json" \
-           -d "{
-                 \\"reportName\\": \\"Smoke Tests\\",
-                 \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
-                 \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
-               }"
-       '''
-       echo "Allure Report URL: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
-     }
-   }
+          curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
+            -H "Content-Type: application/json" \
+            -d "{
+                  \\"reportName\\": \\"Smoke Tests\\",
+                  \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
+                  \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
+                }"
+        '''
+        echo "Allure Report URL: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+      }
+    }
+  }
 
   post {
     always {
