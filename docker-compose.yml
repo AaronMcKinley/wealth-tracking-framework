@@ -19,7 +19,7 @@ services:
     build: ./node-api
     container_name: wtf-api
     ports:
-      - "4000:4000"
+      - "4000:5000"
     volumes:
       - ./node-api:/app
     working_dir: /app

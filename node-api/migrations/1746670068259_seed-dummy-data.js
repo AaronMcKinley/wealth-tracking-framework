@@ -8,7 +8,6 @@ exports.up = async (pgm) => {
     VALUES ('test@email.com', 'Demo User', '${hashedPassword}');
   `);
 
-  // Investment insert is commented out, so no extra comma or code here
 };
 
 exports.down = async (pgm) => {

@@ -54,6 +54,8 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
 
+    console.log('Fetching investments for user ID:', userId);
+
     const query = `
       SELECT
         i.id, i.user_id, i.asset_name, i.asset_ticker, i.type,
@@ -74,6 +76,7 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
     `;
 
     const result = await pool.query(query, [userId]);
+    console.log('Investments fetched:', result.rows.length);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching investments:', err.stack || err);

@@ -40,19 +40,27 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    axios
-      .get<Investment[]>('/api/investments', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(res => {
+    const fetchInvestments = async () => {
+      try {
+        const res = await axios.get<Investment[]>(
+          `${process.env.REACT_APP_API_URL}/api/investments`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         setInvestments(res.data);
         if (location.state?.newInvestment) {
           window.history.replaceState({}, document.title);
         }
-      })
-      .catch(() => {
+      } catch (err) {
+        console.error('Error fetching investments:', err);
         setError('Failed to fetch investments');
-      });
+      }
+    };
+
+    fetchInvestments();
   }, [location.state, token, isAuthenticated]);
 
   const totalValue = investments.reduce((sum, inv) => {
