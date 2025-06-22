@@ -17,6 +17,16 @@ pipeline {
       }
     }
 
+    stage('Prepare Environment') {
+      steps {
+        echo 'Preparing allure results directory...'
+        sh '''
+          mkdir -p $ALLURE_RESULTS_DIR
+          chmod -R 777 $ALLURE_RESULTS_DIR
+        '''
+      }
+    }
+
     stage('Debug Environment') {
       steps {
         echo 'Debugging Environment Info...'
@@ -57,8 +67,9 @@ pipeline {
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v $PWD/$ALLURE_RESULTS_DIR:/app/allure-results \
-            custom-cypress:13.11
+            -v $PWD/$ALLURE_RESULTS_DIR:/results \
+            custom-cypress:13.11 \
+            sh -c "cypress run && cp -r allure-results/* /results && ls -la /results"
         '''
       }
     }
@@ -77,9 +88,14 @@ pipeline {
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
           """
 
-          sh """
-            zip -r allure-results.zip $ALLURE_RESULTS_DIR || true
-          """
+          sh '''
+            if [ -d "$ALLURE_RESULTS_DIR" ] && [ "$(ls -A $ALLURE_RESULTS_DIR)" ]; then
+              zip -r allure-results.zip $ALLURE_RESULTS_DIR
+            else
+              echo "Warning: No Allure results found at $ALLURE_RESULTS_DIR"
+              touch allure-results.zip
+            fi
+          '''
 
           sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
@@ -98,7 +114,6 @@ pipeline {
           """
 
           echo "Allure Report: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
-
         } catch (Exception e) {
           echo "Allure report generation failed: ${e.message}"
         }
