@@ -85,8 +85,8 @@ pipeline {
         }
       }
 
-      archiveArtifacts artifacts: 'cypress-wtf/cypress/screenshots/**/*.*', allowEmptyArchive: true
-      archiveArtifacts artifacts: 'cypress-wtf/cypress/videos/**/*.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'cypress-wtf/cypress-artifacts/screenshots/**/*.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'cypress-wtf/cypress-artifacts/downloads/**/*.*', allowEmptyArchive: true
     }
 
     failure {
