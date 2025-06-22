@@ -5,7 +5,7 @@ pipeline {
     TERM = 'xterm'
     DOCKER_NETWORK = 'wtfnet'
     CYPRESS_BASE_URL = 'http://wtf-react:3000'
-    ALLURE_SERVICE_URL = 'http://wtf-allure:5050'
+    ALLURE_SERVICE_URL = 'http://localhost:5050' // host machine view
     ALLURE_RESULTS_DIR = 'cypress-wtf/allure-results'
     ALLURE_PROJECT_ID = 'wtf'
   }
@@ -35,13 +35,13 @@ pipeline {
     stage('Run Cypress Tests') {
       steps {
         sh '''
-          echo "Running Cypress tests with Allure integration..."
+          echo "Running Cypress tests with Allure..."
 
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
             -v $PWD/$ALLURE_RESULTS_DIR:/app/allure-results \
-            custom-cypress:13.11 || echo "Cypress tests failed, continuing to generate report"
+            custom-cypress:13.11 || echo "Cypress tests failed, continuing..."
         '''
       }
     }
@@ -52,25 +52,41 @@ pipeline {
       script {
         echo 'Uploading results to Allure and generating report...'
         try {
+          // Create the Allure project (only once)
           sh """
-            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
+            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects" \
+              -H "Content-Type: application/json" \
+              -d '{
+                    "id": "$ALLURE_PROJECT_ID",
+                    "name": "WTF Smoke Tests"
+                  }' || true
+          """
 
+          // Upload results
+          sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
               -F "results=@$ALLURE_RESULTS_DIR" || true
+          """
 
+          // Generate the report
+          sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
               -H "Content-Type: application/json" \
-              -d "{
-                    \\"reportName\\": \\"Smoke Tests\\",
-                    \\"buildName\\": \\"Build #${BUILD_NUMBER}\\",
-                    \\"buildOrder\\": \\"${BUILD_NUMBER}\\"
-                  }" || true
+              -d '{
+                    "reportName": "Smoke Tests",
+                    "buildName": "Build #${BUILD_NUMBER}",
+                    "buildOrder": "${BUILD_NUMBER}"
+                  }' || true
           """
+
           echo "Allure Report: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
         } catch (Exception e) {
           echo "Allure report generation failed: ${e.message}"
         }
       }
+
+      archiveArtifacts artifacts: 'cypress-wtf/cypress/screenshots/**/*.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'cypress-wtf/cypress/videos/**/*.*', allowEmptyArchive: true
     }
 
     failure {
