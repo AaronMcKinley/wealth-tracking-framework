@@ -45,7 +45,7 @@ pipeline {
 
     stage('Run Smoke Tests') {
       steps {
-        echo '--- Waiting for React App to Be Ready ---'
+        echo 'Waiting for React App to be ready...'
         sh '''
           echo "Polling $CYPRESS_BASE_URL until ready..."
           until curl -s $CYPRESS_BASE_URL > /dev/null; do
@@ -53,7 +53,7 @@ pipeline {
             sleep 2
           done
 
-          echo '--- Running Cypress Smoke Tests ---'
+          echo 'Running Cypress Smoke Tests...'
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
@@ -71,19 +71,22 @@ pipeline {
 
       script {
         echo 'Creating Allure project, uploading results, and generating report...'
+
         try {
-          // Create the Allure project (first time only)
           sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/projects/$ALLURE_PROJECT_ID" || true
           """
 
-          // Upload results to Allure
           sh """
-            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
-              -F "results=@$ALLURE_RESULTS_DIR" || true
+            zip -r allure-results.zip $ALLURE_RESULTS_DIR || true
           """
 
-          // Generate report from uploaded results
+          sh """
+            curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
+              -H "Content-Type: multipart/form-data" \
+              -F "results=@allure-results.zip" || true
+          """
+
           sh """
             curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
               -H "Content-Type: application/json" \
@@ -94,9 +97,10 @@ pipeline {
                   }" || true
           """
 
-          echo "✅ Allure Report available at: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+          echo "Allure Report: $ALLURE_SERVICE_URL/projects/$ALLURE_PROJECT_ID/reports/latest/index.html"
+
         } catch (Exception e) {
-          echo "⚠️ Allure report generation failed: ${e.message}"
+          echo "Allure report generation failed: ${e.message}"
         }
       }
     }
