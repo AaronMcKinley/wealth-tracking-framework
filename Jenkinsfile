@@ -44,7 +44,7 @@ pipeline {
             -v $CYPRESS_DIR:/cypress-wtf \
             -w /cypress-wtf \
             custom-cypress:13.11 \
-            npx cypress run --config-file=cypress.config.js || true
+            sh -c "ls -l && cat cypress.config.js && npx cypress run --config-file=cypress.config.js || true"
         '''
       }
     }
