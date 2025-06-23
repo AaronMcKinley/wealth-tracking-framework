@@ -41,11 +41,8 @@ pipeline {
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v $CYPRESS_DIR/smoke:/smoke/smoke \
-            -v $CYPRESS_DIR/support:/smoke/support \
-            -v $CYPRESS_DIR/cypress.config.js:/smoke/cypress.config.js \
-            -v $ALLURE_RESULTS_DIR:/smoke/allure-results \
-            -w /smoke \
+            -v $CYPRESS_DIR:/cypress-wtf \
+            -w /cypress-wtf \
             custom-cypress:13.11 \
             npx cypress run || true
         '''
