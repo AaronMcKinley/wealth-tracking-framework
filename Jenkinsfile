@@ -37,14 +37,13 @@ pipeline {
       steps {
         sh '''
           echo "Running Cypress tests with Allure..."
-
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
             -v $CYPRESS_DIR:/cypress-wtf \
             -w /cypress-wtf \
             custom-cypress:13.11 \
-            sh -c "ls -l && cat cypress.config.js && npx cypress run --config-file=cypress.config.js || true"
+            sh -c "ls -l cypress.config.js && cat cypress.config.js && npx cypress run --config-file=cypress.config.js || true"
         '''
       }
     }
