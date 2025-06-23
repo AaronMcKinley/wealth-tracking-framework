@@ -41,10 +41,13 @@ pipeline {
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v $CYPRESS_DIR:/e2e \
-            -w /e2e \
+            -v $CYPRESS_DIR/smoke:/smoke/smoke \
+            -v $CYPRESS_DIR/support:/smoke/support \
+            -v $CYPRESS_DIR/cypress.config.js:/smoke/cypress.config.js \
+            -v $ALLURE_RESULTS_DIR:/smoke/allure-results \
+            -w /smoke \
             custom-cypress:13.11 \
-            sh -c "npx cypress run || true"
+            npx cypress run || true
         '''
       }
     }
@@ -57,10 +60,11 @@ pipeline {
 
         sh '''
           if [ -d "$ALLURE_RESULTS_DIR" ] && [ "$(ls -A $ALLURE_RESULTS_DIR)" ]; then
-            zip -r allure-results.zip $ALLURE_RESULTS_DIR
+            cd "$ALLURE_RESULTS_DIR"
+            zip -r "$WORKSPACE/allure-results.zip" . || echo "Zipping failed"
           else
             echo "Warning: No Allure results found in $ALLURE_RESULTS_DIR"
-            touch allure-results.zip
+            touch "$WORKSPACE/allure-results.zip"
           fi
         '''
 
@@ -70,7 +74,7 @@ pipeline {
             -d '{"id": "$ALLURE_PROJECT_ID", "name": "WTF Smoke Tests"}' || true
 
           curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/send-results?project_id=$ALLURE_PROJECT_ID" \
-            -F results=@allure-results.zip || true
+            -F results=@$WORKSPACE/allure-results.zip || true
 
           curl -sf -X POST "$ALLURE_SERVICE_URL/allure-docker-service/generate-report?project_id=$ALLURE_PROJECT_ID" \
             -H "Content-Type: application/json" \
