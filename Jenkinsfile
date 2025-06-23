@@ -36,7 +36,7 @@ pipeline {
 
     stage('Run Cypress Tests') {
       steps {
-        sh '''
+        sh """
           echo "Running Cypress tests with Allure..."
 
           docker run --rm \
@@ -48,8 +48,8 @@ pipeline {
             -v $ALLURE_RESULTS_DIR:/smoke/allure-results \
             -w /smoke \
             custom-cypress:13.11 \
-            sh -c \\"npx cypress run || true\\"
-        '''
+            sh -c 'npx cypress run || true'
+        """
       }
     }
   }
