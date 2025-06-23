@@ -48,7 +48,7 @@ pipeline {
             -v $ALLURE_RESULTS_DIR:/smoke/allure-results \
             -w /smoke \
             custom-cypress:13.11 \
-            sh -c "npx cypress run || true"
+            sh -c \\"npx cypress run || true\\"
         '''
       }
     }
