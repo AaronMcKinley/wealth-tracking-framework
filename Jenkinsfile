@@ -41,6 +41,7 @@ pipeline {
           docker run --rm \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
+            -v "$PWD/cypress-wtf":/cypress-wtf \
             -v allure_results:/cypress-wtf/allure-results \
             -w /cypress-wtf \
             custom-cypress:13.11 \
