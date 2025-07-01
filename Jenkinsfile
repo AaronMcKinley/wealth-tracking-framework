@@ -9,6 +9,7 @@ pipeline {
         ALLURE_DOCKER_SERVICE_URL = "http://localhost:5050"
         ALLURE_PROJECT_ID = "wtf"
         REPORT_NAME = "Smoke Tests"
+        ACTUAL_JENKINS_HOST_WORKSPACE_PATH = "/Users/aaronmckinley/wtf-wealth-tracking-framework/wealth-tracking-framework/jenkins_data/workspace/wtf-smoke"
     }
 
     stages {
@@ -33,23 +34,21 @@ pipeline {
         stage('Run Smoke Tests in Dedicated Container') {
             steps {
                 sh '''
-                  echo "--- Debugging WORKSPACE and Volume Mount ---"
-                  echo "Jenkins WORKSPACE is: ${WORKSPACE}"
-                  echo "Relative Cypress Project Dir: ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
-                  echo "Full Host Path for Cypress Project (expected source for mount): ${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
-                  echo "Running Cypress volume mount test..."
+                  echo "--- Starting Cypress Test Execution ---"
+                  echo "ACTUAL Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
 
                   docker stop jenkins-cypress-debug || true
                   docker rm jenkins-cypress-debug || true
 
-                  docker run --name jenkins-cypress-debug \\
+                  docker run -d --name jenkins-cypress-debug \\
                     --network="$DOCKER_NETWORK" \\
                     -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \\
-                    -v "${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \\
+                    -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \\
                     -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \\
-                    --entrypoint /bin/sh \\
-                    custom-cypress:13.11 \\
-                    -c "ls -la ${CYPRESS_PROJECT_DIR_IN_CONTAINER}; cat ${CYPRESS_PROJECT_DIR_IN_CONTAINER}/cypress.config.js || echo 'cypress.config.js not found or unreadable'; echo '--- End of Container /app Content ---'"
+                    custom-cypress:13.11
+
+                  echo "Executing Cypress tests inside the container..."
+                  docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser chrome --e2e
                 '''
             }
         }
@@ -60,7 +59,7 @@ pipeline {
             script {
                 echo "Uploading results to Allure and generating report..."
 
-                def allureResultsHostPath = "${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
+                def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
                 def allureZipPath = "/tmp/allure-results.zip"
 
                 sh """
@@ -99,6 +98,7 @@ pipeline {
                 echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
             }
             archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
+
             sh "docker stop jenkins-cypress-debug || true"
             sh "docker rm jenkins-cypress-debug || true"
         }
