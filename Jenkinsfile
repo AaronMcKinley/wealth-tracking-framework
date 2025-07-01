@@ -31,7 +31,7 @@ pipeline {
         sh '''
           echo "Running Cypress tests from dedicated container..."
 
-          docker compose run --rm wtf-cypress  || true
+          docker-compose run --rm wtf-cypress  || true
         '''
       }
     }
