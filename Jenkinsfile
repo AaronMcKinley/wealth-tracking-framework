@@ -70,7 +70,7 @@ pipeline {
                     else
                         echo "No Allure results found in ${allureResultsHostPath}. Creating empty zip."
                         touch /tmp/dummy_empty_file_for_zip
-                        zip -j ${allureZipPath} /tmp/dummy_empty_empty_file_for_zip
+                        zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
                         rm /tmp/dummy_empty_file_for_zip
                     fi
                 """
@@ -98,11 +98,7 @@ pipeline {
 
                 echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
             }
-        }
-        always {
-            archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmpty: true
-        }
-        always {
+            archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
             sh "docker stop jenkins-cypress-debug || true"
             sh "docker rm jenkins-cypress-debug || true"
         }
