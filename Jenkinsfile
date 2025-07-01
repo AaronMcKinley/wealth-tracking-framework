@@ -39,10 +39,10 @@ pipeline {
         sh '''
           echo "Running Cypress smoke tests in dedicated container..."
           docker run --name jenkins-cypress-debug \
-            --network=$DOCKER_NETWORK \
-            -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v ${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER} \
-            -w ${CYPRESS_PROJECT_DIR_IN_CONTAINER} \
+            --network="$DOCKER_NETWORK" \
+            -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
+            -v "${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+            -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
             custom-cypress:13.11 \
             sh -c "ls -la; cat cypress.config.js; npx cypress run --config-file=cypress.config.js --spec smoke/**/*.cy.js"
         '''
