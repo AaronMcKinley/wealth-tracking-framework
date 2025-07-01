@@ -62,6 +62,7 @@ services:
       - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - allure_results:/wtf/allure-results
+      - ./cypress-wtf:/host-cypress-wtf
     user: root
     networks:
       - wtfnet
