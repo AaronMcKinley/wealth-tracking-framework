@@ -9,7 +9,7 @@ pipeline {
     ALLURE_PROJECT_ID = 'wtf'
     CYPRESS_PROJECT_DIR_IN_WORKSPACE = "cypress-wtf"
     ALLURE_RESULTS_DIR_ON_HOST = "${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
-    CYPRESS_PROJECT_DIR_IN_CONTAINER = "/app"
+    CYPRESS_PROJECT_DIR_IN_CONTAINER = "/app" // This is the target directory inside the container for the volume mount
   }
 
   stages {
@@ -37,7 +37,7 @@ pipeline {
     stage('Run Smoke Tests in Dedicated Container') {
       steps {
         sh '''
-          echo "Running Cypress smoke tests in dedicated container..."
+          echo "Running Cypress volume mount test..."
           docker run --name jenkins-cypress-debug \
             --network="$DOCKER_NETWORK" \
             -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
@@ -45,7 +45,7 @@ pipeline {
             -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
             --entrypoint "/bin/sh" \
             custom-cypress:13.11 \
-            -c "ls -la; cat cypress.config.js; npx cypress run --config-file=cypress.config.js --spec smoke/**/*.cy.js"
+            -c "ls -la ${CYPRESS_PROJECT_DIR_IN_CONTAINER}; echo '--- End of Container /app Content ---'"
         '''
       }
     }
