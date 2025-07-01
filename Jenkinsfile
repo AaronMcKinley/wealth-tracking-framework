@@ -39,9 +39,9 @@ pipeline {
           echo "Running Cypress tests..."
 
           docker run --rm \
-            --network=$DOCKER_NETWORK \
+            --network=wtfnet \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v "${WORKSPACE}/cypress-wtf":/cypress-wtf \
+            -v "$PWD/cypress-wtf:/cypress-wtf" \
             -v allure_results:/cypress-wtf/allure-results \
             -w /cypress-wtf \
             custom-cypress:13.11 \
