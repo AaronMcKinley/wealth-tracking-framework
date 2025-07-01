@@ -7,7 +7,7 @@ pipeline {
     CYPRESS_BASE_URL = 'http://wtf-react:3000'
     ALLURE_SERVICE_URL = 'http://localhost:5050'
     ALLURE_PROJECT_ID = 'wtf'
-    ALLURE_RESULTS_DIR = '/wtf/allure-results'  // updated to shared volume location
+    ALLURE_RESULTS_DIR = '/wtf/allure-results' // Shared volume location
   }
 
   stages {
@@ -26,12 +26,23 @@ pipeline {
       }
     }
 
+    stage('Debug Docker') {
+      steps {
+        sh '''
+          echo "Docker & Compose Versions:"
+          docker --version || true
+          docker compose version || true
+          which docker-compose || true
+        '''
+      }
+    }
+
     stage('Run Cypress Tests in Container') {
       steps {
         sh '''
           echo "Running Cypress tests from dedicated container..."
 
-          docker-compose run --rm wtf-cypress  || true
+          docker compose run --rm wtf-cypress || true
         '''
       }
     }
