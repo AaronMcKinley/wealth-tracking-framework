@@ -38,7 +38,7 @@ pipeline {
       steps {
         sh '''
           echo "Running Cypress smoke tests in dedicated container..."
-          # >>> DEBUGGING START: Temporarily keeps container and lists/cats files <<<
+          // >>> DEBUGGING START: Temporarily keeps container and lists/cats files <<<
           docker run --name jenkins-cypress-debug \
             --network=$DOCKER_NETWORK \
             -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
@@ -46,7 +46,7 @@ pipeline {
             -w ${CYPRESS_PROJECT_DIR_IN_CONTAINER} \
             custom-cypress:13.11 \
             sh -c "ls -la; cat cypress.config.js; npx cypress run --config-file=cypress.config.js --spec smoke/**/*.cy.js"
-          # >>> DEBUGGING END <<<
+          // >>> DEBUGGING END <<<
         '''
       }
     }
@@ -89,13 +89,13 @@ pipeline {
 
       archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**/*, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**/*", allowEmptyArchive: true
     }
-    # >>> DEBUGGING START: cleanedUp block TEMPORARILY COMMENTED OUT <<<
+    // >>> DEBUGGING START: cleanedUp block TEMPORARILY COMMENTED OUT <<<
     // cleanedUp {
     //   echo "Cleaning up temporary Cypress debug container..."
     //   sh 'docker stop jenkins-cypress-debug || true'
     //   sh 'docker rm jenkins-cypress-debug || true'
     // }
-    # >>> DEBUGGING END <<<
+    // >>> DEBUGGING END <<<
     failure {
       echo 'Some Cypress tests failed. See Allure report for details.'
     }
