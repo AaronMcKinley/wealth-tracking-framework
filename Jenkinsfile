@@ -43,8 +43,9 @@ pipeline {
             -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
             -v "${WORKSPACE}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
             -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+            --entrypoint "/bin/sh" \
             custom-cypress:13.11 \
-            sh -c "ls -la; cat cypress.config.js; npx cypress run --config-file=cypress.config.js --spec smoke/**/*.cy.js"
+            -c "ls -la; cat cypress.config.js; npx cypress run --config-file=cypress.config.js --spec smoke/**/*.cy.js"
         '''
       }
     }
