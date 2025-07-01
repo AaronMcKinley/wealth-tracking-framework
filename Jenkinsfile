@@ -35,18 +35,18 @@ pipeline {
 
     stage('Run Cypress Tests') {
       steps {
-       sh '''
-         echo "Running Cypress tests with Allure..."
-
-         docker run --rm \
-           --network=$DOCKER_NETWORK \
-           -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-           -v "${WORKSPACE}/cypress-wtf":/cypress-wtf \
-           -v allure_results:/cypress-wtf/allure-results \
-           -w /cypress-wtf \
-           custom-cypress:13.11 \
-           npx cypress run --config-file=cypress.config.js || true
-       '''
+        def testDir = "${env.WORKSPACE}/cypress-wtf"
+        sh """
+          echo "🧪 Mounting: ${testDir}"
+          docker run --rm \
+            --network=${env.DOCKER_NETWORK} \
+            -e CYPRESS_BASE_URL=${env.CYPRESS_BASE_URL} \
+            -v "${testDir}":/cypress-wtf \
+            -v allure_results:/cypress-wtf/allure-results \
+            -w /cypress-wtf \
+            custom-cypress:13.11 \
+            npx cypress run --config-file=cypress.config.js
+        """
       }
     }
   }
