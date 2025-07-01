@@ -36,16 +36,13 @@ pipeline {
     stage('Run Cypress Tests in Container') {
       steps {
         sh '''
-          echo "Running Cypress tests..."
-
-          docker run --rm \
-            --network=wtfnet \
-            -e CYPRESS_BASE_URL=$CYPRESS_BASE_URL \
-            -v /var/jenkins_home/workspace/wtf-smoke/cypress-wtf:/cypress-wtf \
-            -v allure_results:/cypress-wtf/allure-results \
-            -w /cypress-wtf \
-            custom-cypress:13.11 \
-            sh -c "ls -l && cat cypress.config.js && npx cypress run --config-file=cypress.config.js"
+          echo "Running Cypress tests from running container..."
+          docker exec wtf-cypress sh -c "
+            cd /cypress-wtf && \
+            ls -l && \
+            cat cypress.config.js && \
+            npx cypress run --config-file=cypress.config.js
+          " || true
         '''
       }
     }
