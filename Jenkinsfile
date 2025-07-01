@@ -64,13 +64,13 @@ pipeline {
                 def allureZipPath = "/tmp/allure-results.zip"
 
                 sh """
-                    if [ -d "${allureResultsHostPath}" ] && [ "$(ls -A ${allureResultsHostPath})" ]; then
+                    if [ -d "${allureResultsHostPath}" ] && [ "\$(ls -A ${allureResultsHostPath})" ]; then
                         echo "Allure results found. Zipping them up."
                         zip -j ${allureZipPath} ${allureResultsHostPath}/*
                     else
                         echo "No Allure results found in ${allureResultsHostPath}. Creating empty zip."
                         touch /tmp/dummy_empty_file_for_zip
-                        zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
+                        zip -j ${allureZipPath} /tmp/dummy_empty_empty_file_for_zip
                         rm /tmp/dummy_empty_file_for_zip
                     fi
                 """
