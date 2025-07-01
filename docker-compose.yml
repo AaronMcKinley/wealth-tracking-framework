@@ -62,7 +62,6 @@ services:
       - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - allure_results:/wtf/allure-results
-      - ./cypress-wtf:/host-cypress-wtf
     user: root
     networks:
       - wtfnet
@@ -111,6 +110,24 @@ services:
     command: sh -c "npm install && npm run fetch"
     networks:
       - wtfnet
+
+  wtf-cypress:
+    build:
+      context: ./cypress-wtf
+    container_name: cypress-runner
+    depends_on:
+      - react-ui
+      - node-api
+    networks:
+      - wtfnet
+    environment:
+      - CYPRESS_BASE_URL=http://wtf-react:3000
+    volumes:
+      - allure_results:/cypress-wtf/allure-results
+    working_dir: /cypress-wtf
+    command: >
+      sh -c "npx cypress run --config-file=cypress.config.js &&
+             echo 'Cypress tests finished'"
 
 volumes:
   jenkins_home:
