@@ -61,6 +61,7 @@ services:
     volumes:
       - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+      - allure_results:/wtf/allure-results
     user: root
     networks:
       - wtfnet
@@ -71,7 +72,7 @@ services:
     ports:
       - "5050:5050"
     volumes:
-      - ./cypress-wtf/allure-results:/app/allure-results
+      - allure_results:/app/allure-results
     networks:
       - wtfnet
 
@@ -113,6 +114,7 @@ services:
 volumes:
   jenkins_home:
   postgres_data:
+  allure_results:
 
 networks:
   wtfnet:

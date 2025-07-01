@@ -19,7 +19,8 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     libgbm1 \
     libx11-xcb1 \
-    libatk-bridge2.0-0 && \
+    libatk-bridge2.0-0 \
+        zip && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs
 

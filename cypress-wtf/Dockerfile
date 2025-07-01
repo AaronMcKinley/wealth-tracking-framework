@@ -2,10 +2,13 @@ FROM cypress/included:13.11.0
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+RUN apt-get update && apt-get install -y zip && apt-get clean
 
+COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
 
-CMD ["cypress", "run"]
+RUN npx cypress verify
+
+CMD ["npx", "cypress", "run", "--config-file=cypress.config.js"]
