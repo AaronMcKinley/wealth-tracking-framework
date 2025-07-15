@@ -40,15 +40,15 @@ pipeline {
                   docker stop jenkins-cypress-debug || true
                   docker rm jenkins-cypress-debug || true
 
-                  docker run -d --name jenkins-cypress-debug \\
-                    --network="$DOCKER_NETWORK" \\
-                    -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \\
-                    -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \\
-                    -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \\
+                  docker run -d --name jenkins-cypress-debug \
+                    --network="$DOCKER_NETWORK" \
+                    -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
+                    -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+                    -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \
                     custom-cypress:13.11
 
                   echo "Executing Cypress tests inside the container..."
-                  docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser chrome --e2e
+                  docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
                 '''
             }
         }
@@ -75,19 +75,19 @@ pipeline {
                 """
 
                 sh """
-                    curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \\
-                      -H 'Content-Type: application/json' \\
+                    curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
+                      -H 'Content-Type: application/json' \
                       -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} Smoke Tests"}' || true
                 """
 
                 sh """
-                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \\
+                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
                       -F "results=@${allureZipPath}" || true
                 """
 
                 sh """
-                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \\
-                      -H 'Content-Type: application/json' \\
+                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
+                      -H 'Content-Type: application/json' \
                       -d '{
                           "reportName": "${REPORT_NAME}",
                           "buildName": "Build #${BUILD_NUMBER}",
