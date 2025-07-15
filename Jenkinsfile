@@ -27,7 +27,7 @@ pipeline {
 
         stage('Build Cypress Image') {
             steps {
-                sh "docker build -t custom-cypress:13.11 ./${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
+                sh "docker build --no-cache -t custom-cypress:13.11 ./${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
             }
         }
 
