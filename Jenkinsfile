@@ -10,10 +10,12 @@ pipeline {
         ALLURE_PROJECT_ID = "wtf"
         REPORT_NAME = "Smoke Tests"
         ACTUAL_JENKINS_HOST_WORKSPACE_PATH = "/Users/aaronmckinley/wtf-wealth-tracking-framework/wealth-tracking-framework/jenkins_data/workspace/wtf-smoke"
+        CYPRESS_CONTAINER_NAME = "jenkins-cypress-debug"
     }
 
     stages {
-        stage('Declarative: Checkout SCM') {
+
+        stage('Checkout SCM') {
             steps {
                 checkout scm
             }
@@ -40,7 +42,7 @@ pipeline {
                       echo "React is ready"
                       break
                     else
-                      echo "React not ready yet, retrying..."
+                      echo "React not ready yet, retrying ($i/20)..."
                       sleep 3
                     fi
                   done
@@ -51,27 +53,27 @@ pipeline {
         stage('Run Smoke Tests in Dedicated Container') {
             steps {
                 sh '''
-                  echo "--- Starting Cypress Test Execution ---"
-                  echo "ACTUAL Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
-
-                  docker stop jenkins-cypress-debug || true
-                  docker rm jenkins-cypress-debug || true
+                  echo "--- PRE-CLEANUP: Removing any stale Cypress container ---"
+                  docker rm -f ${CYPRESS_CONTAINER_NAME} || true
                   docker container prune -f || true
                   docker volume prune -f || true
 
-                  docker run -d --name jenkins-cypress-debug \
-                    --network="$DOCKER_NETWORK" \
+                  echo "--- Starting Cypress Test Execution ---"
+                  echo "ACTUAL Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
+
+                  docker run -d --name ${CYPRESS_CONTAINER_NAME} \
+                    --network="${DOCKER_NETWORK}" \
                     -e CI=true \
-                    -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
+                    -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
                     -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                    -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \
+                    -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     custom-cypress:13.11
 
-                  echo "Debugging frontend content before running Cypress..."
-                  docker exec jenkins-cypress-debug curl -s http://wtf-react:3000 | head -20
+                  echo "--- Debugging frontend content before running Cypress ---"
+                  docker exec ${CYPRESS_CONTAINER_NAME} curl -s ${CYPRESS_BASE_URL} | head -20
 
-                  echo "Executing Cypress tests inside the container..."
-                  docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
+                  echo "--- Executing Cypress tests inside the container ---"
+                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
                 '''
             }
         }
@@ -80,8 +82,19 @@ pipeline {
     post {
         always {
             script {
-                echo "Uploading results to Allure and generating report..."
+                echo "=== CLEANUP STAGE: Always runs after pipeline ==="
+            }
 
+            // Stop & remove Cypress container if still running
+            sh 'docker rm -f ${CYPRESS_CONTAINER_NAME} || true'
+
+            // Optional: Prune old images and volumes
+            sh 'docker image prune -f || true'
+            sh 'docker volume prune -f || true'
+
+            // Handle Allure report uploads
+            script {
+                echo "--- Uploading results to Allure and generating report ---"
                 def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
                 def allureZipPath = "/tmp/allure-results.zip"
 
@@ -90,7 +103,7 @@ pipeline {
                         echo "Allure results found. Zipping them up."
                         zip -j ${allureZipPath} ${allureResultsHostPath}/*
                     else
-                        echo "No Allure results found in ${allureResultsHostPath}. Creating empty zip."
+                        echo "No Allure results found. Creating empty zip."
                         touch /tmp/dummy_empty_file_for_zip
                         zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
                         rm /tmp/dummy_empty_file_for_zip
@@ -121,11 +134,6 @@ pipeline {
                 echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
             }
             archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
-
-            sh "docker stop jenkins-cypress-debug || true"
-            sh "docker rm jenkins-cypress-debug || true"
-            sh "docker image prune -f || true"
-            sh "docker volume prune -f || true"
         }
     }
 }
