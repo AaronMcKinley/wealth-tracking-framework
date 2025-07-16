@@ -41,19 +41,20 @@ pipeline {
                   MAX_ATTEMPTS=20
                   SLEEP_TIME=5
 
-                  until curl -s ${CYPRESS_BASE_URL} | grep -q "<title>"; do
-                    ATTEMPTS=$((ATTEMPTS+1))
-                    echo "React not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS), retrying in ${SLEEP_TIME}s..."
-
-                    if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-                      echo "ERROR: React frontend did not become ready in time!"
-                      exit 1
+                  while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+                    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${CYPRESS_BASE_URL} || true)
+                    if [ "$STATUS_CODE" = "200" ]; then
+                      echo "React frontend is ready! (HTTP $STATUS_CODE)"
+                      exit 0
+                    else
+                      ATTEMPTS=$((ATTEMPTS+1))
+                      echo "React not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS, status: $STATUS_CODE). Retrying in ${SLEEP_TIME}s..."
+                      sleep $SLEEP_TIME
                     fi
-
-                    sleep $SLEEP_TIME
                   done
 
-                  echo "React frontend is ready."
+                  echo "ERROR: React frontend did not become ready in time!"
+                  exit 1
                 '''
             }
         }
