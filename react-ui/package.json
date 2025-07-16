@@ -2,7 +2,7 @@
   "name": "react-ui",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://wtf-api:4000",
+  "proxy": "http://wtf-api:5000",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
