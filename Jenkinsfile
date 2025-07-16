@@ -36,16 +36,24 @@ pipeline {
         stage('Wait for React Frontend') {
             steps {
                 sh '''
-                  echo "Waiting for React frontend to be ready..."
-                  for i in {1..20}; do
-                    if curl -s http://wtf-react:3000 | grep -q "<title>"; then
-                      echo "React is ready"
-                      break
-                    else
-                      echo "React not ready yet, retrying ($i/20)..."
-                      sleep 3
+                  echo "Waiting for React frontend to be ready at ${CYPRESS_BASE_URL} ..."
+                  ATTEMPTS=0
+                  MAX_ATTEMPTS=20
+                  SLEEP_TIME=5
+
+                  until curl -s ${CYPRESS_BASE_URL} | grep -q "<title>"; do
+                    ATTEMPTS=$((ATTEMPTS+1))
+                    echo "React not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS), retrying in ${SLEEP_TIME}s..."
+
+                    if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+                      echo "ERROR: React frontend did not become ready in time!"
+                      exit 1
                     fi
+
+                    sleep $SLEEP_TIME
                   done
+
+                  echo "React frontend is ready."
                 '''
             }
         }
@@ -59,7 +67,7 @@ pipeline {
                   docker volume prune -f || true
 
                   echo "--- Starting Cypress Test Execution ---"
-                  echo "ACTUAL Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
+                  echo "Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
 
                   docker run -d --name ${CYPRESS_CONTAINER_NAME} \
                     --network="${DOCKER_NETWORK}" \
@@ -82,7 +90,7 @@ pipeline {
     post {
         always {
             script {
-                echo "=== CLEANUP STAGE: Always runs after pipeline ==="
+                echo "CLEANUP STAGE: Always runs after pipeline."
             }
 
             // Stop & remove Cypress container if still running
@@ -94,7 +102,7 @@ pipeline {
 
             // Handle Allure report uploads
             script {
-                echo "--- Uploading results to Allure and generating report ---"
+                echo "Uploading results to Allure and generating report."
                 def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
                 def allureZipPath = "/tmp/allure-results.zip"
 
