@@ -31,24 +31,47 @@ pipeline {
             }
         }
 
+        stage('Wait for React Frontend') {
+            steps {
+                sh '''
+                  echo "Waiting for React frontend to be ready..."
+                  for i in {1..20}; do
+                    if curl -s http://wtf-react:3000 | grep -q "<title>"; then
+                      echo "React is ready"
+                      break
+                    else
+                      echo "React not ready yet, retrying..."
+                      sleep 3
+                    fi
+                  done
+                '''
+            }
+        }
+
         stage('Run Smoke Tests in Dedicated Container') {
             steps {
                 sh '''
-                    docker stop jenkins-cypress-debug || true
-                    docker rm jenkins-cypress-debug || true
-                    docker container prune -f || true
-                    docker volume prune -f || true
+                  echo "--- Starting Cypress Test Execution ---"
+                  echo "ACTUAL Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
 
-                    docker run -d --name jenkins-cypress-debug \
-                        --network="$DOCKER_NETWORK" \
-                        -e CI=true \
-                        -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
-                        -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                        -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \
-                        custom-cypress:13.11
+                  docker stop jenkins-cypress-debug || true
+                  docker rm jenkins-cypress-debug || true
+                  docker container prune -f || true
+                  docker volume prune -f || true
 
-                    docker exec jenkins-cypress-debug node -e "console.log('Cypress Base URL:', process.env.CYPRESS_BASE_URL)"
-                    docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
+                  docker run -d --name jenkins-cypress-debug \
+                    --network="$DOCKER_NETWORK" \
+                    -e CI=true \
+                    -e CYPRESS_BASE_URL="$CYPRESS_BASE_URL" \
+                    -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+                    -w "$CYPRESS_PROJECT_DIR_IN_CONTAINER" \
+                    custom-cypress:13.11
+
+                  echo "Debugging frontend content before running Cypress..."
+                  docker exec jenkins-cypress-debug curl -s http://wtf-react:3000 | head -20
+
+                  echo "Executing Cypress tests inside the container..."
+                  docker exec jenkins-cypress-debug npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
                 '''
             }
         }
@@ -57,13 +80,17 @@ pipeline {
     post {
         always {
             script {
+                echo "Uploading results to Allure and generating report..."
+
                 def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
                 def allureZipPath = "/tmp/allure-results.zip"
 
                 sh """
                     if [ -d "${allureResultsHostPath}" ] && [ "\$(ls -A ${allureResultsHostPath})" ]; then
+                        echo "Allure results found. Zipping them up."
                         zip -j ${allureZipPath} ${allureResultsHostPath}/*
                     else
+                        echo "No Allure results found in ${allureResultsHostPath}. Creating empty zip."
                         touch /tmp/dummy_empty_file_for_zip
                         zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
                         rm /tmp/dummy_empty_file_for_zip
@@ -93,7 +120,6 @@ pipeline {
 
                 echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
             }
-
             archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
 
             sh "docker stop jenkins-cypress-debug || true"
