@@ -63,6 +63,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - allure_results:/wtf/allure-results
     user: root
+    mem_limit: 4g
     networks:
       - wtfnet
 
