@@ -94,10 +94,6 @@ pipeline {
                 echo "CLEANUP STAGE: Always runs after pipeline."
             }
 
-            sh 'docker rm -f ${CYPRESS_CONTAINER_NAME} || true'
-            sh 'docker image prune -f || true'
-            sh 'docker volume prune -f || true'
-
             script {
                 echo "Uploading results to Allure and generating report."
                 def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
