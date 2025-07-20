@@ -59,28 +59,25 @@ pipeline {
             }
         }
 
-        stage('Run Smoke Tests in Persistent Cypress Container') {
+        stage('Run Cypress Tests & Keep Container Alive') {
             steps {
                 sh '''
                   echo "--- PRE-CLEANUP: Removing any stale Cypress container ---"
                   docker rm -f ${CYPRESS_CONTAINER_NAME} || true
+                  docker container prune -f || true
+                  docker volume prune -f || true
 
-                  echo "--- Starting a persistent Cypress container ---"
+                  echo "--- Starting Cypress container with persistent tail ---"
                   docker run -d --name ${CYPRESS_CONTAINER_NAME} \
                     --network="${DOCKER_NETWORK}" \
                     -e CI=true \
                     -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
                     -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                    custom-cypress:13.11 tail -f /dev/null
+                    custom-cypress:13.11 \
+                    sh -c "npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed; echo 'Cypress finished'; tail -f /dev/null"
 
-                  echo "--- Debugging frontend content before running Cypress ---"
-                  docker exec ${CYPRESS_CONTAINER_NAME} curl -s ${CYPRESS_BASE_URL} | head -20
-
-                  echo "--- Executing Cypress tests inside the persistent container ---"
-                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser chromium --e2e --config video=false --headed || true
-
-                  echo "--- Cypress test execution finished, container will remain running for inspection ---"
+                  echo "--- Cypress tests started, container will remain running for inspection ---"
                 '''
             }
         }
@@ -89,19 +86,11 @@ pipeline {
     post {
         always {
             script {
-                echo "Pipeline complete. The Cypress container is still running for debugging."
+                echo "Pipeline complete. Cypress container is still running for debugging."
                 echo "You can now inspect it with:"
                 echo "  docker exec -it ${CYPRESS_CONTAINER_NAME} sh"
                 echo "Or copy allure results with:"
                 echo "  docker cp ${CYPRESS_CONTAINER_NAME}:/app/allure-results ./allure-results-debug"
-            }
-
-            // Removed automatic cleanup to keep the container alive
-            // sh 'docker rm -f ${CYPRESS_CONTAINER_NAME} || true'
-            // sh 'docker image prune -f || true'
-            // sh 'docker volume prune -f || true'
-
-            script {
                 echo "When done debugging, remove the container manually:"
                 echo "  docker rm -f ${CYPRESS_CONTAINER_NAME}"
             }
