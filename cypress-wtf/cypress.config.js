@@ -14,6 +14,6 @@ module.exports = defineConfig({
   },
   env: {
     allure: true,
-    allureResultsPath: '/cypress-wtf/allure-results'
+    allureResultsPath: '/app/allure-results'
   }
 });

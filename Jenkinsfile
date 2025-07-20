@@ -59,30 +59,28 @@ pipeline {
             }
         }
 
-        stage('Run Smoke Tests in Dedicated Container') {
+        stage('Run Smoke Tests in Persistent Cypress Container') {
             steps {
                 sh '''
                   echo "--- PRE-CLEANUP: Removing any stale Cypress container ---"
                   docker rm -f ${CYPRESS_CONTAINER_NAME} || true
-                  docker container prune -f || true
-                  docker volume prune -f || true
 
-                  echo "--- Starting Cypress Test Execution ---"
-                  echo "Host Path to Cypress Project: ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}"
-
+                  echo "--- Starting a persistent Cypress container ---"
                   docker run -d --name ${CYPRESS_CONTAINER_NAME} \
                     --network="${DOCKER_NETWORK}" \
                     -e CI=true \
                     -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
                     -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                    custom-cypress:13.11
+                    custom-cypress:13.11 tail -f /dev/null
 
                   echo "--- Debugging frontend content before running Cypress ---"
                   docker exec ${CYPRESS_CONTAINER_NAME} curl -s ${CYPRESS_BASE_URL} | head -20
 
-                  echo "--- Executing Cypress tests inside the container (Chromium) ---"
-                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser chromium --e2e --config video=false --headed --no-exit
+                  echo "--- Executing Cypress tests inside the persistent container ---"
+                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser chromium --e2e --config video=false --headed || true
+
+                  echo "--- Cypress test execution finished, container will remain running for inspection ---"
                 '''
             }
         }
@@ -91,50 +89,22 @@ pipeline {
     post {
         always {
             script {
-                echo "CLEANUP STAGE: Always runs after pipeline."
+                echo "Pipeline complete. The Cypress container is still running for debugging."
+                echo "You can now inspect it with:"
+                echo "  docker exec -it ${CYPRESS_CONTAINER_NAME} sh"
+                echo "Or copy allure results with:"
+                echo "  docker cp ${CYPRESS_CONTAINER_NAME}:/app/allure-results ./allure-results-debug"
             }
+
+            // Removed automatic cleanup to keep the container alive
+            // sh 'docker rm -f ${CYPRESS_CONTAINER_NAME} || true'
+            // sh 'docker image prune -f || true'
+            // sh 'docker volume prune -f || true'
 
             script {
-                echo "Uploading results to Allure and generating report."
-                def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
-                def allureZipPath = "/tmp/allure-results.zip"
-
-                sh """
-                    if [ -d "${allureResultsHostPath}" ] && [ "\$(ls -A ${allureResultsHostPath})" ]; then
-                        echo "Allure results found. Zipping them up."
-                        zip -j ${allureZipPath} ${allureResultsHostPath}/*
-                    else
-                        echo "No Allure results found. Creating empty zip."
-                        touch /tmp/dummy_empty_file_for_zip
-                        zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
-                        rm /tmp/dummy_empty_file_for_zip
-                    fi
-                """
-
-                sh """
-                    curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
-                      -H 'Content-Type: application/json' \
-                      -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} Smoke Tests"}' || true
-                """
-
-                sh """
-                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
-                      -F "results=@${allureZipPath}" || true
-                """
-
-                sh """
-                    curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
-                      -H 'Content-Type: application/json' \
-                      -d '{
-                          "reportName": "${REPORT_NAME}",
-                          "buildName": "Build #${BUILD_NUMBER}",
-                          "buildOrder": "${BUILD_NUMBER}"
-                        }' || true
-                """
-
-                echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
+                echo "When done debugging, remove the container manually:"
+                echo "  docker rm -f ${CYPRESS_CONTAINER_NAME}"
             }
-            archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
         }
     }
 }
