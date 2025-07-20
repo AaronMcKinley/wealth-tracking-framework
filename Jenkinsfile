@@ -81,12 +81,8 @@ pipeline {
                   echo "--- Debugging frontend content before running Cypress ---"
                   docker exec ${CYPRESS_CONTAINER_NAME} curl -s ${CYPRESS_BASE_URL} | head -20
 
-                  echo "--- Executing Cypress tests inside the container (Chrome headless) ---"
-                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run \
-                    --spec "smoke/**/*.cy.js" \
-                    --browser chrome \
-                    --e2e \
-                    --config video=false
+                  echo "--- Executing Cypress tests inside the container (Chromium) ---"
+                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser chromium --e2e --config video=false --headed --no-exit
                 '''
             }
         }
@@ -98,14 +94,10 @@ pipeline {
                 echo "CLEANUP STAGE: Always runs after pipeline."
             }
 
-            // Stop & remove Cypress container if still running
             sh 'docker rm -f ${CYPRESS_CONTAINER_NAME} || true'
-
-            // Optional: Prune old images and volumes
             sh 'docker image prune -f || true'
             sh 'docker volume prune -f || true'
 
-            // Handle Allure report uploads
             script {
                 echo "Uploading results to Allure and generating report."
                 def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
