@@ -81,8 +81,12 @@ pipeline {
                   echo "--- Debugging frontend content before running Cypress ---"
                   docker exec ${CYPRESS_CONTAINER_NAME} curl -s ${CYPRESS_BASE_URL} | head -20
 
-                  echo "--- Executing Cypress tests inside the container ---"
-                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run --spec "smoke/**/*.cy.js" --browser electron --e2e
+                  echo "--- Executing Cypress tests inside the container (Chrome headless) ---"
+                  docker exec ${CYPRESS_CONTAINER_NAME} npx cypress run \
+                    --spec "smoke/**/*.cy.js" \
+                    --browser chrome \
+                    --e2e \
+                    --config video=false
                 '''
             }
         }
