@@ -73,10 +73,10 @@ pipeline {
                     -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     custom-cypress:13.11 \
-                    sh -c "echo '--- Running Cypress Tests ---' && \
-                           npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed || true && \
-                           echo '--- Cypress Finished (even if failed) ---' && \
-                           tail -f /dev/null"
+                    sh -c "(echo '--- Running Cypress Tests ---' && \
+                            npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed || true && \
+                            echo '--- Cypress Finished (even if failed) ---') ; tail -f /dev/null"
+
                 '''
             }
         }
