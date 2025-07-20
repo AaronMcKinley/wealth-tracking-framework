@@ -10,11 +10,10 @@ pipeline {
         ALLURE_PROJECT_ID = "wtf"
         REPORT_NAME = "Smoke Tests"
         ACTUAL_JENKINS_HOST_WORKSPACE_PATH = "/Users/aaronmckinley/wtf-wealth-tracking-framework/wealth-tracking-framework/jenkins_data/workspace/wtf-smoke"
-        CYPRESS_CONTAINER_NAME = "jenkins-cypress-debug"
+        CYPRESS_CONTAINER_NAME = "jenkins-cypress"
     }
 
     stages {
-
         stage('Checkout SCM') {
             steps {
                 checkout scm
@@ -36,61 +35,120 @@ pipeline {
         stage('Wait for React Frontend') {
             steps {
                 sh '''
-                  echo "Waiting for React frontend to be ready at ${CYPRESS_BASE_URL} ..."
-                  ATTEMPTS=0
-                  MAX_ATTEMPTS=20
-                  SLEEP_TIME=5
+                    echo "Waiting for React frontend to be ready at ${CYPRESS_BASE_URL} ..."
+                    ATTEMPTS=0
+                    MAX_ATTEMPTS=20
+                    SLEEP_TIME=5
 
-                  while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-                    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${CYPRESS_BASE_URL} || true)
-                    if [ "$STATUS_CODE" = "200" ]; then
-                      echo "React frontend is ready! (HTTP $STATUS_CODE)"
-                      exit 0
-                    else
-                      ATTEMPTS=$((ATTEMPTS+1))
-                      echo "React not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS, status: $STATUS_CODE). Retrying in ${SLEEP_TIME}s..."
-                      sleep $SLEEP_TIME
-                    fi
-                  done
+                    while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+                      STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${CYPRESS_BASE_URL} || true)
+                      if [ "$STATUS_CODE" = "200" ]; then
+                        echo "React frontend is ready! (HTTP $STATUS_CODE)"
+                        exit 0
+                      else
+                        ATTEMPTS=$((ATTEMPTS+1))
+                        echo "React not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS, status: $STATUS_CODE). Retrying in ${SLEEP_TIME}s..."
+                        sleep $SLEEP_TIME
+                      fi
+                    done
 
-                  echo "ERROR: React frontend did not become ready in time!"
-                  exit 1
+                    echo "ERROR: React frontend did not become ready in time!"
+                    exit 1
                 '''
             }
         }
 
-        stage('Run Smoke Tests in Persistent Cypress Container') {
+        stage('Run Cypress Tests') {
             steps {
-                sh '''
-                  echo "--- PRE-CLEANUP: Removing any stale Cypress container ---"
-                  docker rm -f ${CYPRESS_CONTAINER_NAME} || true
+                script {
+                    sh "docker rm -f ${CYPRESS_CONTAINER_NAME} || true"
 
-                  echo "--- Starting Cypress container that will persist after tests ---"
-                  docker run -d --name ${CYPRESS_CONTAINER_NAME} \
-                    --network="${DOCKER_NETWORK}" \
-                    -e CI=true \
-                    -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
-                    -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                    -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                    custom-cypress:13.11 \
-                    sh -c "(echo '--- Running Cypress Tests ---' && \
-                            npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed || true && \
-                            echo '--- Cypress Finished (even if failed) ---') ; tail -f /dev/null"
+                    def exitCode = sh(
+                        script: """
+                            docker run --name ${CYPRESS_CONTAINER_NAME} \
+                              --network="${DOCKER_NETWORK}" \
+                              -e CI=true \
+                              -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
+                              -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+                              -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
+                              custom-cypress:13.11 \
+                              sh -c "npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed"
+                        """,
+                        returnStatus: true
+                    )
 
-                '''
+                    sh """
+                        if docker ps -a --format '{{.Names}}' | grep -q ${CYPRESS_CONTAINER_NAME}; then
+                            docker cp ${CYPRESS_CONTAINER_NAME}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}/allure-results \
+                              ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/ || true
+                        fi
+                    """
+
+                    if (exitCode == 0) {
+                        sh "docker rm -f ${CYPRESS_CONTAINER_NAME} || true"
+                    } else {
+                        echo "Tests failed, container left for debugging"
+                    }
+
+                    if (exitCode != 0) {
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
+            }
+        }
+
+        stage('Publish Allure Report') {
+            steps {
+                script {
+                    def allureResultsHostPath = "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results"
+                    def allureZipPath = "/tmp/allure-results.zip"
+
+                    sh """
+                        if [ -d "${allureResultsHostPath}" ] && [ "\$(ls -A ${allureResultsHostPath})" ]; then
+                            zip -j ${allureZipPath} ${allureResultsHostPath}/*
+                        else
+                            touch /tmp/dummy_empty_file_for_zip
+                            zip -j ${allureZipPath} /tmp/dummy_empty_file_for_zip
+                            rm /tmp/dummy_empty_file_for_zip
+                        fi
+                    """
+
+                    sh """
+                        curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
+                          -H 'Content-Type: application/json' \
+                          -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} Smoke Tests"}' || true
+                    """
+
+                    sh """
+                        curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
+                          -F "results=@${allureZipPath}" || true
+                    """
+
+                    sh """
+                        curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
+                          -H 'Content-Type: application/json' \
+                          -d '{
+                              "reportName": "${REPORT_NAME}",
+                              "buildName": "Build #${BUILD_NUMBER}",
+                              "buildOrder": "${BUILD_NUMBER}"
+                            }' || true
+                    """
+
+                    echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
+                }
             }
         }
     }
 
     post {
         always {
+            archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
+
             script {
-                echo "Pipeline complete. The Cypress container is still running for debugging."
-                echo "You can now inspect it with:"
+                echo "If tests failed, you can inspect the container with:"
                 echo "  docker exec -it ${CYPRESS_CONTAINER_NAME} sh"
-                echo "Then check allure results:"
-                echo "  ls -lah /app/allure-results"
-                echo ""
+                echo "Or copy allure results manually with:"
+                echo "  docker cp ${CYPRESS_CONTAINER_NAME}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}/allure-results ./allure-results-debug"
                 echo "When done debugging, remove the container manually:"
                 echo "  docker rm -f ${CYPRESS_CONTAINER_NAME}"
             }
