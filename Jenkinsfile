@@ -59,15 +59,13 @@ pipeline {
             }
         }
 
-        stage('Run Cypress Tests & Keep Container Alive') {
+        stage('Run Smoke Tests in Persistent Cypress Container') {
             steps {
                 sh '''
                   echo "--- PRE-CLEANUP: Removing any stale Cypress container ---"
                   docker rm -f ${CYPRESS_CONTAINER_NAME} || true
-                  docker container prune -f || true
-                  docker volume prune -f || true
 
-                  echo "--- Starting Cypress container with persistent tail ---"
+                  echo "--- Starting Cypress container that will persist after tests ---"
                   docker run -d --name ${CYPRESS_CONTAINER_NAME} \
                     --network="${DOCKER_NETWORK}" \
                     -e CI=true \
@@ -75,9 +73,10 @@ pipeline {
                     -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
                     custom-cypress:13.11 \
-                    sh -c "npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed; echo 'Cypress finished'; tail -f /dev/null"
-
-                  echo "--- Cypress tests started, container will remain running for inspection ---"
+                    sh -c "echo '--- Running Cypress Tests ---' && \
+                           npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false --headed || true && \
+                           echo '--- Cypress Finished (even if failed) ---' && \
+                           tail -f /dev/null"
                 '''
             }
         }
@@ -86,11 +85,12 @@ pipeline {
     post {
         always {
             script {
-                echo "Pipeline complete. Cypress container is still running for debugging."
+                echo "Pipeline complete. The Cypress container is still running for debugging."
                 echo "You can now inspect it with:"
                 echo "  docker exec -it ${CYPRESS_CONTAINER_NAME} sh"
-                echo "Or copy allure results with:"
-                echo "  docker cp ${CYPRESS_CONTAINER_NAME}:/app/allure-results ./allure-results-debug"
+                echo "Then check allure results:"
+                echo "  ls -lah /app/allure-results"
+                echo ""
                 echo "When done debugging, remove the container manually:"
                 echo "  docker rm -f ${CYPRESS_CONTAINER_NAME}"
             }
