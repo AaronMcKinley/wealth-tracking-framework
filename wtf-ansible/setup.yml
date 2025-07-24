@@ -54,11 +54,11 @@
     - name: Run npm install in backend folder
       shell: npm install
       args:
-        chdir: "{{ playbook_dir }}/../node-api"
+        chdir: "{{ playbook_dir }}/../wtf-node"
       when: ansible_os_family == "Darwin"
 
     - name: Run npm install in frontend folder
       shell: npm install
       args:
-        chdir: "{{ playbook_dir }}/../react-ui"
+        chdir: "{{ playbook_dir }}/../wtf-react"
       when: ansible_os_family == "Darwin"

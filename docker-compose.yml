@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  react-ui:
-    build: ./react-ui
+  react:
+    build: ./wtf-react
     container_name: wtf-react
     ports:
       - "3000:3000"
@@ -16,16 +16,16 @@ services:
     mem_limit: 1.5g
     mem_reservation: 1g
     depends_on:
-      node-api:
+      node:
         condition: service_healthy
 
-  node-api:
-    build: ./node-api
-    container_name: wtf-api
+  node:
+    build: ./wtf-node
+    container_name: wtf-node
     ports:
       - "4000:5000"
     volumes:
-      - ./node-api:/app
+      - ./wtf-node:/app
       - /app/node_modules
     working_dir: /app
     command: sh -c "npm ci && npm run dev"
@@ -66,7 +66,7 @@ services:
       - wtfnet
 
   jenkins:
-    build: ./jenkins
+    build: ./wtf-jenkins
     container_name: wtf-jenkins
     ports:
       - "8080:8080"
@@ -91,6 +91,7 @@ services:
 
   adminer:
     image: adminer
+    container_name: wtf-adminer
     restart: always
     ports:
       - "8081:8080"
@@ -98,11 +99,11 @@ services:
       - wtfnet
 
   coingecko:
-    build: ./coingecko
-    container_name: coingecko
+    build: ./wtf-coingecko
+    container_name: wtf-coingecko
     restart: always
     volumes:
-      - ./coingecko/data:/app/data
+      - ./wtf-coingecko/data:/app/data
       - /app/node_modules
     env_file:
       - .env
@@ -112,11 +113,11 @@ services:
       - wtfnet
 
   finnhub:
-    build: ./finnhub-api
-    container_name: finnhub
+    build: ./wtf-finnhub
+    container_name: wtf-finnhub
     restart: always
     volumes:
-      - ./finnhub-api/data:/app/data
+      - ./wtf-finnhub/data:/app/data
       - /app/node_modules
     env_file:
       - .env

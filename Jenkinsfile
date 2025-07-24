@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_NETWORK = "wtfnet"
-        CYPRESS_BASE_URL = "http://wtf-react:3000"
+        CYPRESS_BASE_URL = "http://react:3000"
         CYPRESS_PROJECT_DIR_IN_WORKSPACE = "cypress-wtf"
         CYPRESS_PROJECT_DIR_IN_CONTAINER = "/app"
         ALLURE_DOCKER_SERVICE_URL = "http://localhost:5050"
@@ -61,10 +61,7 @@ pipeline {
         stage('Run Cypress Tests') {
             steps {
                 script {
-                    // Clean up any old container if it exists
                     sh "docker rm -f ${CYPRESS_CONTAINER_NAME} || true"
-
-                    // Run Cypress in Docker and stream logs directly
                     def exitCode = sh(
                         script: """
                             docker run --rm \
@@ -81,7 +78,6 @@ pipeline {
                         returnStatus: true
                     )
 
-                    // Copy allure results (even if tests fail)
                     sh """
                         mkdir -p ${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results || true
                         if [ -d "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results" ]; then
@@ -145,7 +141,6 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: "${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/videos/**, ${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/cypress/screenshots/**", fingerprint: true, allowEmptyArchive: true
-
             script {
                 echo "If tests failed, you can inspect the Cypress container manually if you remove --rm:"
                 echo "  docker exec -it ${CYPRESS_CONTAINER_NAME} sh"
