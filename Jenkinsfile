@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_NETWORK = "wtfnet"
         CYPRESS_BASE_URL = "http://react:3000"
-        CYPRESS_PROJECT_DIR_IN_WORKSPACE = "cypress-wtf"
+        CYPRESS_PROJECT_DIR_IN_WORKSPACE = "wtf-cypress"
         CYPRESS_PROJECT_DIR_IN_CONTAINER = "/app"
         ALLURE_DOCKER_SERVICE_URL = "http://localhost:5050"
         ALLURE_PROJECT_ID = "wtf"
