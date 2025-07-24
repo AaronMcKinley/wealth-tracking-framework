@@ -64,16 +64,15 @@ pipeline {
                     sh "docker rm -f ${CYPRESS_CONTAINER_NAME} || true"
                     def exitCode = sh(
                         script: """
-                            docker run --rm \
-                              --name ${CYPRESS_CONTAINER_NAME} \
-                              --network="${DOCKER_NETWORK}" \
-                              -e CI=true \
-                              -e NO_COLOR=1 \
-                              -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
-                              -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}:${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                              -w "${CYPRESS_PROJECT_DIR_IN_CONTAINER}" \
-                              custom-cypress:13.11 \
-                              npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false
+                           docker run --rm \
+                             --name ${CYPRESS_CONTAINER_NAME} \
+                             --network="${DOCKER_NETWORK}" \
+                             -e CI=true \
+                             -e NO_COLOR=1 \
+                             -e CYPRESS_BASE_URL="${CYPRESS_BASE_URL}" \
+                             -v "${ACTUAL_JENKINS_HOST_WORKSPACE_PATH}/${CYPRESS_PROJECT_DIR_IN_WORKSPACE}/allure-results:/app/allure-results" \
+                             custom-cypress:13.11 \
+                             npx cypress run --spec 'smoke/**/*.cy.js' --browser chromium --e2e --config video=false
                         """,
                         returnStatus: true
                     )
