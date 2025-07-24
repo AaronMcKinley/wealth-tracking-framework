@@ -16,11 +16,12 @@ pipeline {
     stage('Build Docker Images') {
       steps {
         sh """
-          docker build -t ${REGISTRY_URL}/coingecko:latest ./coingecko
-          docker build -t ${REGISTRY_URL}/finnhub:latest ./finnhub
-          docker build -t ${REGISTRY_URL}/react-ui:latest ./frontend
-          docker build -t ${REGISTRY_URL}/node-api:latest ./api
-          docker build -t ${REGISTRY_URL}/jenkins:latest ./jenkins
+          # Build renamed service images
+          docker build -t ${REGISTRY_URL}/wtf-coingecko:latest ./wtf-coingecko
+          docker build -t ${REGISTRY_URL}/wtf-finnhub:latest ./wtf-finnhub
+          docker build -t ${REGISTRY_URL}/wtf-react:latest ./wtf-react
+          docker build -t ${REGISTRY_URL}/wtf-node:latest ./wtf-node
+          docker build -t ${REGISTRY_URL}/wtf-jenkins:latest ./wtf-jenkins
         """
       }
     }
@@ -30,11 +31,13 @@ pipeline {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
           sh """
             echo $GITLAB_PAT | docker login registry.gitlab.com -u ${GITLAB_USER} --password-stdin
-            docker push ${REGISTRY_URL}/coingecko:latest
-            docker push ${REGISTRY_URL}/finnhub:latest
-            docker push ${REGISTRY_URL}/react-ui:latest
-            docker push ${REGISTRY_URL}/node-api:latest
-            docker push ${REGISTRY_URL}/jenkins:latest
+
+            # Push renamed images
+            docker push ${REGISTRY_URL}/wtf-coingecko:latest
+            docker push ${REGISTRY_URL}/wtf-finnhub:latest
+            docker push ${REGISTRY_URL}/wtf-react:latest
+            docker push ${REGISTRY_URL}/wtf-node:latest
+            docker push ${REGISTRY_URL}/wtf-jenkins:latest
           """
         }
       }
