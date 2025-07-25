@@ -86,10 +86,14 @@
         rule: allow
         port: 443
 
-    - name: Enable UFW firewall
-      ufw:
-        state: enabled
-        enabled: yes
+    - name: Check if UFW is active
+      command: ufw status
+      register: ufw_status
+      changed_when: false
+
+    - name: Enable UFW if not active
+      command: ufw enable
+      when: "'Status: active' not in ufw_status.stdout"
 
     - name: Create project directory
       file:
