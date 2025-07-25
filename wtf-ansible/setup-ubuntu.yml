@@ -119,8 +119,3 @@
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: '0600'
-
-    - name: Run docker compose up detached
-      command: docker compose up -d
-      args:
-        chdir: "{{ project_dir }}"

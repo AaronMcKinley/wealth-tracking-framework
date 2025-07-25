@@ -6,6 +6,7 @@
 
   vars:
     project_dir: /opt/wealth-tracking-framework
+    artifactory_registry: "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
 
   tasks:
     - name: Fail if not running on Ubuntu
@@ -13,7 +14,13 @@
         msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
       when: ansible_distribution != "Ubuntu"
 
-    - name: Pull latest images from registry
+    - name: Log into Artifactory Docker registry
+      community.docker.docker_login:
+        registry_url: "{{ artifactory_registry }}"
+        username: "{{ artifactory_user }}"
+        password: "{{ artifactory_password }}"
+
+    - name: Pull latest images from Artifactory
       command: docker compose pull
       args:
         chdir: "{{ project_dir }}"
@@ -24,8 +31,8 @@
         chdir: "{{ project_dir }}"
       ignore_errors: true
 
-    - name: Start all services detached
-      command: docker compose up -d
+    - name: Start all services detached (no build)
+      command: docker compose up -d --no-build
       args:
         chdir: "{{ project_dir }}"
 
@@ -36,7 +43,7 @@
         status_code: 200
       register: healthcheck
       retries: 10
-      delay: 3
+      delay: 5
       until: healthcheck.status == 200
 
     - name: Run database migrations inside node container
