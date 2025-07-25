@@ -1,0 +1,58 @@
+---
+- name: Setup WTF project on Ubuntu server
+  hosts: all
+  become: yes
+  vars_files:
+    - secrets.yml
+
+  tasks:
+    - name: Update apt cache and install dependencies
+      apt:
+        update_cache: yes
+        name:
+          - docker.io
+          - docker-compose-plugin
+          - git
+          - nodejs
+          - npm
+        state: present
+
+    - name: Ensure docker service is started and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Create project directory
+      file:
+        path: /opt/wealth-tracking-framework
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Clone repo if not present
+      git:
+        repo: 'https://github.com/AaronMcKinley/wealth-tracking-framework.git'
+        dest: /opt/wealth-tracking-framework
+        version: main
+        update: yes
+
+    - name: Create .env from template
+      template:
+        src: env.j2
+        dest: /opt/wealth-tracking-framework/.env
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Run docker compose up detached
+      command: docker compose up -d
+      args:
+        chdir: /opt/wealth-tracking-framework

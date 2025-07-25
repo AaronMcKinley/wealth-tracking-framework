@@ -40,7 +40,7 @@ cd wtf-wealth-tracking-framework/ansible
 This will install all required packages, start Docker, and generate your `.env` file.
 
 ```bash
-ansible-playbook -i inventory setup.yml --ask-vault-pass
+ansible-playbook -i inventory setup-darwin.yml --ask-vault-pass
 ```
 
 ### 3. Start the Full Stack
