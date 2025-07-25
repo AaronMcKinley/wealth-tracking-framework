@@ -20,7 +20,7 @@
 
     - name: Parse .env variables
       set_fact:
-        env_vars: "{{ envfile_content.content | b64decode | from_ini }}"
+        env_vars: "{{ envfile_content.content | b64decode | regex_replace('=', ': ') | from_yaml }}"
 
     - name: Log into GitLab Container Registry
       community.docker.docker_login:
