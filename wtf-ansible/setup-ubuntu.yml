@@ -92,8 +92,12 @@
       changed_when: false
 
     - name: Enable UFW if not active
-      command: ufw enable --force
+      expect:
+        command: ufw enable
+        responses:
+          'Command may disrupt existing ssh connections. Proceed with operation (y|n)?': 'y'
       when: "'Status: active' not in ufw_status.stdout"
+
 
     - name: Create project directory
       file:
