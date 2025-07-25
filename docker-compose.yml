@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   react:
-    image: registry.gitlab.com/yourproject/wtf-react:latest
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
     ports:
       - "3000:3000"
@@ -19,7 +19,7 @@ services:
     mem_reservation: 1g
 
   node:
-    image: registry.gitlab.com/yourproject/wtf-node:latest
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
     container_name: wtf-node
     ports:
       - "4000:5000"
