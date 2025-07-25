@@ -92,7 +92,7 @@
       changed_when: false
 
     - name: Enable UFW if not active
-      command: ufw enable
+      command: ufw enable --force
       when: "'Status: active' not in ufw_status.stdout"
 
     - name: Create project directory

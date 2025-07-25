@@ -43,6 +43,14 @@ This will install all required packages, start Docker, and generate your `.env` 
 ansible-playbook -i inventory setup-darwin.yml --ask-vault-pass
 ```
 
+#### Running the Setup Playbook on server
+
+Run the following command to provision the Ubuntu server. Replace `<your-server-ip>` and `<path-to-your-ssh-key>` with your actual server IP and SSH private key path:
+
+```bash
+ansible-playbook -i <your-server-ip>, setup-ubuntu.yml --ask-vault-pass --ask-become-pass -u root --private-key <path-to-your-ssh-key>
+```
+
 ### 3. Start the Full Stack
 
 ```bash
@@ -84,6 +92,5 @@ ansible-vault edit secrets.yml
 
 ## Coming Soon
 
-- OpenShift deployment support
-- API authentication layer using JWT
 - Investment filtering and analytics features  
+- Custom investments
