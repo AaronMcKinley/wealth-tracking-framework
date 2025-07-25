@@ -10,8 +10,11 @@ pipeline {
     stage('Setup Buildx') {
       steps {
         sh '''
-          # Create and use buildx builder (ignore error if already exists)
-          docker buildx create --use || true
+          if ! docker buildx inspect mybuilder > /dev/null 2>&1; then
+            docker buildx create --name mybuilder --use
+          else
+            docker buildx use mybuilder
+          fi
           docker run --rm --privileged tonistiigi/binfmt --install amd64
           docker buildx inspect --bootstrap
         '''
@@ -28,13 +31,14 @@ pipeline {
 
     stage('Build and Push Images') {
       steps {
-        sh """
+        sh '''
+          set -e
           docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-node:latest --push ./wtf-node
           docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-react:latest --push ./wtf-react
           docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-coingecko:latest --push ./wtf-coingecko
           docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-finnhub:latest --push ./wtf-finnhub
           docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-jenkins:latest --push ./wtf-jenkins
-        """
+        '''
       }
     }
   }

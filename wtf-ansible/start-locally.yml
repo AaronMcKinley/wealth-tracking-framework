@@ -18,13 +18,13 @@
       tags: [setup]
 
     - name: Build all Docker Compose services
-      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml build
+      shell: docker compose -f docker-compose.local.yml build
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]
 
     - name: Start core services (PostgreSQL, Adminer, Node, React, Jenkins, Allure)
-      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d postgres adminer node react jenkins allure
+      shell: docker compose -f docker-compose.local.yml up -d postgres adminer node react jenkins allure
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]
@@ -49,7 +49,7 @@
       tags: [setup]
 
     - name: Start all API fetcher services after migrations complete
-      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d coingecko finnhub
+      shell: docker compose -f docker-compose.local.yml up -d coingecko finnhub
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]
