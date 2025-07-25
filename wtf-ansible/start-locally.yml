@@ -1,8 +1,13 @@
-- name: Build and start WTF services
+- name: Build and start WTF services locally
   hosts: localhost
   become: false
 
   tasks:
+    - name: Fail if not running on macOS
+      fail:
+        msg: "This playbook only supports macOS. Detected {{ ansible_system }}."
+      when: ansible_system != "Darwin"
+
     - name: Stop and remove postgres container, then remove volume (optional)
       shell: |
         docker stop wtf-postgres && docker rm wtf-postgres && docker volume rm wealth-tracking-framework_postgres_data
@@ -13,13 +18,13 @@
       tags: [setup]
 
     - name: Build all Docker Compose services
-      shell: docker compose build
+      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml build
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]
 
     - name: Start core services (PostgreSQL, Adminer, Node, React, Jenkins, Allure)
-      shell: docker compose up -d postgres adminer node react jenkins allure
+      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d postgres adminer node react jenkins allure
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]
@@ -44,7 +49,7 @@
       tags: [setup]
 
     - name: Start all API fetcher services after migrations complete
-      shell: docker compose up -d coingecko finnhub
+      shell: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d coingecko finnhub
       args:
         chdir: "{{ playbook_dir }}/.."
       tags: [setup]

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   react:
-    build: ./wtf-react
+    image: registry.gitlab.com/yourproject/wtf-react:latest
     container_name: wtf-react
     ports:
       - "3000:3000"
@@ -12,27 +12,19 @@ services:
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
     networks:
       - wtfnet
-    command: ["npm", "start"]
-    mem_limit: 1.5g
-    mem_reservation: 1g
     depends_on:
       node:
         condition: service_healthy
+    mem_limit: 1.5g
+    mem_reservation: 1g
 
   node:
-    build: ./wtf-node
+    image: registry.gitlab.com/yourproject/wtf-node:latest
     container_name: wtf-node
     ports:
       - "4000:5000"
-    volumes:
-      - ./wtf-node:/app
-      - /app/node_modules
-    working_dir: /app
-    command: sh -c "npm ci && npm run dev"
     env_file:
       - .env
-    depends_on:
-      - postgres
     networks:
       - wtfnet
     mem_limit: 1.5g
@@ -65,72 +57,10 @@ services:
     networks:
       - wtfnet
 
-  jenkins:
-    build: ./wtf-jenkins
-    container_name: wtf-jenkins
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./jenkins_data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - allure_results:/wtf/allure-results
-    user: root
-    mem_limit: 4g
-    networks:
-      - wtfnet
-
-  allure:
-    image: frankescobar/allure-docker-service
-    container_name: wtf-allure
-    ports:
-      - "5050:5050"
-    volumes:
-      - allure_results:/app/allure-results
-    networks:
-      - wtfnet
-
-  adminer:
-    image: adminer
-    container_name: wtf-adminer
-    restart: always
-    ports:
-      - "8081:8080"
-    networks:
-      - wtfnet
-
-  coingecko:
-    build: ./wtf-coingecko
-    container_name: wtf-coingecko
-    restart: always
-    volumes:
-      - ./wtf-coingecko/data:/app/data
-      - /app/node_modules
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-    networks:
-      - wtfnet
-
-  finnhub:
-    build: ./wtf-finnhub
-    container_name: wtf-finnhub
-    restart: always
-    volumes:
-      - ./wtf-finnhub/data:/app/data
-      - /app/node_modules
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-    command: sh -c "npm ci && npm run fetch"
-    networks:
-      - wtfnet
+  # ... add other services here with just `image:` keys, no build or volumes
 
 volumes:
-  jenkins_home:
   postgres_data:
-  allure_results:
 
 networks:
   wtfnet:

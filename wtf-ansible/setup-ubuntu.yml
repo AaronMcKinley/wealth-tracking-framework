@@ -12,6 +12,11 @@
     public_ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEEXAMPLEKEYyourpublickeyhere user@machine"
 
   tasks:
+    - name: Fail if not running on Ubuntu
+      fail:
+        msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
+      when: ansible_distribution != "Ubuntu"
+
     - name: Update apt cache and upgrade all packages
       apt:
         update_cache: yes

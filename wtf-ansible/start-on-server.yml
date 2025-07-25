@@ -1,0 +1,58 @@
+- name: Deploy WTF project on Ubuntu server
+  hosts: all
+  become: yes
+  vars_files:
+    - secrets.yml
+
+  vars:
+    project_dir: /opt/wealth-tracking-framework
+
+  tasks:
+    - name: Fail if not running on Ubuntu
+      fail:
+        msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
+      when: ansible_distribution != "Ubuntu"
+
+    - name: Pull latest images from registry
+      command: docker compose pull
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Stop running containers (ignore errors if none)
+      shell: docker compose down
+      args:
+        chdir: "{{ project_dir }}"
+      ignore_errors: true
+
+    - name: Start all services detached
+      command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Wait for API health endpoint to respond
+      uri:
+        url: http://localhost:4000/api/health
+        method: GET
+        status_code: 200
+      register: healthcheck
+      retries: 10
+      delay: 3
+      until: healthcheck.status == 200
+
+    - name: Run database migrations inside node container
+      shell: docker exec wtf-node npm run migrate
+      register: migrate_result
+      retries: 5
+      delay: 5
+      until: migrate_result.rc == 0
+
+    - name: Seed database inside node container
+      shell: docker exec wtf-node npm run seed
+      register: seed_result
+      retries: 3
+      delay: 5
+      until: seed_result.rc == 0
+
+    - name: Confirm deployment success message
+      debug:
+        msg: "WTF project deployed successfully on {{ inventory_hostname }}"

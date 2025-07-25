@@ -6,6 +6,11 @@
     - secrets.yml
 
   tasks:
+    - name: Fail if not running on macOS
+      fail:
+        msg: "This playbook only supports macOS. Detected {{ ansible_system }}."
+      when: ansible_system != "Darwin"
+
     - name: Stop all running Docker containers (macOS)
       shell: |
         docker ps -q | xargs -r docker stop
