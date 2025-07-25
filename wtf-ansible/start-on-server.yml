@@ -5,6 +5,7 @@
   vars:
     project_dir: /opt/wealth-tracking-framework
     artifactory_registry: "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+    env_file: "/opt/wealth-tracking-framework/.env"
 
   tasks:
     - name: Fail if not running on Ubuntu
@@ -12,13 +13,22 @@
         msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
       when: ansible_distribution != "Ubuntu"
 
-    - name: Log into Artifactory Docker registry
+    - name: Read .env file
+      slurp:
+        src: "{{ env_file }}"
+      register: envfile_content
+
+    - name: Parse .env variables
+      set_fact:
+        env_vars: "{{ envfile_content.content | b64decode | from_ini }}"
+
+    - name: Log into GitLab Container Registry
       community.docker.docker_login:
         registry_url: "{{ artifactory_registry }}"
-        username: "{{ artifactory_user }}"
-        password: "{{ artifactory_password }}"
+        username: "{{ env_vars.GITLAB_USER }}"
+        password: "{{ env_vars.GITLAB_TOKEN }}"
 
-    - name: Pull latest images from Artifactory
+    - name: Pull latest images from GitLab Registry
       command: docker compose pull
       args:
         chdir: "{{ project_dir }}"
