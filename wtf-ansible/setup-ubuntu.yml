@@ -6,10 +6,18 @@
     - secrets.yml
 
   tasks:
-    - name: Update apt cache and install dependencies
+    - name: Update apt cache and upgrade packages
       apt:
         update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
         name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
           - docker.io
           - docker-compose-plugin
           - git
@@ -29,25 +37,10 @@
         groups: docker
         append: yes
 
-    - name: Create project directory
-      file:
-        path: /opt/wealth-tracking-framework
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
-
-    - name: Clone repo if not present
-      git:
-        repo: 'https://github.com/AaronMcKinley/wealth-tracking-framework.git'
-        dest: /opt/wealth-tracking-framework
-        version: main
-        update: yes
-
     - name: Create .env from template
       template:
         src: env.j2
-        dest: /opt/wealth-tracking-framework/.env
+        dest: "{{ playbook_dir }}/../.env"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: '0600'
@@ -55,4 +48,4 @@
     - name: Run docker compose up detached
       command: docker compose up -d
       args:
-        chdir: /opt/wealth-tracking-framework
+        chdir: "{{ playbook_dir }}/.."
