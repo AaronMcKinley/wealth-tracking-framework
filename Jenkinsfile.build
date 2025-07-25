@@ -3,19 +3,25 @@ pipeline {
 
   environment {
     REGISTRY_URL = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-    GITLAB_USER = "aaron09912"
+    GITLAB_USER  = "aaron09912"
   }
 
   stages {
-    stage('Setup Buildx') {
+    stage('Setup Buildx & QEMU') {
       steps {
         sh '''
-          if ! docker buildx inspect mybuilder > /dev/null 2>&1; then
-            docker buildx create --name mybuilder --use
+          set -e
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            URL="https://github.com/docker/buildx/releases/latest/download/buildx-linux-amd64"
           else
-            docker buildx use mybuilder
+            URL="https://github.com/docker/buildx/releases/latest/download/buildx-linux-arm64"
           fi
-          docker run --rm --privileged tonistiigi/binfmt --install amd64
+          mkdir -p ~/.docker/cli-plugins
+          curl -SL "$URL" -o ~/.docker/cli-plugins/docker-buildx
+          chmod +x ~/.docker/cli-plugins/docker-buildx
+          docker buildx create --use || true
+          docker run --rm --privileged tonistiigi/binfmt --install amd64 || true
           docker buildx inspect --bootstrap
         '''
       }
@@ -24,7 +30,10 @@ pipeline {
     stage('Login to Registry') {
       steps {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-          sh 'echo $GITLAB_PAT | docker login registry.gitlab.com -u $GITLAB_USER --password-stdin'
+          sh '''
+            echo "$GITLAB_PAT" | docker login registry.gitlab.com \
+              -u "$GITLAB_USER" --password-stdin
+          '''
         }
       }
     }
@@ -33,11 +42,16 @@ pipeline {
       steps {
         sh '''
           set -e
-          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-node:latest --push ./wtf-node
-          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-react:latest --push ./wtf-react
-          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-coingecko:latest --push ./wtf-coingecko
-          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-finnhub:latest --push ./wtf-finnhub
-          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-jenkins:latest --push ./wtf-jenkins
+          docker buildx build --platform linux/amd64 \
+            -t "${REGISTRY_URL}/wtf-node:latest" --push ./wtf-node
+          docker buildx build --platform linux/amd64 \
+            -t "${REGISTRY_URL}/wtf-react:latest" --push ./wtf-react
+          docker buildx build --platform linux/amd64 \
+            -t "${REGISTRY_URL}/wtf-coingecko:latest" --push ./wtf-coingecko
+          docker buildx build --platform linux/amd64 \
+            -t "${REGISTRY_URL}/wtf-finnhub:latest" --push ./wtf-finnhub
+          docker buildx build --platform linux/amd64 \
+            -t "${REGISTRY_URL}/wtf-jenkins:latest" --push ./wtf-jenkins
         '''
       }
     }
