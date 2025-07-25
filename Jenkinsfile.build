@@ -13,33 +13,34 @@ pipeline {
       }
     }
 
-    stage('Build Docker Images') {
+    stage('Set up Docker Buildx') {
       steps {
-        sh """
-          # Build renamed service images
-          docker build -t ${REGISTRY_URL}/wtf-coingecko:latest ./wtf-coingecko
-          docker build -t ${REGISTRY_URL}/wtf-finnhub:latest ./wtf-finnhub
-          docker build -t ${REGISTRY_URL}/wtf-react:latest ./wtf-react
-          docker build -t ${REGISTRY_URL}/wtf-node:latest ./wtf-node
-          docker build -t ${REGISTRY_URL}/wtf-jenkins:latest ./wtf-jenkins
-        """
+        sh '''
+          docker buildx create --use || true
+          docker buildx inspect --bootstrap
+        '''
       }
     }
 
-    stage('Push Docker Images') {
+    stage('Login to GitLab Registry') {
       steps {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-          sh """
+          sh '''
             echo $GITLAB_PAT | docker login registry.gitlab.com -u ${GITLAB_USER} --password-stdin
-
-            # Push renamed images
-            docker push ${REGISTRY_URL}/wtf-coingecko:latest
-            docker push ${REGISTRY_URL}/wtf-finnhub:latest
-            docker push ${REGISTRY_URL}/wtf-react:latest
-            docker push ${REGISTRY_URL}/wtf-node:latest
-            docker push ${REGISTRY_URL}/wtf-jenkins:latest
-          """
+          '''
         }
+      }
+    }
+
+    stage('Build and Push Docker Images') {
+      steps {
+        sh """
+          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-coingecko:latest --push ./wtf-coingecko
+          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-finnhub:latest --push ./wtf-finnhub
+          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-react:latest --push ./wtf-react
+          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-node:latest --push ./wtf-node
+          docker buildx build --platform linux/amd64 -t ${REGISTRY_URL}/wtf-jenkins:latest --push ./wtf-jenkins
+        """
       }
     }
   }
