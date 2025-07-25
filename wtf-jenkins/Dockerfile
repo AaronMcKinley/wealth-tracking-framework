@@ -24,6 +24,12 @@ RUN apt-get update && apt-get install -y \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs
 
+RUN mkdir -p ~/.docker/cli-plugins && \
+    curl -SL https://github.com/docker/buildx/releases/latest/download/buildx-linux-arm64 -o ~/.docker/cli-plugins/docker-buildx && \
+    chmod +x ~/.docker/cli-plugins/docker-buildx
+
+RUN docker run --rm --privileged tonistiigi/binfmt --install amd64
+
 USER jenkins
 
 COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
