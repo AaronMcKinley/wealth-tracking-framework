@@ -2,6 +2,11 @@ version: '3.8'
 
 services:
   react:
+    build:
+      context: ./wtf-react
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://node:5000
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
     ports:
@@ -56,8 +61,6 @@ services:
       retries: 5
     networks:
       - wtfnet
-
-  # ... add other services here with just `image:` keys, no build or volumes
 
 volumes:
   postgres_data:

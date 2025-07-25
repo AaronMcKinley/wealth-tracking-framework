@@ -53,13 +53,6 @@
       delay: 5
       until: migrate_result.rc == 0
 
-    - name: Seed database inside node container
-      shell: docker exec wtf-node npm run seed
-      register: seed_result
-      retries: 3
-      delay: 5
-      until: seed_result.rc == 0
-
     - name: Confirm deployment success message
       debug:
         msg: "WTF project deployed successfully on {{ inventory_hostname }}"
