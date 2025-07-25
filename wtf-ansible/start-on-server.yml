@@ -1,8 +1,6 @@
 - name: Deploy WTF project on Ubuntu server
   hosts: all
   become: yes
-  vars_files:
-    - secrets.yml
 
   vars:
     project_dir: /opt/wealth-tracking-framework
