@@ -5,25 +5,29 @@
   vars_files:
     - secrets.yml
 
+  vars:
+    project_dir: /opt/wealth-tracking-framework
+    compose_version: v2.27.0
+    ansible_user_home: "/home/{{ ansible_user }}"
+    public_ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEEXAMPLEKEYyourpublickeyhere user@machine"
+
   tasks:
-    - name: Update apt cache and upgrade packages
+    - name: Update apt cache and upgrade all packages
       apt:
         update_cache: yes
         upgrade: dist
 
-    - name: Install required packages
+    - name: Install required packages (docker.io, git, nodejs, npm, curl, ufw)
       apt:
         name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
           - docker.io
-          - docker-compose-plugin
           - git
           - nodejs
           - npm
+          - curl
+          - ufw
         state: present
+        update_cache: yes
 
     - name: Ensure docker service is started and enabled
       systemd:
@@ -31,16 +35,74 @@
         state: started
         enabled: yes
 
-    - name: Add user to docker group
+    - name: Check if docker-compose plugin exists
+      stat:
+        path: "{{ ansible_user_home }}/.docker/cli-plugins/docker-compose"
+      register: compose_plugin
+
+    - name: Install docker-compose plugin binary if missing
+      shell: |
+        mkdir -p {{ ansible_user_home }}/.docker/cli-plugins
+        curl -SL https://github.com/docker/compose/releases/download/{{ compose_version }}/docker-compose-linux-x86_64 -o {{ ansible_user_home }}/.docker/cli-plugins/docker-compose
+        chmod +x {{ ansible_user_home }}/.docker/cli-plugins/docker-compose
+      when: not compose_plugin.stat.exists
+
+    - name: Add ansible user to docker group
       user:
         name: "{{ ansible_user }}"
         groups: docker
         append: yes
 
+    - name: Ensure .ssh directory exists
+      file:
+        path: "{{ ansible_user_home }}/.ssh"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0700'
+
+    - name: Add public SSH key to authorized_keys
+      authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ public_ssh_key }}"
+        state: present
+
+    - name: Setup UFW default policies
+      ufw:
+        state: reset
+
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow HTTP through UFW
+      ufw:
+        rule: allow
+        port: 80
+
+    - name: Allow HTTPS through UFW
+      ufw:
+        rule: allow
+        port: 443
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+        enabled: yes
+
+    - name: Create project directory
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
     - name: Create .env from template
       template:
         src: env.j2
-        dest: "{{ playbook_dir }}/../.env"
+        dest: "{{ project_dir }}/.env"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: '0600'
@@ -48,4 +110,4 @@
     - name: Run docker compose up detached
       command: docker compose up -d
       args:
-        chdir: "{{ playbook_dir }}/.."
+        chdir: "{{ project_dir }}"
