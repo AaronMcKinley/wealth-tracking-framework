@@ -36,9 +36,9 @@
       args:
         chdir: "{{ project_dir }}"
 
-    - name: Wait for API health endpoint to respond
+    - name: Wait for frontend proxy health endpoint to respond
       uri:
-        url: http://localhost:4000/api/health
+        url: http://localhost/api/health
         method: GET
         status_code: 200
       register: healthcheck
