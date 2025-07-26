@@ -1,3 +1,4 @@
+---
 - name: Build and start WTF services locally
   hosts: localhost
   become: false
@@ -8,7 +9,7 @@
         msg: "This playbook only supports macOS. Detected {{ ansible_system }}."
       when: ansible_system != "Darwin"
 
-    - name: Stop and remove postgres container, then remove volume (optional)
+    - name: Optionally stop and reset postgres (and volume)
       shell: |
         docker stop wtf-postgres && docker rm wtf-postgres && docker volume rm wealth-tracking-framework_postgres_data
       args:
@@ -37,7 +38,7 @@
       until: pg_ready.rc == 0
       tags: [setup]
 
-    - name: Apply database migrations inside node container
+    - name: Apply database migrations inside node container (only on reset)
       shell: docker exec wtf-node npm run migrate
       args:
         chdir: "{{ playbook_dir }}/.."

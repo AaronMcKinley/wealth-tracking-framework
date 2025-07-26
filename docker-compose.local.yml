@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   react:
-    build: ./wtf-react
+    build:
+      context: ./wtf-react
+      dockerfile: Dockerfile.dev
     container_name: wtf-react
     ports:
       - "3000:3000"
@@ -15,12 +17,12 @@ services:
     command: ["npm", "start"]
     mem_limit: 1.5g
     mem_reservation: 1g
-    depends_on:
-      node:
-        condition: service_healthy
+    # ⚠️ dropped the `depends_on` health condition so React always starts
 
   node:
-    build: ./wtf-node
+    build:
+      context: ./wtf-node
+      dockerfile: Dockerfile.dev   # ← point at your dev‐Dockerfile
     container_name: wtf-node
     ports:
       - "4000:5000"
@@ -31,8 +33,6 @@ services:
     command: sh -c "npm ci && npm run dev"
     env_file:
       - .env
-    depends_on:
-      - postgres
     networks:
       - wtfnet
     mem_limit: 1.5g
@@ -66,7 +66,8 @@ services:
       - wtfnet
 
   jenkins:
-    build: ./wtf-jenkins
+    build:
+      context: ./wtf-jenkins
     container_name: wtf-jenkins
     ports:
       - "8080:8080"
@@ -99,7 +100,8 @@ services:
       - wtfnet
 
   coingecko:
-    build: ./wtf-coingecko
+    build:
+      context: ./wtf-coingecko
     container_name: wtf-coingecko
     restart: always
     volumes:
@@ -113,7 +115,8 @@ services:
       - wtfnet
 
   finnhub:
-    build: ./wtf-finnhub
+    build:
+      context: ./wtf-finnhub
     container_name: wtf-finnhub
     restart: always
     volumes:

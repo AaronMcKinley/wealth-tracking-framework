@@ -1,17 +1,13 @@
-# Use the official Node image
 FROM node:20
 
-# Set working directory
 WORKDIR /app
 
-# Copy all files
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
 COPY . .
 
-# Install dependencies
-RUN npm install -g nodemon && npm install
-
-# Start the server (adjust as needed)
-CMD ["npm", "run", "dev"]
-
-# Expose backend port
-EXPOSE 4000
+EXPOSE 5000
+CMD ["npm", "start"]
