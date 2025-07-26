@@ -21,9 +21,10 @@ const AddInvestment: React.FC = () => {
     if (searchInput) {
       const searchLower = searchInput.toLowerCase();
       setSuggestions(
-        ASSETS.filter(a =>
-          a.fullName.toLowerCase().includes(searchLower) ||
-          a.ticker.toLowerCase().includes(searchLower)
+        ASSETS.filter(
+          a =>
+            a.fullName.toLowerCase().includes(searchLower) ||
+            a.ticker.toLowerCase().includes(searchLower)
         )
       );
     } else {
@@ -60,15 +61,27 @@ const AddInvestment: React.FC = () => {
   };
 
   const confirmAddInvestment = async () => {
+    console.log('API_BASE:', API_BASE);
     setShowConfirm(false);
+
     const user = localStorage.getItem('user');
     const token = localStorage.getItem('token');
+
+    console.log('Add investment payload:', {
+      user_id: user ? JSON.parse(user).id : null,
+      name: selectedAsset?.ticker,
+      amount: Number(amount),
+      buy_price: Number(buyPrice),
+      type,
+      location: null,
+    });
 
     if (!user || !token) {
       setError('User not logged in');
       return;
     }
     const userObj = JSON.parse(user);
+
     try {
       const response = await fetch(`${API_BASE}/investments`, {
         method: 'POST',
@@ -91,7 +104,8 @@ const AddInvestment: React.FC = () => {
       }
 
       navigate('/dashboard');
-    } catch {
+    } catch (err) {
+      console.error('Failed to add investment:', err);
       setError('Failed to add investment.');
     }
   };
@@ -108,15 +122,21 @@ const AddInvestment: React.FC = () => {
             <label className="block mb-2 font-semibold">Type *</label>
             <input
               type="text"
-              value={type ? type.charAt(0).toUpperCase() + type.slice(1) : ''}
+              value={
+                type ? type.charAt(0).toUpperCase() + type.slice(1) : ''
+              }
               readOnly
               placeholder="Select an asset"
               className="input cursor-not-allowed"
               aria-label="Investment type"
             />
           </div>
+
           <div className="relative">
-            <label htmlFor="searchInput" className="block mb-2 font-semibold">
+            <label
+              htmlFor="searchInput"
+              className="block mb-2 font-semibold"
+            >
               Search Name or Ticker <span className="text-red-500">*</span>
             </label>
             <input
@@ -148,6 +168,7 @@ const AddInvestment: React.FC = () => {
               </ul>
             )}
           </div>
+
           <div>
             <label htmlFor="amount" className="block mb-2 font-semibold">
               Amount <span className="text-red-500">*</span>
@@ -163,8 +184,12 @@ const AddInvestment: React.FC = () => {
               className="input"
             />
           </div>
+
           <div>
-            <label htmlFor="buyPrice" className="block mb-2 font-semibold">
+            <label
+              htmlFor="buyPrice"
+              className="block mb-2 font-semibold"
+            >
               Buy Price (€) <span className="text-red-500">*</span>
             </label>
             <input
@@ -178,6 +203,7 @@ const AddInvestment: React.FC = () => {
               className="input"
             />
           </div>
+
           <div className="flex justify-end space-x-4">
             <button
               type="button"
@@ -190,6 +216,7 @@ const AddInvestment: React.FC = () => {
               Add Investment
             </button>
           </div>
+
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">
@@ -202,10 +229,16 @@ const AddInvestment: React.FC = () => {
                   Buy Price: <strong>€{buyPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
-                  <button onClick={cancelConfirm} className="btn btn-negative">
+                  <button
+                    onClick={cancelConfirm}
+                    className="btn btn-negative"
+                  >
                     Cancel
                   </button>
-                  <button onClick={confirmAddInvestment} className="btn btn-primary">
+                  <button
+                    onClick={confirmAddInvestment}
+                    className="btn btn-primary"
+                  >
                     Confirm
                   </button>
                 </div>
