@@ -6,7 +6,7 @@ services:
       context: ./wtf-react
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://node:5000
+        - REACT_APP_API_URL=/api
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
     ports:
