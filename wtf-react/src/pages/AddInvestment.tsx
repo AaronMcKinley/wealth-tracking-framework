@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ASSETS, Asset } from '../data/assets';
 import Layout from '../components/Layout';
 
+const API_BASE = process.env.REACT_APP_API_URL || '/api';
+
 const AddInvestment: React.FC = () => {
   const navigate = useNavigate();
 
@@ -68,7 +70,7 @@ const AddInvestment: React.FC = () => {
     }
     const userObj = JSON.parse(user);
     try {
-      const response = await fetch('http://localhost:4000/api/investments', {
+      const response = await fetch(`${API_BASE}/investments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

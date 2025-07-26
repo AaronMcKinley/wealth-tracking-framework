@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 
+const API_BASE = process.env.REACT_APP_API_URL || '/api';
+
 interface Transaction {
   id: number;
   transaction_type: string;
@@ -40,7 +42,7 @@ const Transactions: React.FC = () => {
       return;
     }
 
-    fetch(`http://localhost:4000/api/transactions/${ticker}`, {
+    fetch(`${API_BASE}/transactions/${ticker}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
