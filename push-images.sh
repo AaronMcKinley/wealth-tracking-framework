@@ -1,30 +1,27 @@
 #!/bin/bash
 set -e
 
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+else
+  echo "ERROR: .env file not found"
+  exit 1
+fi
+
 REGISTRY="registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
 GITLAB_USER="aaron09912"
-GITLAB_PAT="${GITLAB_PAT:-}"
-
-SERVICES=("wtf-node" "wtf-react")
 
 if [ -z "$GITLAB_PAT" ]; then
-  echo "ERROR: GITLAB_PAT is not set"
-  echo "Run: export GITLAB_PAT=<your-token>"
+  echo "ERROR: GITLAB_PAT is not set in .env"
   exit 1
 fi
 
 echo "$GITLAB_PAT" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
-if ! docker buildx version >/dev/null 2>&1; then
-  docker buildx create --name localbuilder --use
-fi
+docker build -t "$REGISTRY/wtf-node:latest" ./wtf-node
+docker push "$REGISTRY/wtf-node:latest"
 
-for SERVICE in "${SERVICES[@]}"; do
-  docker buildx build \
-    --platform linux/amd64 \
-    -t "$REGISTRY/$SERVICE:latest" \
-    "$SERVICE" \
-    --push
-done
+docker build -t "$REGISTRY/wtf-react:latest" ./wtf-react
+docker push "$REGISTRY/wtf-react:latest"
 
-echo "All images built and pushed successfully"
+echo "Both images built and pushed successfully"
