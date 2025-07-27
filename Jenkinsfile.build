@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-        GITLAB_USER = "aaron09912"
+        COMPOSE_PROJECT_NAME = "wtf-app"
     }
 
     stages {
@@ -23,30 +23,21 @@ pipeline {
             }
         }
 
-        stage('Build & Push Images') {
+        stage('Build Docker Images with Docker Compose') {
             steps {
                 script {
-                    // Build the Node.js app (wtf-node)
                     sh """
-                        echo "Building wtf-node..."
-                        docker build -t $REGISTRY/wtf-node:latest ./wtf-node
-                        docker push $REGISTRY/wtf-node:latest
+                        docker-compose -f docker-compose.yml build --no-cache
                     """
+                }
+            }
+        }
 
-                    // Build the React app (wtf-react) with logging and checking build folder
+        stage('Push Docker Images') {
+            steps {
+                script {
                     sh """
-                        echo "Building wtf-react..."
-                        docker build -t $REGISTRY/wtf-react:latest ./wtf-react
-
-                        # Check the contents of the build folder after npm run build
-                        docker run --rm $REGISTRY/wtf-react:latest ls -al /app/build
-                    """
-
-                    // Build Jenkins image (wtf-jenkins)
-                    sh """
-                        echo "Building wtf-jenkins..."
-                        docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins
-                        docker push $REGISTRY/wtf-jenkins:latest
+                        docker-compose -f docker-compose.yml push
                     """
                 }
             }
