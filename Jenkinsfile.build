@@ -1,24 +1,26 @@
 pipeline {
   agent any
+
   environment {
-    REGISTRY_URL    = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-    GITLAB_USER     = "aaron09912"
-    DOCKER_BUILDKIT = "1"
+    REGISTRY_URL = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+    GITLAB_USER  = "aaron09912"
   }
 
   stages {
+
     stage('Detect Architecture') {
       steps {
         script {
-          ARCH = sh(returnStdout: true, script: "uname -m").trim()
-          echo "Running on architecture: ${ARCH}"
+          def arch = sh(returnStdout: true, script: 'uname -m').trim()
+          echo "Running on architecture: ${arch}"
+          env.ARCH = arch
         }
       }
     }
 
     stage('Setup QEMU Emulation (only if non-amd64)') {
       when {
-        expression { return ARCH != "x86_64" }  // Skip if running on native AMD64
+        expression { env.ARCH != "x86_64" }
       }
       steps {
         sh '''
@@ -32,9 +34,7 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
           sh '''
-            echo "$GITLAB_PAT" \
-              | docker login registry.gitlab.com \
-                  -u "$GITLAB_USER" --password-stdin
+            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u "$GITLAB_USER" --password-stdin
           '''
         }
       }
@@ -43,15 +43,11 @@ pipeline {
     stage('Build & Push Images') {
       steps {
         script {
-          def services = ['wtf-node','wtf-react','wtf-coingecko','wtf-finnhub','wtf-jenkins']
-
+          def services = ['wtf-node', 'wtf-react', 'wtf-coingecko', 'wtf-finnhub', 'wtf-jenkins']
           services.each { svc ->
-            // Only build amd64 on server, multi-arch on Mac
-            def platforms = (ARCH == "x86_64") ? "linux/amd64" : "linux/amd64,linux/arm64"
-
             sh """
               docker buildx build \
-                --platform ${platforms} \
+                --platform linux/amd64,linux/arm64 \
                 -t ${REGISTRY_URL}/${svc}:latest \
                 ${svc} \
                 --push
@@ -60,5 +56,6 @@ pipeline {
         }
       }
     }
+
   }
 }
