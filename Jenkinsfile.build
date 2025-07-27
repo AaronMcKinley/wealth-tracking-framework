@@ -63,6 +63,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Verify Build Folder in wtf-react') {
+            steps {
+                script {
+                    // List the contents of the build directory in wtf-react to ensure it's populated
+                    sh 'ls -al ./wtf-react/build'
+                }
+            }
+        }
     }
 
     post {
