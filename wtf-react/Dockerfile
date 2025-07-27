@@ -9,7 +9,8 @@ ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 COPY . .
-RUN npm run build
+
+RUN mkdir -p /app/build && npm run build
 
 FROM nginx:alpine
 
