@@ -51,7 +51,13 @@ pipeline {
 
                     // Build and push the wtf-react image
                     sh """
+                        echo "Building wtf-react..."
                         docker build -t $REGISTRY/wtf-react:latest ./wtf-react --file ./wtf-react/Dockerfile
+
+                        // Debug: Output the contents of the build folder
+                        echo "Checking build folder in wtf-react"
+                        ls -al ./wtf-react/build
+
                         docker push $REGISTRY/wtf-react:latest
                     """
 
