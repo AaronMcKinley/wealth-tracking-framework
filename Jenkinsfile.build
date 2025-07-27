@@ -16,13 +16,8 @@ pipeline {
         stage('Verify Files and Paths') {
             steps {
                 script {
-                    // Print current working directory
                     sh 'echo "Current working directory: $(pwd)"'
-
-                    // List files to verify the structure and presence of necessary folders
                     sh 'ls -al'
-
-                    // List the contents of the service directories
                     sh 'ls -al ./wtf-react'
                     sh 'ls -al ./wtf-node'
                     sh 'ls -al ./wtf-jenkins'
@@ -43,25 +38,18 @@ pipeline {
         stage('Build & Push Images') {
             steps {
                 script {
-                    // Build and push the wtf-node image
                     sh """
                         docker build -t $REGISTRY/wtf-node:latest ./wtf-node --file ./wtf-node/Dockerfile
                         docker push $REGISTRY/wtf-node:latest
                     """
 
-                    // Build and push the wtf-react image
                     sh """
                         echo "Building wtf-react..."
                         docker build -t $REGISTRY/wtf-react:latest ./wtf-react --file ./wtf-react/Dockerfile
-
-                        // Debug: Output the contents of the build folder
-                        echo "Checking build folder in wtf-react"
                         ls -al ./wtf-react/build
-
                         docker push $REGISTRY/wtf-react:latest
                     """
 
-                    // Build and push the wtf-jenkins image
                     sh """
                         docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins --file ./wtf-jenkins/Dockerfile
                         docker push $REGISTRY/wtf-jenkins:latest
@@ -73,7 +61,6 @@ pipeline {
         stage('Verify Build Folder in wtf-react') {
             steps {
                 script {
-                    // List the contents of the build directory in wtf-react to ensure it's populated
                     sh 'ls -al ./wtf-react/build'
                 }
             }
