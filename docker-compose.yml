@@ -4,9 +4,9 @@ services:
   wtf-nginx:
     image: nginx:alpine
     container_name: wtf-nginx
-#    volumes:
-#      - ./wtf-nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-#      - wtf-react-build:/usr/share/nginx/html
+    volumes:
+      - ./wtf-nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - wtf-react-build:/usr/share/nginx/html
     ports:
       - "80:80"
       - "443:443"
@@ -24,8 +24,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - HOST=0.0.0.0
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
-#    volumes:
-#      - wtf-react-build:/app/build
+    volumes:
+      - wtf-react-build:/usr/share/nginx/html
     networks:
       - wtfnet
     depends_on:
