@@ -18,10 +18,19 @@ fi
 
 echo "$GITLAB_PAT" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
-docker build -t "$REGISTRY/wtf-node:latest" ./wtf-node
-docker push "$REGISTRY/wtf-node:latest"
+services=(
+  "wtf-jenkins"
+  "wtf-node"
+  "wtf-react"
+  "wtf-finnhub"
+  "wtf-coingecko"
+)
 
-docker build -t "$REGISTRY/wtf-react:latest" ./wtf-react
-docker push "$REGISTRY/wtf-react:latest"
+for service in "${services[@]}"; do
+  echo "Building amd64 image for $service..."
+  docker buildx build --platform linux/amd64 \
+    -t "$REGISTRY/$service:latest" \
+    ./"$service" --push
+done
 
-echo "Both images built and pushed successfully"
+echo "All amd64 images built and pushed successfully!"
