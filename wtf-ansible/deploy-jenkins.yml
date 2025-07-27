@@ -1,30 +1,35 @@
 - hosts: all
   become: yes
   tasks:
-    - name: Copy Jenkins NGINX config
+    - name: Ensure wtf-nginx directory exists
+      file:
+        path: /opt/wealth-tracking-framework/wtf-nginx
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Check if nginx.conf exists and whether it's a dir
+      stat:
+        path: /opt/wealth-tracking-framework/wtf-nginx/nginx.conf
+      register: ansible_stat_nginxconf
+
+    - name: Remove incorrect nginx.conf directory if it exists
+      file:
+        path: /opt/wealth-tracking-framework/wtf-nginx/nginx.conf
+        state: absent
+      when: ansible_stat_nginxconf.stat.exists and ansible_stat_nginxconf.stat.isdir
+
+    - name: Copy correct nginx.conf file
       copy:
-        src: ../wtf-jenkins/jenkins.conf
-        dest: /etc/nginx/sites-available/jenkins.conf
+        src: "{{ playbook_dir }}/../nginx.conf"
+        dest: /opt/wealth-tracking-framework/nginx.conf
         owner: root
         group: root
         mode: '0644'
 
-    - name: Enable Jenkins site
-      file:
-        src: /etc/nginx/sites-available/jenkins.conf
-        dest: /etc/nginx/sites-enabled/jenkins.conf
-        state: link
-        force: yes
-
-    - name: Remove default site if present
-      file:
-        path: /etc/nginx/sites-enabled/default
-        state: absent
-
-    - name: Test NGINX config
-      command: nginx -t
-
-    - name: Reload NGINX
-      service:
-        name: nginx
-        state: reloaded
+    - name: Deploy Jenkins with Docker Compose
+      shell: |
+        cd /opt/wealth-tracking-framework
+        docker compose down --remove-orphans
+        docker compose up -d --build
