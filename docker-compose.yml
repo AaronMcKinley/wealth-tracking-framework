@@ -1,7 +1,22 @@
 version: '3.8'
 
 services:
-  react:
+  wtf-nginx:
+    image: nginx:alpine
+    container_name: wtf-nginx
+    volumes:
+      - ./wtf-nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - wtf-react
+      - wtf-node
+      - wtf-jenkins
+    networks:
+      - wtfnet
+
+  wtf-react:
     build:
       context: ./wtf-react
       dockerfile: Dockerfile
@@ -9,27 +24,21 @@ services:
         - REACT_APP_API_URL=/api
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
-    ports:
-      - "80:80"
     environment:
       - CHOKIDAR_USEPOLLING=true
       - HOST=0.0.0.0
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
     networks:
       - wtfnet
-    volumes:
-      - ./wtf-react/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      node:
+      wtf-node:
         condition: service_healthy
     mem_limit: 1.5g
     mem_reservation: 1g
 
-  node:
+  wtf-node:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
     container_name: wtf-node
-    ports:
-      - "4000:5000"
     env_file:
       - .env
     networks:
@@ -41,6 +50,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  wtf-jenkins:
+    image: jenkins/jenkins:lts
+    container_name: wtf-jenkins
+    networks:
+      - wtfnet
 
   postgres:
     image: postgres:15
@@ -54,20 +69,17 @@ services:
       POSTGRES_DB: ${PGDATABASE}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    networks:
+      - wtfnet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${PGUSER}"]
       interval: 5s
       timeout: 3s
       retries: 5
-    networks:
-      - wtfnet
 
 volumes:
   postgres_data:
 
 networks:
   wtfnet:
-    name: wtfnet
     driver: bridge
