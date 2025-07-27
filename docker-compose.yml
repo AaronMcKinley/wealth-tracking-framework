@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   wtf-nginx:
     image: nginx:alpine
@@ -29,6 +31,8 @@ services:
         condition: service_healthy
     mem_limit: 1.5g
     mem_reservation: 1g
+    volumes:
+      - ./wtf-react/build:/app/build
 
   wtf-node:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
