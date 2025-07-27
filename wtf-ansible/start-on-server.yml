@@ -34,7 +34,7 @@
         state: absent
       ignore_errors: true
 
-    - name: Start all services detached (no build)
+    - name: Start or restart all services detached (no build)
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         state: present
@@ -42,6 +42,19 @@
       register: up_result
       failed_when: up_result.failed
       ignore_errors: false
+
+    - name: Set permissions for React build directory
+      file:
+        path: ./wtf-react/build
+        mode: '0755'
+        recurse: yes
+
+    - name: Ensure NGINX container is up using docker-compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        state: restarted
+        services:
+          - wtf-nginx  # Ensure the NGINX container is up and restarted
 
     - name: Wait for frontend proxy health endpoint to respond
       uri:
@@ -52,13 +65,6 @@
       retries: 10
       delay: 5
       until: healthcheck.status == 200
-
-    - name: Set proper permissions for NGINX (React build folder)
-      command: docker exec wtf-nginx chmod -R 755 /usr/share/nginx/html
-      register: permissions_result
-      retries: 3
-      delay: 5
-      until: permissions_result.rc == 0
 
     - name: Run database migrations inside node container
       shell: docker exec wtf-node npm run migrate

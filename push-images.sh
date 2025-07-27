@@ -11,12 +11,12 @@ fi
 REGISTRY="registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
 GITLAB_USER="aaron09912"
 
-if [ -z "$GITLAB_PAT" ]; then
-  echo "ERROR: GITLAB_PAT is not set in .env"
+if [ -z "$GITLAB_TOKEN" ]; then
+  echo "ERROR: GITLAB_TOKEN is not set in .env"
   exit 1
 fi
 
-echo "$GITLAB_PAT" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
+echo "$GITLAB_TOKEN" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
 services=(
   "wtf-jenkins"
