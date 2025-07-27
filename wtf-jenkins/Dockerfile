@@ -22,10 +22,14 @@ RUN apt-get update && apt-get install -y \
     libatk-bridge2.0-0 \
     zip && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p ~/.docker/cli-plugins && \
-    curl -SL https://github.com/docker/buildx/releases/latest/download/buildx-linux-arm64 -o ~/.docker/cli-plugins/docker-buildx && \
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
+    echo "Detected arch: $ARCH" && \
+    curl -SL https://github.com/docker/buildx/releases/latest/download/buildx-linux-$ARCH \
+        -o ~/.docker/cli-plugins/docker-buildx && \
     chmod +x ~/.docker/cli-plugins/docker-buildx
 
 USER jenkins
