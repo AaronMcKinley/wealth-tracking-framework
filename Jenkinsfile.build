@@ -3,15 +3,27 @@ pipeline {
   environment {
     REGISTRY_URL    = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
     GITLAB_USER     = "aaron09912"
-    DOCKER_BUILDKIT = "1"                        // enable BuildKit
+    DOCKER_BUILDKIT = "1"
   }
 
   stages {
-    stage('Setup QEMU Emulation') {
+    stage('Detect Architecture') {
+      steps {
+        script {
+          ARCH = sh(returnStdout: true, script: "uname -m").trim()
+          echo "Running on architecture: ${ARCH}"
+        }
+      }
+    }
+
+    stage('Setup QEMU Emulation (only if non-amd64)') {
+      when {
+        expression { return ARCH != "x86_64" }  // Skip if running on native AMD64
+      }
       steps {
         sh '''
-          # Register amd64 emulator so BuildKit can cross‑build
-          docker run --rm --privileged tonistiigi/binfmt --install amd64
+          echo "Non-amd64 detected, enabling QEMU for cross-build..."
+          docker run --rm --privileged tonistiigi/binfmt --install all
         '''
       }
     }
@@ -28,17 +40,21 @@ pipeline {
       }
     }
 
-    stage('Build & Push AMD64 Images') {
+    stage('Build & Push Images') {
       steps {
         script {
           def services = ['wtf-node','wtf-react','wtf-coingecko','wtf-finnhub','wtf-jenkins']
-          services.each { svc ->
-            sh """
-              docker build --platform linux/amd64 \
-                -t ${REGISTRY_URL}/${svc}:latest \
-                ${svc}
 
-              docker push ${REGISTRY_URL}/${svc}:latest
+          services.each { svc ->
+            // Only build amd64 on server, multi-arch on Mac
+            def platforms = (ARCH == "x86_64") ? "linux/amd64" : "linux/amd64,linux/arm64"
+
+            sh """
+              docker buildx build \
+                --platform ${platforms} \
+                -t ${REGISTRY_URL}/${svc}:latest \
+                ${svc} \
+                --push
             """
           }
         }
