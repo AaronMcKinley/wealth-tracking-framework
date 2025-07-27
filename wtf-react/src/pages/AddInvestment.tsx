@@ -140,6 +140,7 @@ const AddInvestment: React.FC = () => {
                   <li
                     key={asset.ticker}
                     role="option"
+                    aria-selected={selectedAsset?.ticker === asset.ticker ? 'true' : 'false'}
                     className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
                     onClick={() => onSelectSuggestion(asset)}
                   >
