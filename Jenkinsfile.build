@@ -3,37 +3,50 @@ pipeline {
 
     environment {
         REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-        DOCKER_CLI_EXPERIMENTAL = "enabled"
+        GITLAB_USER = "aaron09912"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/AaronMcKinley/wealth-tracking-framework'
+                git branch: 'main', url: 'https://github.com/AaronMcKinley/wealth-tracking-framework.git'
             }
         }
 
         stage('Login to GitLab Registry') {
             steps {
                 withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-                    sh "echo $GITLAB_PAT | docker login $REGISTRY -u <your-gitlab-user> --password-stdin"
+                    sh '''
+                        echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
+                    '''
                 }
             }
         }
 
         stage('Build & Push Images') {
             steps {
-                sh """
-                docker buildx create --use || true
-                docker buildx inspect --bootstrap
-                docker buildx build \
-                    --platform linux/amd64 \
-                    -t $REGISTRY/wtf-node:latest wtf-node --push
-                docker buildx build \
-                    --platform linux/amd64 \
-                    -t $REGISTRY/wtf-react:latest wtf-react --push
-                """
+                script {
+                    sh """
+                        docker build -t $REGISTRY/wtf-node:latest ./wtf-node
+                        docker push $REGISTRY/wtf-node:latest
+
+                        docker build -t $REGISTRY/wtf-react:latest ./wtf-react
+                        docker push $REGISTRY/wtf-react:latest
+
+                        docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins
+                        docker push $REGISTRY/wtf-jenkins:latest
+                    """
+                }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build and push completed successfully.'
+        }
+        failure {
+            echo 'Build failed.'
         }
     }
 }
