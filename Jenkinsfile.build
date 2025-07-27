@@ -1,61 +1,39 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    REGISTRY_URL = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-    GITLAB_USER  = "aaron09912"
-  }
+    environment {
+        REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+        DOCKER_CLI_EXPERIMENTAL = "enabled"
+    }
 
-  stages {
-
-    stage('Detect Architecture') {
-      steps {
-        script {
-          def arch = sh(returnStdout: true, script: 'uname -m').trim()
-          echo "Running on architecture: ${arch}"
-          env.ARCH = arch
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/AaronMcKinley/wealth-tracking-framework'
+            }
         }
-      }
-    }
 
-    stage('Setup QEMU Emulation (only if non-amd64)') {
-      when {
-        expression { env.ARCH != "x86_64" }
-      }
-      steps {
-        sh '''
-          echo "Non-amd64 detected, enabling QEMU for cross-build..."
-          docker run --rm --privileged tonistiigi/binfmt --install all
-        '''
-      }
-    }
-
-    stage('Login to Registry') {
-      steps {
-        withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-          sh '''
-            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u "$GITLAB_USER" --password-stdin
-          '''
+        stage('Login to GitLab Registry') {
+            steps {
+                withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
+                    sh "echo $GITLAB_PAT | docker login $REGISTRY -u <your-gitlab-user> --password-stdin"
+                }
+            }
         }
-      }
-    }
 
-    stage('Build & Push Images') {
-      steps {
-        script {
-          def services = ['wtf-node', 'wtf-react', 'wtf-coingecko', 'wtf-finnhub', 'wtf-jenkins']
-          services.each { svc ->
-            sh """
-              docker buildx build \
-                --platform linux/amd64,linux/arm64 \
-                -t ${REGISTRY_URL}/${svc}:latest \
-                ${svc} \
-                --push
-            """
-          }
+        stage('Build & Push Images') {
+            steps {
+                sh """
+                docker buildx create --use || true
+                docker buildx inspect --bootstrap
+                docker buildx build \
+                    --platform linux/amd64 \
+                    -t $REGISTRY/wtf-node:latest wtf-node --push
+                docker buildx build \
+                    --platform linux/amd64 \
+                    -t $REGISTRY/wtf-react:latest wtf-react --push
+                """
+            }
         }
-      }
     }
-
-  }
 }
