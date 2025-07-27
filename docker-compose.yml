@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   wtf-nginx:
     image: nginx:alpine
@@ -18,7 +16,8 @@ services:
       - wtfnet
 
   wtf-react:
-    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
+    build:
+      context: ./wtf-react
     container_name: wtf-react
     environment:
       - CHOKIDAR_USEPOLLING=true
