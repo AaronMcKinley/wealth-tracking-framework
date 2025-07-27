@@ -26,8 +26,9 @@ pipeline {
         stage('Build Docker Images with Docker Compose') {
             steps {
                 script {
+                    // Corrected docker-compose command syntax
                     sh """
-                        docker compose -f docker compose.yml build --no-cache
+                        docker compose -f docker-compose.yml build --no-cache
                     """
                 }
             }
@@ -37,7 +38,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                        docker compose -f docker compose.yml push
+                        docker compose -f docker-compose.yml push
                     """
                 }
             }
