@@ -26,13 +26,25 @@ pipeline {
         stage('Build & Push Images') {
             steps {
                 script {
+                    // Build the Node.js app (wtf-node)
                     sh """
+                        echo "Building wtf-node..."
                         docker build -t $REGISTRY/wtf-node:latest ./wtf-node
                         docker push $REGISTRY/wtf-node:latest
+                    """
 
+                    // Build the React app (wtf-react) with logging and checking build folder
+                    sh """
+                        echo "Building wtf-react..."
                         docker build -t $REGISTRY/wtf-react:latest ./wtf-react
-                        docker push $REGISTRY/wtf-react:latest
 
+                        # Check the contents of the build folder after npm run build
+                        docker run --rm $REGISTRY/wtf-react:latest ls -al /app/build
+                    """
+
+                    // Build Jenkins image (wtf-jenkins)
+                    sh """
+                        echo "Building wtf-jenkins..."
                         docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins
                         docker push $REGISTRY/wtf-jenkins:latest
                     """
@@ -46,7 +58,7 @@ pipeline {
             echo 'Build and push completed successfully.'
         }
         failure {
-            echo 'Build failed.'
+            echo 'Build failed. Check logs above for more details.'
         }
     }
 }
