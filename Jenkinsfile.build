@@ -45,10 +45,15 @@ pipeline {
 
                     sh """
                         echo "Building wtf-react..."
-                        docker build -t $REGISTRY/wtf-react:latest ./wtf-react --file ./wtf-react/Dockerfile
-                        ls -al ./wtf-react/build
-                        docker push $REGISTRY/wtf-react:latest
+                        cd ./wtf-react
+                        echo "Running npm install..."
+                        npm install --verbose
+                        echo "Running npm run build..."
+                        npm run build --verbose
                     """
+
+                    sh 'ls -al ./wtf-react/build'
+                    sh "docker push $REGISTRY/wtf-react:latest"
 
                     sh """
                         docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins --file ./wtf-jenkins/Dockerfile
