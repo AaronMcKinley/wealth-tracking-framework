@@ -17,11 +17,6 @@ services:
       - wtfnet
 
   wtf-react:
-    build:
-      context: ./wtf-react
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_API_URL=/api
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
     environment:
@@ -52,7 +47,7 @@ services:
       retries: 5
 
   wtf-jenkins:
-    image: jenkins/jenkins:lts
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
     container_name: wtf-jenkins
     privileged: true
     user: root
