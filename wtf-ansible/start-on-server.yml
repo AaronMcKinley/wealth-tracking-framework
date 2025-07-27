@@ -21,20 +21,27 @@
         password: "{{ gitlab_token }}"
 
     - name: Pull latest images from GitLab Registry
-      command: docker compose pull
-      args:
-        chdir: "{{ project_dir }}"
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        pull: "always"
+      register: pull_result
+      failed_when: pull_result.failed
+      ignore_errors: false
 
     - name: Stop running containers (ignore errors if none)
-      shell: docker compose down
-      args:
-        chdir: "{{ project_dir }}"
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        state: absent
       ignore_errors: true
 
     - name: Start all services detached (no build)
-      command: docker compose up -d --no-build
-      args:
-        chdir: "{{ project_dir }}"
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        state: present
+        build: "never"
+      register: up_result
+      failed_when: up_result.failed
+      ignore_errors: false
 
     - name: Wait for frontend proxy health endpoint to respond
       uri:
@@ -45,6 +52,13 @@
       retries: 10
       delay: 5
       until: healthcheck.status == 200
+
+    - name: Set proper permissions for NGINX (React build folder)
+      command: docker exec wtf-nginx chmod -R 755 /usr/share/nginx/html
+      register: permissions_result
+      retries: 3
+      delay: 5
+      until: permissions_result.rc == 0
 
     - name: Run database migrations inside node container
       shell: docker exec wtf-node npm run migrate
