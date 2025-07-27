@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3'
 
 services:
   wtf-nginx:
@@ -6,7 +6,7 @@ services:
     container_name: wtf-nginx
     volumes:
       - ./wtf-nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./wtf-react/build:/usr/share/nginx/html
+      - wtf-react-build:/usr/share/nginx/html
     ports:
       - "80:80"
       - "443:443"
@@ -24,6 +24,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - HOST=0.0.0.0
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
+    volumes:
+      - wtf-react-build:/app/build
     networks:
       - wtfnet
     depends_on:
@@ -31,8 +33,6 @@ services:
         condition: service_healthy
     mem_limit: 1.5g
     mem_reservation: 1g
-    volumes:
-      - ./wtf-react/build:/app/build
 
   wtf-node:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
@@ -87,6 +87,7 @@ services:
 volumes:
   postgres_data:
   jenkins_data:
+  wtf-react-build:
 
 networks:
   wtfnet:
