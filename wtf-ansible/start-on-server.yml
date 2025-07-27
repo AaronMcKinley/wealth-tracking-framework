@@ -45,7 +45,7 @@
 
     - name: Set permissions for React build directory
       file:
-        path: ./wtf-react/build
+        path: "{{ project_dir }}/wtf-react/build"
         mode: '0755'
         recurse: yes
 
@@ -54,7 +54,10 @@
         project_src: "{{ project_dir }}"
         state: restarted
         services:
-          - wtf-nginx  # Ensure the NGINX container is up and restarted
+          - wtf-nginx
+      register: nginx_result
+      failed_when: nginx_result.failed
+      ignore_errors: false
 
     - name: Wait for frontend proxy health endpoint to respond
       uri:
