@@ -13,6 +13,18 @@ pipeline {
             }
         }
 
+        stage('Verify Files and Paths') {
+            steps {
+                script {
+                    sh 'echo "Current working directory: $(pwd)"'
+                    sh 'ls -al'
+                    sh 'ls -al ./wtf-react'
+                    sh 'ls -al ./wtf-node'
+                    sh 'ls -al ./wtf-jenkins'
+                }
+            }
+        }
+
         stage('Login to GitLab Registry') {
             steps {
                 withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
@@ -27,10 +39,32 @@ pipeline {
             steps {
                 script {
                     sh """
-                        npm install --silent
-                        echo 'Building React app...'
-                        npm run build --verbose
+                        docker build -t $REGISTRY/wtf-node:latest ./wtf-node --file ./wtf-node/Dockerfile
+                        docker push $REGISTRY/wtf-node:latest
                     """
+
+                    sh """
+                        echo "Building wtf-react..."
+                        cd ./wtf-react
+                        npm install --silent
+                        npm run build --silent
+                    """
+
+                    sh 'ls -al ./wtf-react/build'
+                    sh "docker push $REGISTRY/wtf-react:latest"
+
+                    sh """
+                        docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins --file ./wtf-jenkins/Dockerfile
+                        docker push $REGISTRY/wtf-jenkins:latest
+                    """
+                }
+            }
+        }
+
+        stage('Verify Build Folder in wtf-react') {
+            steps {
+                script {
+                    sh 'ls -al ./wtf-react/build'
                 }
             }
         }
@@ -41,7 +75,7 @@ pipeline {
             echo 'Build and push completed successfully.'
         }
         failure {
-            echo 'Build failed.'
+            echo 'Build failed. Check the logs above for more details.'
         }
     }
 }
