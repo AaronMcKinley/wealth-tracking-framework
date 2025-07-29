@@ -41,6 +41,9 @@ fi
 
 echo "$GITLAB_TOKEN" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
+echo "Building images..."
+docker compose build
+
 services=(
   "wtf-jenkins"
   "wtf-node"
@@ -54,4 +57,4 @@ for service in "${services[@]}"; do
   docker push "$REGISTRY/$service:latest"
 done
 
-echo "All images pushed successfully!"
+echo "All images built and pushed successfully!"
