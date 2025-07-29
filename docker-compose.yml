@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   wtf-nginx:
     image: nginx:alpine
@@ -78,3 +80,12 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+volumes:
+  postgres_data:
+  jenkins_data:
+  wtf-react-build:
+
+networks:
+  wtfnet:
+    driver: bridge
