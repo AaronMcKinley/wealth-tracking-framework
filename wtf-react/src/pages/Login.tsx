@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
 
@@ -78,8 +78,7 @@ const Login: React.FC = () => {
               className="input"
             />
           </div>
-          {/* Buttons stacked vertically */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <button type="submit" className="btn btn-primary w-full">
               Login
             </button>
@@ -91,14 +90,12 @@ const Login: React.FC = () => {
               Cancel
             </button>
           </div>
-          {/* Links underneath buttons */}
-          <div className="flex justify-between mt-2 text-sm">
-            <a href="/signup" className="text-blue-500 hover:underline">
-              Sign Up
-            </a>
-            <a href="/forgot" className="text-blue-400 hover:underline">
-              Forgot password?
-            </a>
+          <div className="flex justify-center mt-4">
+            <Link to="/signup" className="w-1/2">
+              <button type="button" className="btn btn-secondary w-full">
+                Sign Up
+              </button>
+            </Link>
           </div>
         </form>
         {message && (
