@@ -20,6 +20,7 @@ services:
   wtf-react:
     build:
       context: ./wtf-react
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
     container_name: wtf-react
     volumes:
       - wtf-react-build:/build
