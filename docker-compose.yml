@@ -28,8 +28,6 @@ services:
     depends_on:
       wtf-node:
         condition: service_healthy
-    mem_limit: 1.5g
-    mem_reservation: 1g
 
   wtf-node:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
@@ -38,13 +36,33 @@ services:
       - .env
     networks:
       - wtfnet
-    mem_limit: 1.5g
-    mem_reservation: 1g
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 10s
       timeout: 3s
       retries: 5
+
+  wtf-finnhub:
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-finnhub:latest
+    container_name: wtf-finnhub
+    env_file:
+      - .env
+    networks:
+      - wtfnet
+    depends_on:
+      - wtf-node
+      - postgres
+
+  wtf-coingecko:
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-coingecko:latest
+    container_name: wtf-coingecko
+    env_file:
+      - .env
+    networks:
+      - wtfnet
+    depends_on:
+      - wtf-node
+      - postgres
 
   wtf-jenkins:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
