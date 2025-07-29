@@ -18,19 +18,17 @@ fi
 
 echo "$GITLAB_TOKEN" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
-services=(
-  "wtf-jenkins"
-  "wtf-node"
-  "wtf-react"
-  "wtf-finnhub"
-  "wtf-coingecko"
-)
+echo "Stopping and removing all running containers..."
+docker compose down
 
-for service in "${services[@]}"; do
-  echo "Building amd64 image for $service..."
-  docker buildx build --platform linux/amd64 \
-    -t "$REGISTRY/$service:latest" \
-    ./"$service" --push
-done
+echo "Pulling latest images from $REGISTRY..."
+docker compose pull
 
-echo "All amd64 images built and pushed successfully!"
+echo "Pruning unused Docker images (optional cleanup)..."
+docker image prune -af
+
+echo "Starting up containers..."
+docker compose up -d
+
+echo "Deployment complete!"
+docker compose ps
