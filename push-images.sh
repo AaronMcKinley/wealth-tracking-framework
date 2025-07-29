@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 
+CLEAN=false
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c|--clean)
+      CLEAN=true
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 else
@@ -16,19 +31,27 @@ if [ -z "$GITLAB_TOKEN" ]; then
   exit 1
 fi
 
+if [ "$CLEAN" = true ]; then
+  echo "Stopping all containers and pruning system..."
+  docker compose down
+  docker system prune -af --volumes
+  echo "Cleanup complete."
+  exit 0
+fi
+
 echo "$GITLAB_TOKEN" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
-echo "Stopping and removing all running containers..."
-docker compose down
+services=(
+  "wtf-jenkins"
+  "wtf-node"
+  "wtf-react"
+  "wtf-finnhub"
+  "wtf-coingecko"
+)
 
-echo "Pulling latest images from $REGISTRY..."
-docker compose pull
+for service in "${services[@]}"; do
+  echo "Pushing image for $service..."
+  docker push "$REGISTRY/$service:latest"
+done
 
-echo "Pruning unused Docker images (optional cleanup)..."
-docker image prune -af
-
-echo "Starting up containers..."
-docker compose up -d
-
-echo "Deployment complete!"
-docker compose ps
+echo "All images pushed successfully!"
