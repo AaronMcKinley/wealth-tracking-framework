@@ -182,11 +182,28 @@
       args:
         chdir: "{{ project_dir }}"
 
-    - name: Copy latest React build to NGINX container
-      shell: |
-        docker cp $(docker create registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest):/build/. wtf-nginx:/usr/share/nginx/html/
+    - name: Create a temporary React container to extract build
+      shell: docker create --name temp-react registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
       args:
         chdir: "{{ project_dir }}"
+      register: temp_react_create
+
+    - name: Copy React build from image to host
+      shell: docker cp temp-react:/build/. ./build
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Copy React build into the Docker volume
+      shell: |
+        docker run --rm -v wtf-react-build:/target -v {{ project_dir }}/build:/source busybox cp -r /source/. /target/
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Remove temporary React container
+      shell: docker rm temp-react
+      args:
+        chdir: "{{ project_dir }}"
+      ignore_errors: yes
 
     - name: Restart NGINX container
       shell: docker restart wtf-nginx
