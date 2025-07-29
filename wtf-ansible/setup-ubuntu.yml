@@ -182,6 +182,17 @@
       args:
         chdir: "{{ project_dir }}"
 
+    - name: Copy latest React build to NGINX container
+      shell: |
+        docker cp $(docker create registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest):/build/. wtf-nginx:/usr/share/nginx/html/
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Restart NGINX container
+      shell: docker restart wtf-nginx
+      args:
+        chdir: "{{ project_dir }}"
+
     - name: Run DB migrations (if needed)
       shell: docker compose run --rm wtf-node npm run migrate
       args:
