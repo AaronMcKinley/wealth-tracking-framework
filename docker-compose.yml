@@ -104,6 +104,7 @@ volumes:
   postgres_data:
   jenkins_data:
   wtf-react-build:
+    external: true
 
 networks:
   wtfnet:
