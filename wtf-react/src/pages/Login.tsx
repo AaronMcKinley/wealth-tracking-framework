@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Header from '../components/Header';
 
 interface LoginResponse {
   message: string;
@@ -42,58 +43,75 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="card max-w-md mx-auto mt-20 text-textLight">
-      <h2 className="text-3xl font-bold mb-6 text-center">
-        Wealth Tracking Framework – Login
-      </h2>
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <div>
-          <label htmlFor="email" className="block mb-2 font-semibold">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            autoComplete="username"
-            className="input"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block mb-2 font-semibold">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            className="input"
-          />
-        </div>
-        <div className="flex justify-between gap-4">
-          <button type="submit" className="btn btn-primary w-1/2">
-            Login
-          </button>
-          <button type="button" onClick={handleCancel} className="btn btn-negative w-1/2">
-            Cancel
-          </button>
-        </div>
-      </form>
-      {message && (
-        <p
-          className="mt-4 text-center text-red-500 font-semibold"
-          role="alert"
-          aria-live="polite"
-        >
-          {message}
-        </p>
-      )}
-    </div>
+    <>
+      <Header />
+      <div className="card max-w-md mx-auto mt-20 text-textLight">
+        <h2 className="text-3xl font-bold mb-6 text-center">
+          Wealth Tracking Framework – Login
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          <div>
+            <label htmlFor="email" className="block mb-2 font-semibold">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="username"
+              className="input"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block mb-2 font-semibold">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="input"
+            />
+          </div>
+          {/* Buttons stacked vertically */}
+          <div className="flex flex-col gap-2">
+            <button type="submit" className="btn btn-primary w-full">
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="btn btn-negative w-full"
+            >
+              Cancel
+            </button>
+          </div>
+          {/* Links underneath buttons */}
+          <div className="flex justify-between mt-2 text-sm">
+            <a href="/signup" className="text-blue-500 hover:underline">
+              Sign Up
+            </a>
+            <a href="/forgot" className="text-blue-400 hover:underline">
+              Forgot password?
+            </a>
+          </div>
+        </form>
+        {message && (
+          <p
+            className="mt-4 text-center text-red-500 font-semibold"
+            role="alert"
+            aria-live="polite"
+          >
+            {message}
+          </p>
+        )}
+      </div>
+    </>
   );
 };
 

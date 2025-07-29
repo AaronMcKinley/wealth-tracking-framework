@@ -104,6 +104,38 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/signup', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email, and password are required.' });
+  }
+  try {
+    const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (userExists.rows.length > 0) {
+      return res.status(409).json({ message: 'Email already in use.' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, email, name',
+      [name, email, hashedPassword]
+    );
+    const user = result.rows[0];
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    res.status(201).json({
+      message: 'Signup successful',
+      token,
+      user
+    });
+  } catch (err) {
+    console.error('Signup error:', err.stack || err);
+    res.status(500).json({ message: 'Signup failed' });
+  }
+});
+
 router.post('/investments', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.userId;
