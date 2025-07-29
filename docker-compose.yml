@@ -29,7 +29,6 @@ services:
     depends_on:
       wtf-node:
         condition: service_healthy
-    command: sh -c "cp -r /build/. /build && sleep 5"
 
   wtf-node:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
