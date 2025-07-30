@@ -7,10 +7,12 @@ RUN npm install
 
 COPY . .
 
-RUN echo "----- tsconfig.json -----" && cat tsconfig.json && echo "----------------------"
-RUN ls -l
+RUN echo "---- WORKDIR ----" && pwd
+RUN echo "---- Directory Listing ----" && ls -l
+RUN echo "---- tsconfig.json ----" && cat tsconfig.json
+RUN echo "---- find tsconfig ----" && find . -iname "tsconfig*.json"
 
-RUN npx tsc --showConfig
+RUN npx tsc --project tsconfig.json --showConfig
 
 RUN npm install -g typescript
 
