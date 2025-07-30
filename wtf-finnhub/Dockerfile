@@ -7,7 +7,13 @@ RUN npm install
 
 COPY . .
 
+RUN echo "----- tsconfig.json -----" && cat tsconfig.json && echo "----------------------"
+RUN ls -l
+
+RUN npx tsc --showConfig
+
 RUN npm install -g typescript
-RUN tsc fetchWtfStocks.ts
+
+RUN npx tsc --project tsconfig.json fetchWtfStocks.ts
 
 CMD ["node", "fetchWtfStocks.js"]
