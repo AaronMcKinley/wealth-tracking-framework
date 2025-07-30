@@ -6,5 +6,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["fetchwtfstocks.ts"]
+  "include": ["fetchWTFstocks.ts"]
 }
