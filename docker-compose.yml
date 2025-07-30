@@ -67,6 +67,8 @@ services:
 
   wtf-jenkins:
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
+    build:
+      context: ./wtf-jenkins
     container_name: wtf-jenkins
     privileged: true
     user: root
