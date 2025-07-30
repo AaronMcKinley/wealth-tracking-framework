@@ -7,6 +7,7 @@
   vars:
     project_dir: /opt/wealth-tracking-framework
     artifactory_registry: "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+    react_build_volume: "wtf-react-build"
 
   tasks:
     - name: Fail if not running on Ubuntu
@@ -19,6 +20,11 @@
         registry_url: "{{ artifactory_registry }}"
         username: "{{ gitlab_user }}"
         password: "{{ gitlab_token }}"
+
+    - name: Ensure wtf-react-build volume exists
+      community.docker.docker_volume:
+        name: "{{ react_build_volume }}"
+        state: present
 
     - name: Pull latest images from GitLab Registry
       community.docker.docker_compose_v2:

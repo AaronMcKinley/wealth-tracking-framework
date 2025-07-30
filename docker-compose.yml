@@ -37,6 +37,8 @@ services:
       - .env
     networks:
       - wtfnet
+    ports:
+      - "5000:5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 10s
