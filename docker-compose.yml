@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   wtf-nginx:
     image: nginx:alpine
@@ -31,6 +29,8 @@ services:
         condition: service_healthy
 
   wtf-node:
+    build:
+      context: ./wtf-node
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-node:latest
     container_name: wtf-node
     env_file:
@@ -44,6 +44,8 @@ services:
       retries: 5
 
   wtf-finnhub:
+    build:
+      context: ./wtf-finnhub
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-finnhub:latest
     container_name: wtf-finnhub
     env_file:
@@ -55,6 +57,8 @@ services:
       - postgres
 
   wtf-coingecko:
+    build:
+      context: ./wtf-coingecko
     image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-coingecko:latest
     container_name: wtf-coingecko
     env_file:
@@ -66,9 +70,9 @@ services:
       - postgres
 
   wtf-jenkins:
-    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
     build:
       context: ./wtf-jenkins
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
     container_name: wtf-jenkins
     privileged: true
     user: root
