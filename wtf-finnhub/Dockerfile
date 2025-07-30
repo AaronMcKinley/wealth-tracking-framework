@@ -11,8 +11,9 @@ RUN echo "---- WORKDIR ----" && pwd
 RUN echo "---- Directory Listing ----" && ls -l
 RUN echo "---- tsconfig.json ----" && cat tsconfig.json
 RUN echo "---- find tsconfig ----" && find . -iname "tsconfig*.json"
-
-RUN npx tsc --project tsconfig.json --showConfig
+RUN grep exclude tsconfig.json || echo "No exclude found"
+RUN head -20 tsconfig.json
+RUN npx tsc --project tsconfig.json --showConfig | grep exclude || echo "No exclude in showConfig"
 
 RUN npm install -g typescript
 
