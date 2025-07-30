@@ -17,6 +17,6 @@ RUN npx tsc --project tsconfig.json --showConfig | grep exclude || echo "No excl
 
 RUN npm install -g typescript
 
-RUN npx tsc --project tsconfig.json fetchWtfStocks.ts
+RUN npx tsc --project tsconfig.json
 
 CMD ["node", "fetchWtfStocks.js"]
