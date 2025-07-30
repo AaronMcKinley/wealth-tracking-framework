@@ -49,6 +49,23 @@
       failed_when: up_result.failed
       ignore_errors: false
 
+    - name: Run database migrations inside node container
+      shell: docker exec wtf-node npm run migrate
+      register: migrate_result
+      retries: 5
+      delay: 5
+      until: migrate_result.rc == 0
+
+    - name: Restart CoinGecko fetcher
+      shell: docker compose restart wtf-coingecko
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Restart Finnhub fetcher
+      shell: docker compose restart wtf-finnhub
+      args:
+        chdir: "{{ project_dir }}"
+
     - name: Set permissions for React build directory
       file:
         path: "{{ project_dir }}/wtf-react/build"
@@ -74,13 +91,6 @@
       retries: 10
       delay: 5
       until: healthcheck.status == 200
-
-    - name: Run database migrations inside node container
-      shell: docker exec wtf-node npm run migrate
-      register: migrate_result
-      retries: 5
-      delay: 5
-      until: migrate_result.rc == 0
 
     - name: Confirm deployment success message
       debug:
