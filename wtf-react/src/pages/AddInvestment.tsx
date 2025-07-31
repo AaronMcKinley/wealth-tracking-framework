@@ -5,6 +5,12 @@ import Layout from '../components/Layout';
 
 const API_BASE = '/api';
 
+type AssetType = 'crypto' | 'stock' | 'etf' | 'bond' | 'reit' | 'commodity';
+
+function isAssetType(val: string): val is AssetType {
+  return ['crypto', 'stock', 'etf', 'bond', 'reit', 'commodity'].includes(val);
+}
+
 interface Holding {
   asset_ticker: string;
   asset_name: string;
@@ -17,11 +23,10 @@ const AddInvestment: React.FC = () => {
   const location = useLocation();
   const isSellMode = location.state?.mode === 'sell';
 
-  // NEW: State for user holdings (for sell dropdown)
   const [userHoldings, setUserHoldings] = useState<Holding[]>([]);
   const [loadingHoldings, setLoadingHoldings] = useState<boolean>(true);
 
-  const [type, setType] = useState<string>('');
+  const [type, setType] = useState<AssetType | ''>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
@@ -31,7 +36,6 @@ const AddInvestment: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
-  // Fetch holdings for the current user
   useEffect(() => {
     if (isSellMode) {
       const token = localStorage.getItem('token');
@@ -55,23 +59,22 @@ const AddInvestment: React.FC = () => {
     }
   }, [isSellMode]);
 
-  // When sell asset selected, update selectedAsset and type
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
       const holding = userHoldings.find(h => h.asset_ticker === sellAssetTicker);
       if (holding) {
+        const holdingType = isAssetType(holding.type) ? holding.type : 'stock';
         setSelectedAsset({
           fullName: holding.asset_name,
           ticker: holding.asset_ticker,
-          type: holding.type,
+          type: holdingType,
         });
-        setType(holding.type);
+        setType(holdingType);
         setError('');
       }
     }
   }, [isSellMode, sellAssetTicker, userHoldings]);
 
-  // For buy mode, search as before
   useEffect(() => {
     if (!isSellMode && searchInput) {
       const searchLower = searchInput.toLowerCase();
@@ -90,7 +93,7 @@ const AddInvestment: React.FC = () => {
 
   const onSelectSuggestion = (asset: Asset) => {
     setSelectedAsset(asset);
-    setType(asset.type);
+    setType(asset.type as AssetType);
     setSearchInput(`${asset.fullName} (${asset.ticker})`);
     setSuggestions([]);
     setError('');
