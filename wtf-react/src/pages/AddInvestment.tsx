@@ -1,151 +1,324 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import Layout from '../components/Layout';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { ASSETS, Asset } from '../data/assets';
+import Layout from '../components/Layout';
 
-interface Investment {
-  id: number;
-  asset_name: string;
-  asset_ticker: string;
-  type: string;
-  total_quantity: number | string;
-  average_buy_price: number | string;
-  current_price?: number | string | null;
-  current_value?: number | string | null;
-  profit_loss?: number | string | null;
-  percent_change_24h?: number | string | null;
-  created_at: string;
+const API_BASE = '/api';
+
+type AssetType = 'crypto' | 'stock' | 'etf' | 'bond' | 'reit' | 'commodity';
+
+function isAssetType(val: string): val is AssetType {
+  return ['crypto', 'stock', 'etf', 'bond', 'reit', 'commodity'].includes(val);
 }
 
-const formatNumberWithCommas = (num?: number | string | null) => {
-  if (num === null || num === undefined) return '—';
-  const n = typeof num === 'number' ? num : Number(num);
-  return isNaN(n)
-    ? '—'
-    : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+interface Holding {
+  asset_ticker: string;
+  asset_name: string;
+  type: string;
+  total_quantity: number;
+}
 
-const Dashboard: React.FC = () => {
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [error, setError] = useState('');
+const AddInvestment: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, token, isAuthenticated } = useAuth();
-  const userId = user?.id ?? null;
+  const isSellMode = location.state?.mode === 'sell';
+
+  const [userHoldings, setUserHoldings] = useState<Holding[]>([]);
+  const [loadingHoldings, setLoadingHoldings] = useState<boolean>(true);
+
+  const [type, setType] = useState<AssetType | ''>('');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [buyPrice, setBuyPrice] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<Asset[]>([]);
+  const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (isSellMode) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('User not logged in');
+        setLoadingHoldings(false);
+        return;
+      }
+      fetch(`${API_BASE}/investments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          setUserHoldings(data.filter((h: any) => Number(h.total_quantity) > 0));
+          setLoadingHoldings(false);
+        })
+        .catch(() => {
+          setError('Failed to fetch holdings');
+          setLoadingHoldings(false);
+        });
+    }
+  }, [isSellMode]);
+
+  useEffect(() => {
+    if (isSellMode && sellAssetTicker) {
+      const holding = userHoldings.find(h => h.asset_ticker === sellAssetTicker);
+      if (holding) {
+        const holdingType = isAssetType(holding.type) ? holding.type : 'stock';
+        setSelectedAsset({
+          fullName: holding.asset_name,
+          ticker: holding.asset_ticker,
+          type: holdingType,
+        });
+        setType(holdingType);
+        setError('');
+      }
+    }
+  }, [isSellMode, sellAssetTicker, userHoldings]);
+
+  useEffect(() => {
+    if (!isSellMode && searchInput) {
+      const searchLower = searchInput.toLowerCase();
+      setSuggestions(
+        ASSETS.filter(a =>
+          a.fullName.toLowerCase().includes(searchLower) ||
+          a.ticker.toLowerCase().includes(searchLower)
+        )
+      );
+    } else if (!isSellMode) {
+      setSuggestions([]);
+      setSelectedAsset(null);
+      setType('');
+    }
+  }, [searchInput, isSellMode]);
+
+  const onSelectSuggestion = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setType(asset.type as AssetType);
+    setSearchInput(`${asset.fullName} (${asset.ticker})`);
+    setSuggestions([]);
+    setError('');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedAsset) {
+      setError(isSellMode
+        ? 'Please select an asset to sell.'
+        : 'Please select a valid asset from the suggestions.'
+      );
+      return;
+    }
+    const amt = Number(amount);
+
+    if (!amount || amt <= 0) {
+      setError('Please enter a valid amount (greater than 0).');
+      return;
+    }
+
+    if (isSellMode) {
+      const holding = userHoldings.find(h => h.asset_ticker === selectedAsset.ticker);
+      const max = holding ? holding.total_quantity : 0;
+      if (amt > max) {
+        setError(`You can only sell up to ${max} units of ${selectedAsset.ticker}.`);
+        return;
+      }
+    }
+
+    if (!buyPrice || Number(buyPrice) <= 0) {
+      setError('Please enter a valid price (greater than 0).');
+      return;
+    }
+
+    setError('');
+    setShowConfirm(true);
+  };
+
+  const confirmAddInvestment = async () => {
+    setShowConfirm(false);
+    const user = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
       setError('User not logged in');
       return;
     }
 
-    const fetchInvestments = async () => {
-      try {
-        const res = await axios.get<Investment[]>(
-          `${process.env.REACT_APP_API_URL}/api/investments`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        setInvestments(res.data);
-        if (location.state?.newInvestment) {
-          window.history.replaceState({}, document.title);
-        }
-      } catch (err) {
-        console.error('Error fetching investments:', err);
-        setError('Failed to fetch investments');
+    const userObj = JSON.parse(user);
+    const signedAmount = isSellMode ? -Math.abs(Number(amount)) : Number(amount);
+
+    try {
+      const response = await fetch(`${API_BASE}/investments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userObj.id,
+          name: selectedAsset!.ticker,
+          amount: signedAmount,
+          buy_price: Number(buyPrice),
+          type,
+        }),
+      });
+
+      if (!response.ok) {
+        const msg = (await response.json()).message || 'Failed to submit transaction';
+        throw new Error(msg);
       }
-    };
 
-    fetchInvestments();
-  }, [location.state, token, isAuthenticated]);
+      navigate('/dashboard', { state: { newInvestment: true } });
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit transaction.');
+    }
+  };
 
-  const totalValue = investments.reduce((sum, inv) => {
-    const val = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
-    return sum + (isNaN(val) ? 0 : val);
-  }, 0);
-
-  const totalCost = investments.reduce((sum, inv) => {
-    const quantity = typeof inv.total_quantity === 'number' ? inv.total_quantity : Number(inv.total_quantity);
-    const avgPrice = typeof inv.average_buy_price === 'number' ? inv.average_buy_price : Number(inv.average_buy_price);
-    return sum + (isNaN(quantity * avgPrice) ? 0 : quantity * avgPrice);
-  }, 0);
-
-  const profitLoss = totalValue - totalCost;
+  const cancelConfirm = () => setShowConfirm(false);
 
   return (
     <Layout>
-      <h1 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework</h1>
+      <div className="max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          {isSellMode ? 'Sell Investment' : 'Add Investment'}
+        </h1>
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {isSellMode && loadingHoldings && (
+          <div className="text-center mb-4">Loading your holdings…</div>
+        )}
+        <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
+          <div>
+            <label className="block mb-2 font-semibold">Type *</label>
+            <input
+              type="text"
+              value={type ? type.charAt(0).toUpperCase() + type.slice(1) : ''}
+              readOnly
+              placeholder="Select an asset"
+              className="input cursor-not-allowed"
+            />
+          </div>
+          <div className="relative">
+            {isSellMode ? (
+              <>
+                <label className="block mb-2 font-semibold">Asset to Sell *</label>
+                <select
+                  className="input"
+                  value={sellAssetTicker}
+                  onChange={e => setSellAssetTicker(e.target.value)}
+                  required
+                  disabled={loadingHoldings}
+                >
+                  <option value="">Select asset…</option>
+                  {userHoldings
+                    .filter(h => h.total_quantity > 0)
+                    .map(h => (
+                      <option key={h.asset_ticker} value={h.asset_ticker}>
+                        {h.asset_name} ({h.asset_ticker}) — Held: {h.total_quantity}
+                      </option>
+                    ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <label htmlFor="searchInput" className="block mb-2 font-semibold">
+                  Search Name or Ticker <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="searchInput"
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  required
+                  autoComplete="off"
+                  className="input"
+                  placeholder="Type name or ticker"
+                />
+                {suggestions.length > 0 && (
+                  <ul
+                    id="asset-suggestion-list"
+                    role="listbox"
+                    className="absolute z-20 bg-cardBg border border-borderGreen mt-1 rounded max-h-40 overflow-auto w-full"
+                  >
+                    {suggestions.map(asset => (
+                      <li
+                        key={asset.ticker}
+                        role="option"
+                        aria-selected={selectedAsset?.ticker === asset.ticker ? 'true' : 'false'}
+                        className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
+                        onClick={() => onSelectSuggestion(asset)}
+                      >
+                        <strong>{asset.fullName}</strong> ({asset.ticker}) — {asset.type}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+          <div>
+            <label htmlFor="amount" className="block mb-2 font-semibold">
+              {isSellMode ? 'Sell Amount' : 'Amount'} <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="amount"
+              type="number"
+              step="any"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              required
+              min="0"
+              max={isSellMode && selectedAsset
+                ? userHoldings.find(h => h.asset_ticker === selectedAsset.ticker)?.total_quantity || undefined
+                : undefined}
+              className="input"
+              disabled={isSellMode && !selectedAsset}
+            />
+          </div>
+          <div>
+            <label htmlFor="buyPrice" className="block mb-2 font-semibold">
+              {isSellMode ? 'Sell Price (€)' : 'Buy Price (€)'} <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="buyPrice"
+              type="number"
+              step="any"
+              value={buyPrice}
+              onChange={e => setBuyPrice(e.target.value)}
+              required
+              min="0"
+              className="input"
+              disabled={isSellMode && !selectedAsset}
+            />
+          </div>
+          <div className="flex justify-end space-x-4">
+            <button type="button" onClick={() => navigate('/dashboard')} className="btn btn-negative">
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={isSellMode && !selectedAsset}>
+              {isSellMode ? 'Sell' : 'Add Investment'}
+            </button>
+          </div>
 
-      {error && (
-        <p className="text-red-500 mb-4 text-center" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-center">
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
-          <p className="text-3xl font-bold text-primaryGreen">
-            €{formatNumberWithCommas(totalValue)}
-          </p>
-        </div>
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
-          <p className={`text-3xl font-bold ${profitLoss < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
-            €{formatNumberWithCommas(profitLoss)}
-          </p>
-        </div>
+          {showConfirm && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
+              <div className="card text-center max-w-md w-full">
+                <h2 className="text-2xl font-bold mb-4">Confirm {isSellMode ? 'Sell' : 'Investment'}</h2>
+                <p className="mb-4">
+                  Type: <strong>{type}</strong><br />
+                  Name: <strong>{selectedAsset?.fullName}</strong><br />
+                  Ticker: <strong>{selectedAsset?.ticker}</strong><br />
+                  {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
+                  {isSellMode ? 'Sell Price' : 'Buy Price'}: <strong>€{buyPrice}</strong>
+                </p>
+                <div className="flex justify-center gap-4">
+                  <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
+                  <button onClick={confirmAddInvestment} className="btn btn-primary">Confirm</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </form>
       </div>
-
-      <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
-        <table className="table w-full">
-          <thead className="bg-cardBg">
-            <tr>
-              {[
-                'Name',
-                'Ticker',
-                'Type',
-                'Quantity',
-                'Avg Buy Price',
-                'Current Price',
-                'Current Value',
-                'Profit / Loss',
-                '% Change 24h',
-                'Date Added',
-              ].map(header => (
-                <th key={header} className="px-6 py-3 text-left font-semibold">
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {investments.map(inv => (
-              <tr
-                key={inv.id}
-                className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
-                onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
-              >
-                <td className="px-6 py-4">{inv.asset_name}</td>
-                <td className="px-6 py-4">{inv.asset_ticker}</td>
-                <td className="px-6 py-4">{inv.type}</td>
-                <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
-                <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
-                <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       <div className="text-center mt-8">
         <button
           className="btn btn-primary mr-3"
@@ -164,4 +337,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default AddInvestment;
