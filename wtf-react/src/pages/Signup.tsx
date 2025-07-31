@@ -104,11 +104,13 @@ const Signup: React.FC = () => {
               Cancel
             </button>
           </div>
-          <div className="flex justify-center mt-2 text-sm">
-            <a href="/login" className="text-blue-500 hover:underline">
-              Login
-            </a>
-          </div>
+          <div className="flex justify-center mt-4">
+             <Link to="/login" className="w-1/2">
+               <button type="button" className="btn btn-primary w-full">
+                 Login
+               </button>
+             </Link>
+           </div>
         </form>
         {message && (
           <p
