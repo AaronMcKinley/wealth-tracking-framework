@@ -12,14 +12,14 @@ interface Holding {
   total_quantity: number;
 }
 
-interface AddInvestmentProps {
-  userHoldings: Holding[];
-}
-
-const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
+const AddInvestment: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSellMode = location.state?.mode === 'sell';
+
+  // NEW: State for user holdings (for sell dropdown)
+  const [userHoldings, setUserHoldings] = useState<Holding[]>([]);
+  const [loadingHoldings, setLoadingHoldings] = useState<boolean>(true);
 
   const [type, setType] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
@@ -31,6 +31,31 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
+  // Fetch holdings for the current user
+  useEffect(() => {
+    if (isSellMode) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('User not logged in');
+        setLoadingHoldings(false);
+        return;
+      }
+      fetch(`${API_BASE}/investments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          setUserHoldings(data.filter((h: any) => Number(h.total_quantity) > 0));
+          setLoadingHoldings(false);
+        })
+        .catch(() => {
+          setError('Failed to fetch holdings');
+          setLoadingHoldings(false);
+        });
+    }
+  }, [isSellMode]);
+
+  // When sell asset selected, update selectedAsset and type
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
       const holding = userHoldings.find(h => h.asset_ticker === sellAssetTicker);
@@ -46,6 +71,7 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
     }
   }, [isSellMode, sellAssetTicker, userHoldings]);
 
+  // For buy mode, search as before
   useEffect(() => {
     if (!isSellMode && searchInput) {
       const searchLower = searchInput.toLowerCase();
@@ -154,6 +180,9 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
           {isSellMode ? 'Sell Investment' : 'Add Investment'}
         </h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {isSellMode && loadingHoldings && (
+          <div className="text-center mb-4">Loading your holdings…</div>
+        )}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
           <div>
             <label className="block mb-2 font-semibold">Type *</label>
@@ -174,6 +203,7 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
                   value={sellAssetTicker}
                   onChange={e => setSellAssetTicker(e.target.value)}
                   required
+                  disabled={loadingHoldings}
                 >
                   <option value="">Select asset…</option>
                   {userHoldings
@@ -238,6 +268,7 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
                 ? userHoldings.find(h => h.asset_ticker === selectedAsset.ticker)?.total_quantity || undefined
                 : undefined}
               className="input"
+              disabled={isSellMode && !selectedAsset}
             />
           </div>
           <div>
@@ -253,13 +284,14 @@ const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
               required
               min="0"
               className="input"
+              disabled={isSellMode && !selectedAsset}
             />
           </div>
           <div className="flex justify-end space-x-4">
             <button type="button" onClick={() => navigate('/dashboard')} className="btn btn-negative">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary" disabled={isSellMode && !selectedAsset}>
               {isSellMode ? 'Sell' : 'Add Investment'}
             </button>
           </div>
