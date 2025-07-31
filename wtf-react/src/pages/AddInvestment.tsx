@@ -319,20 +319,6 @@ const AddInvestment: React.FC = () => {
           )}
         </form>
       </div>
-      <div className="text-center mt-8">
-        <button
-          className="btn btn-primary mr-3"
-          onClick={() => navigate('/add-investment')}
-        >
-          Add Investment
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate('/add-investment', { state: { mode: 'sell' } })}
-        >
-          Sell Investment
-        </button>
-      </div>
     </Layout>
   );
 };
