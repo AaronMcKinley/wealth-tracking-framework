@@ -92,7 +92,7 @@ const Login: React.FC = () => {
           </div>
           <div className="flex justify-center mt-4">
             <Link to="/signup" className="w-1/2">
-              <button type="button" className="btn btn-secondary w-full">
+              <button type="button" className="btn btn-primary w-full">
                 Sign Up
               </button>
             </Link>

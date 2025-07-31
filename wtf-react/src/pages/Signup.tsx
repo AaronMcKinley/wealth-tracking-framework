@@ -104,12 +104,9 @@ const Signup: React.FC = () => {
               Cancel
             </button>
           </div>
-          <div className="flex justify-between mt-2 text-sm">
+          <div className="flex justify-center mt-2 text-sm">
             <a href="/login" className="text-blue-500 hover:underline">
               Login
-            </a>
-            <a href="/forgot" className="text-blue-400 hover:underline">
-              Forgot password?
             </a>
           </div>
         </form>
