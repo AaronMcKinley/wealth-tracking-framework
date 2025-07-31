@@ -125,21 +125,55 @@ const Dashboard: React.FC = () => {
           </thead>
           <tbody>
             {investments.map(inv => (
-              <tr
-                key={inv.id}
-                className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
-                onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
-              >
-                <td className="px-6 py-4">{inv.asset_name}</td>
-                <td className="px-6 py-4">{inv.asset_ticker}</td>
-                <td className="px-6 py-4">{inv.type}</td>
-                <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
-                <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
-                <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
+              <tr key={inv.id}>
+                <td colSpan={10} className="p-0">
+                  <div
+                    className="hover:bg-primaryGreen/10 transition-colors duration-200 px-2 py-1 rounded cursor-pointer"
+                    onClick={() => navigate(`/transactions/${userId}/${inv.asset_ticker}`)}
+                  >
+                    <table className="w-full">
+                      <tbody>
+                        <tr>
+                          <td className="px-6 py-4">{inv.asset_name}</td>
+                          <td className="px-6 py-4">{inv.asset_ticker}</td>
+                          <td className="px-6 py-4">{inv.type}</td>
+                          <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
+                          <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
+                          <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
+                          <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
+                          <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
+                          <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
+                          <td className="px-6 py-4">
+                            {new Date(inv.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {Number(inv.total_quantity) > 0 && (
+                      <div className="text-right pr-6 mt-2">
+                        <button
+                          className="btn btn-negative text-sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            navigate('/add-investment', {
+                              state: {
+                                mode: 'sell',
+                                asset: {
+                                  name: inv.asset_name,
+                                  ticker: inv.asset_ticker,
+                                  maxQuantity: inv.total_quantity,
+                                },
+                              },
+                            });
+                          }}
+                        >
+                          Sell
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

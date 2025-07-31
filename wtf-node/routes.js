@@ -65,6 +65,7 @@ router.get('/investments', authenticateToken, async (req, res) => {
         COALESCE(m.percent_change_24h, 0) AS percent_change_24h,
         (COALESCE(m.current_price, 0) * i.total_quantity) AS current_value,
         ((COALESCE(m.current_price, 0) - i.average_buy_price) * i.total_quantity) AS profit_loss,
+        i.total_profit_loss,
         i.created_at
       FROM investments i
       LEFT JOIN (
@@ -90,7 +91,7 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
     const { ticker } = req.params;
 
     const query = `
-      SELECT id, transaction_type, quantity, price_per_unit, total_value, fees, transaction_date
+      SELECT id, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date
       FROM transactions
       WHERE user_id = $1 AND LOWER(asset_ticker) = LOWER($2)
       ORDER BY transaction_date DESC
@@ -141,8 +142,16 @@ router.post('/investments', authenticateToken, async (req, res) => {
     const user_id = req.user.userId;
     const { name, type, amount, buy_price } = req.body;
 
-    if (!name || !type || !amount || !buy_price) {
+    if (!name || !type || amount === undefined || !buy_price) {
       return handleError(res, 'Missing required fields', 400);
+    }
+
+    const quantity = Math.abs(Number(amount));
+    const pricePerUnit = Number(buy_price);
+    const transactionType = Number(amount) > 0 ? 'buy' : 'sell';
+
+    if (isNaN(quantity) || quantity === 0) {
+      return handleError(res, 'Amount must be non-zero', 400);
     }
 
     let assetResult;
@@ -167,45 +176,109 @@ router.post('/investments', authenticateToken, async (req, res) => {
     }
 
     const asset = assetResult.rows[0];
-    const total_value = Number(amount) * Number(buy_price);
+    const totalValue = quantity * pricePerUnit;
+    let realizedProfitLoss = 0;
 
+    if (transactionType === 'sell') {
+      const invRes = await pool.query(
+        `SELECT total_quantity, average_buy_price, total_profit_loss
+         FROM investments WHERE user_id = $1 AND asset_ticker = $2`,
+        [user_id, asset.ticker]
+      );
+
+      if (invRes.rows.length === 0) {
+        return handleError(res, 'No holdings to sell', 400);
+      }
+
+      const currentQty = parseFloat(invRes.rows[0].total_quantity);
+      const avgBuy = parseFloat(invRes.rows[0].average_buy_price);
+      const currentPL = parseFloat(invRes.rows[0].total_profit_loss);
+
+      if (quantity > currentQty) {
+        return handleError(res, `Insufficient holdings. You only have ${currentQty}.`, 400);
+      }
+
+      realizedProfitLoss = (pricePerUnit - avgBuy) * quantity;
+
+      await pool.query(
+        `INSERT INTO transactions
+         (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
+         VALUES ($1, $2, 'sell', $3, $4, $5, 0, $6, NOW())`,
+        [user_id, asset.ticker, quantity, pricePerUnit, totalValue, realizedProfitLoss]
+      );
+
+      const remainingQty = currentQty - quantity;
+
+      if (remainingQty === 0) {
+        await pool.query(
+          `UPDATE investments
+           SET total_quantity = 0,
+               current_value = 0,
+               profit_loss = 0,
+               total_profit_loss = $1,
+               updated_at = NOW()
+           WHERE user_id = $2 AND asset_ticker = $3`,
+          [currentPL + realizedProfitLoss, user_id, asset.ticker]
+        );
+      } else {
+        await pool.query(
+          `UPDATE investments
+           SET total_quantity = $1,
+               updated_at = NOW()
+           WHERE user_id = $2 AND asset_ticker = $3`,
+          [remainingQty, user_id, asset.ticker]
+        );
+      }
+
+      return res.status(201).json({ message: 'Sell recorded', realizedProfitLoss });
+    }
+
+    // Buy transaction
     await pool.query(
-      `INSERT INTO transactions (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, transaction_date)
-       VALUES ($1, $2, 'buy', $3, $4, $5, 0, NOW())`,
-      [user_id, asset.ticker, amount, buy_price, total_value]
+      `INSERT INTO transactions
+        (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
+       VALUES ($1, $2, 'buy', $3, $4, $5, 0, 0, NOW())`,
+      [user_id, asset.ticker, quantity, pricePerUnit, totalValue]
     );
 
     const agg = await pool.query(
       `SELECT
-         SUM(quantity) AS total_quantity,
-         SUM(quantity * price_per_unit) / NULLIF(SUM(quantity), 0) AS average_price
+         SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE -quantity END) AS total_quantity,
+         SUM(CASE WHEN transaction_type = 'buy' THEN quantity * price_per_unit ELSE 0 END) AS total_buy_value,
+         SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE 0 END) AS total_buy_quantity
        FROM transactions
-       WHERE user_id = $1 AND asset_ticker = $2 AND transaction_type = 'buy'`,
+       WHERE user_id = $1 AND asset_ticker = $2`,
       [user_id, asset.ticker]
     );
 
     const total_quantity = parseFloat(agg.rows[0].total_quantity) || 0;
-    const average_price = parseFloat(agg.rows[0].average_price) || 0;
+    const total_buy_quantity = parseFloat(agg.rows[0].total_buy_quantity) || 0;
+    const average_price =
+      total_buy_quantity > 0
+        ? parseFloat(agg.rows[0].total_buy_value) / total_buy_quantity
+        : 0;
 
     const update = await pool.query(
-      `UPDATE investments SET total_quantity = $1, average_buy_price = $2
-       WHERE user_id = $3 AND asset_ticker = $4 RETURNING *`,
+      `UPDATE investments
+       SET total_quantity = $1, average_buy_price = $2, updated_at = NOW()
+       WHERE user_id = $3 AND asset_ticker = $4
+       RETURNING *`,
       [total_quantity, average_price, user_id, asset.ticker]
     );
 
     if (update.rowCount === 0) {
       await pool.query(
         `INSERT INTO investments
-         (user_id, asset_name, asset_ticker, type, total_quantity, average_buy_price, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+         (user_id, asset_name, asset_ticker, type, total_quantity, average_buy_price, total_profit_loss, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 0, NOW())`,
         [user_id, asset.name, asset.ticker, type, total_quantity, average_price]
       );
     }
 
-    res.status(201).json({ message: 'Investment and transaction recorded' });
+    res.status(201).json({ message: 'Buy recorded', quantity: total_quantity });
   } catch (err) {
-    console.error('Error adding investment:', err.stack || err);
-    handleError(res, err.message || 'Failed to add investment');
+    console.error('Error in /investments:', err.stack || err);
+    handleError(res, err.message || 'Failed to record transaction');
   }
 });
 

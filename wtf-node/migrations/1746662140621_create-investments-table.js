@@ -21,6 +21,7 @@ exports.up = (pgm) => {
     price_per_unit: { type: 'numeric', notNull: true },
     total_value: { type: 'numeric', notNull: true },
     fees: { type: 'numeric', default: 0 },
+    realized_profit_loss: { type: 'numeric', notNull: false, default: 0 },
     transaction_date: {
       type: 'timestamp',
       notNull: true,
@@ -43,10 +44,11 @@ exports.up = (pgm) => {
     type: { type: 'varchar(50)', notNull: false },
     total_quantity: { type: 'numeric', notNull: true, default: 0 },
     average_buy_price: { type: 'numeric', notNull: true, default: 0 },
-    current_price: { type: 'numeric', notNull: false },
-    current_value: { type: 'numeric', notNull: false },
-    profit_loss: { type: 'numeric', notNull: false },
-    percent_change_24h: { type: 'numeric', notNull: false },
+    current_price: { type: 'numeric' },
+    current_value: { type: 'numeric' },
+    profit_loss: { type: 'numeric' },
+    percent_change_24h: { type: 'numeric' },
+    total_profit_loss: { type: 'numeric', notNull: true, default: 0 },
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
     updated_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });

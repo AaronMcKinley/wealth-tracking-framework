@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ASSETS, Asset } from '../data/assets';
 import Layout from '../components/Layout';
 
@@ -7,6 +7,9 @@ const API_BASE = '/api';
 
 const AddInvestment: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSellMode = location.state?.mode === 'sell';
+  const prefillAsset = location.state?.asset || null;
 
   const [type, setType] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
@@ -16,6 +19,17 @@ const AddInvestment: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isSellMode && prefillAsset) {
+      const matched = ASSETS.find(a => a.ticker === prefillAsset.ticker);
+      if (matched) {
+        setSelectedAsset(matched);
+        setSearchInput(`${matched.fullName} (${matched.ticker})`);
+        setType(matched.type);
+      }
+    }
+  }, [isSellMode, prefillAsset]);
 
   useEffect(() => {
     if (searchInput) {
@@ -47,14 +61,24 @@ const AddInvestment: React.FC = () => {
       setError('Please select a valid asset from the suggestions.');
       return;
     }
-    if (!amount || Number(amount) <= 0) {
+    const amt = Number(amount);
+    const max = Number(prefillAsset?.maxQuantity || 0);
+
+    if (!amount || amt <= 0) {
       setError('Please enter a valid amount (greater than 0).');
       return;
     }
-    if (!buyPrice || Number(buyPrice) <= 0) {
-      setError('Please enter a valid buy price (greater than 0).');
+
+    if (isSellMode && amt > max) {
+      setError(`You can only sell up to ${max} units of ${selectedAsset.ticker}.`);
       return;
     }
+
+    if (!buyPrice || Number(buyPrice) <= 0) {
+      setError('Please enter a valid price (greater than 0).');
+      return;
+    }
+
     setError('');
     setShowConfirm(true);
   };
@@ -68,7 +92,9 @@ const AddInvestment: React.FC = () => {
       setError('User not logged in');
       return;
     }
+
     const userObj = JSON.parse(user);
+    const signedAmount = isSellMode ? -Math.abs(Number(amount)) : Number(amount);
 
     try {
       const response = await fetch(`${API_BASE}/investments`, {
@@ -80,7 +106,7 @@ const AddInvestment: React.FC = () => {
         body: JSON.stringify({
           user_id: userObj.id,
           name: selectedAsset!.ticker,
-          amount: Number(amount),
+          amount: signedAmount,
           buy_price: Number(buyPrice),
           type,
           location: null,
@@ -88,13 +114,13 @@ const AddInvestment: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add investment');
+        throw new Error('Failed to submit transaction');
       }
 
-      navigate('/dashboard');
+      navigate('/dashboard', { state: { newInvestment: true } });
     } catch (err) {
-      console.error('Failed to add investment:', err);
-      setError('Failed to add investment.');
+      console.error('Failed to submit transaction:', err);
+      setError('Failed to submit transaction.');
     }
   };
 
@@ -103,7 +129,9 @@ const AddInvestment: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Add Investment</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          {isSellMode ? 'Sell Investment' : 'Add Investment'}
+        </h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
           <div>
@@ -129,8 +157,9 @@ const AddInvestment: React.FC = () => {
               autoComplete="off"
               className="input"
               placeholder="Type name or ticker"
+              disabled={isSellMode}
             />
-            {suggestions.length > 0 && (
+            {suggestions.length > 0 && !isSellMode && (
               <ul
                 id="asset-suggestion-list"
                 role="listbox"
@@ -152,7 +181,7 @@ const AddInvestment: React.FC = () => {
           </div>
           <div>
             <label htmlFor="amount" className="block mb-2 font-semibold">
-              Amount <span className="text-red-500">*</span>
+              {isSellMode ? 'Sell Amount' : 'Amount'} <span className="text-red-500">*</span>
             </label>
             <input
               id="amount"
@@ -162,12 +191,13 @@ const AddInvestment: React.FC = () => {
               onChange={e => setAmount(e.target.value)}
               required
               min="0"
+              max={isSellMode ? prefillAsset?.maxQuantity || undefined : undefined}
               className="input"
             />
           </div>
           <div>
             <label htmlFor="buyPrice" className="block mb-2 font-semibold">
-              Buy Price (€) <span className="text-red-500">*</span>
+              {isSellMode ? 'Sell Price (€)' : 'Buy Price (€)'} <span className="text-red-500">*</span>
             </label>
             <input
               id="buyPrice"
@@ -185,19 +215,20 @@ const AddInvestment: React.FC = () => {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              Add Investment
+              {isSellMode ? 'Sell' : 'Add Investment'}
             </button>
           </div>
+
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">
-                <h2 className="text-2xl font-bold mb-4">Confirm Investment</h2>
+                <h2 className="text-2xl font-bold mb-4">Confirm {isSellMode ? 'Sell' : 'Investment'}</h2>
                 <p className="mb-4">
                   Type: <strong>{type}</strong><br />
                   Name: <strong>{selectedAsset?.fullName}</strong><br />
                   Ticker: <strong>{selectedAsset?.ticker}</strong><br />
-                  Amount: <strong>{amount}</strong><br />
-                  Buy Price: <strong>€{buyPrice}</strong>
+                  {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
+                  {isSellMode ? 'Sell Price' : 'Buy Price'}: <strong>€{buyPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
                   <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
