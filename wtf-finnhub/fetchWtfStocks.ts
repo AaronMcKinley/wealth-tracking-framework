@@ -1,11 +1,14 @@
 import axios from 'axios';
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import path from 'path';
 import ALL_tickerS from './stocksList';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const dataDir = path.resolve(__dirname, './data');
+mkdirSync(dataDir, { recursive: true });
 
 const API_KEY = process.env.FINNHUB_API_KEY;
 if (!API_KEY) {
