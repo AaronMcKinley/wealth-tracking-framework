@@ -5,15 +5,26 @@ import Layout from '../components/Layout';
 
 const API_BASE = '/api';
 
-const AddInvestment: React.FC = () => {
+interface Holding {
+  asset_ticker: string;
+  asset_name: string;
+  type: string;
+  total_quantity: number;
+}
+
+interface AddInvestmentProps {
+  userHoldings: Holding[];
+}
+
+const AddInvestment: React.FC<AddInvestmentProps> = ({ userHoldings }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSellMode = location.state?.mode === 'sell';
-  const prefillAsset = location.state?.asset || null;
 
   const [type, setType] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [buyPrice, setBuyPrice] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -21,18 +32,22 @@ const AddInvestment: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isSellMode && prefillAsset) {
-      const matched = ASSETS.find(a => a.ticker === prefillAsset.ticker);
-      if (matched) {
-        setSelectedAsset(matched);
-        setSearchInput(`${matched.fullName} (${matched.ticker})`);
-        setType(matched.type);
+    if (isSellMode && sellAssetTicker) {
+      const holding = userHoldings.find(h => h.asset_ticker === sellAssetTicker);
+      if (holding) {
+        setSelectedAsset({
+          fullName: holding.asset_name,
+          ticker: holding.asset_ticker,
+          type: holding.type,
+        });
+        setType(holding.type);
+        setError('');
       }
     }
-  }, [isSellMode, prefillAsset]);
+  }, [isSellMode, sellAssetTicker, userHoldings]);
 
   useEffect(() => {
-    if (searchInput) {
+    if (!isSellMode && searchInput) {
       const searchLower = searchInput.toLowerCase();
       setSuggestions(
         ASSETS.filter(a =>
@@ -40,12 +55,12 @@ const AddInvestment: React.FC = () => {
           a.ticker.toLowerCase().includes(searchLower)
         )
       );
-    } else {
+    } else if (!isSellMode) {
       setSuggestions([]);
       setSelectedAsset(null);
       setType('');
     }
-  }, [searchInput]);
+  }, [searchInput, isSellMode]);
 
   const onSelectSuggestion = (asset: Asset) => {
     setSelectedAsset(asset);
@@ -57,21 +72,28 @@ const AddInvestment: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedAsset) {
-      setError('Please select a valid asset from the suggestions.');
+      setError(isSellMode
+        ? 'Please select an asset to sell.'
+        : 'Please select a valid asset from the suggestions.'
+      );
       return;
     }
     const amt = Number(amount);
-    const max = Number(prefillAsset?.maxQuantity || 0);
 
     if (!amount || amt <= 0) {
       setError('Please enter a valid amount (greater than 0).');
       return;
     }
 
-    if (isSellMode && amt > max) {
-      setError(`You can only sell up to ${max} units of ${selectedAsset.ticker}.`);
-      return;
+    if (isSellMode) {
+      const holding = userHoldings.find(h => h.asset_ticker === selectedAsset.ticker);
+      const max = holding ? holding.total_quantity : 0;
+      if (amt > max) {
+        setError(`You can only sell up to ${max} units of ${selectedAsset.ticker}.`);
+        return;
+      }
     }
 
     if (!buyPrice || Number(buyPrice) <= 0) {
@@ -109,18 +131,17 @@ const AddInvestment: React.FC = () => {
           amount: signedAmount,
           buy_price: Number(buyPrice),
           type,
-          location: null,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit transaction');
+        const msg = (await response.json()).message || 'Failed to submit transaction';
+        throw new Error(msg);
       }
 
       navigate('/dashboard', { state: { newInvestment: true } });
-    } catch (err) {
-      console.error('Failed to submit transaction:', err);
-      setError('Failed to submit transaction.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit transaction.');
     }
   };
 
@@ -145,38 +166,60 @@ const AddInvestment: React.FC = () => {
             />
           </div>
           <div className="relative">
-            <label htmlFor="searchInput" className="block mb-2 font-semibold">
-              Search Name or Ticker <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="searchInput"
-              type="text"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              required
-              autoComplete="off"
-              className="input"
-              placeholder="Type name or ticker"
-              disabled={isSellMode}
-            />
-            {suggestions.length > 0 && !isSellMode && (
-              <ul
-                id="asset-suggestion-list"
-                role="listbox"
-                className="absolute z-20 bg-cardBg border border-borderGreen mt-1 rounded max-h-40 overflow-auto w-full"
-              >
-                {suggestions.map(asset => (
-                  <li
-                    key={asset.ticker}
-                    role="option"
-                    aria-selected={selectedAsset?.ticker === asset.ticker ? 'true' : 'false'}
-                    className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
-                    onClick={() => onSelectSuggestion(asset)}
+            {isSellMode ? (
+              <>
+                <label className="block mb-2 font-semibold">Asset to Sell *</label>
+                <select
+                  className="input"
+                  value={sellAssetTicker}
+                  onChange={e => setSellAssetTicker(e.target.value)}
+                  required
+                >
+                  <option value="">Select asset…</option>
+                  {userHoldings
+                    .filter(h => h.total_quantity > 0)
+                    .map(h => (
+                      <option key={h.asset_ticker} value={h.asset_ticker}>
+                        {h.asset_name} ({h.asset_ticker}) — Held: {h.total_quantity}
+                      </option>
+                    ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <label htmlFor="searchInput" className="block mb-2 font-semibold">
+                  Search Name or Ticker <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="searchInput"
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  required
+                  autoComplete="off"
+                  className="input"
+                  placeholder="Type name or ticker"
+                />
+                {suggestions.length > 0 && (
+                  <ul
+                    id="asset-suggestion-list"
+                    role="listbox"
+                    className="absolute z-20 bg-cardBg border border-borderGreen mt-1 rounded max-h-40 overflow-auto w-full"
                   >
-                    <strong>{asset.fullName}</strong> ({asset.ticker}) — {asset.type}
-                  </li>
-                ))}
-              </ul>
+                    {suggestions.map(asset => (
+                      <li
+                        key={asset.ticker}
+                        role="option"
+                        aria-selected={selectedAsset?.ticker === asset.ticker ? 'true' : 'false'}
+                        className="px-4 py-2 text-textLight hover:bg-primaryGreen hover:text-primaryGreenHover cursor-pointer transition-colors"
+                        onClick={() => onSelectSuggestion(asset)}
+                      >
+                        <strong>{asset.fullName}</strong> ({asset.ticker}) — {asset.type}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
           <div>
@@ -191,7 +234,9 @@ const AddInvestment: React.FC = () => {
               onChange={e => setAmount(e.target.value)}
               required
               min="0"
-              max={isSellMode ? prefillAsset?.maxQuantity || undefined : undefined}
+              max={isSellMode && selectedAsset
+                ? userHoldings.find(h => h.asset_ticker === selectedAsset.ticker)?.total_quantity || undefined
+                : undefined}
               className="input"
             />
           </div>
