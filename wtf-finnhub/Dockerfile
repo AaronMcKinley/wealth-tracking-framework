@@ -21,4 +21,4 @@ RUN npm install -g typescript
 
 RUN npx tsc --project tsconfig.json
 
-CMD ["node", "fetchWtfStocks.js"]
+CMD ["node", "dist/fetchWtfStocks.js"]
