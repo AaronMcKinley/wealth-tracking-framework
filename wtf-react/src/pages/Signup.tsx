@@ -1,152 +1,139 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
+import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
+import Header from '../components/Header';
 
 const Signup: React.FC = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
-  };
-
-  const validatePassword = (password: string) => {
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    return hasNumber && hasSpecial;
-  };
+  const passwordValid = (pwd: string) =>
+    /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
+    if (password !== confirmPassword) {
+      setMessage('Passwords do not match.');
       return;
     }
-    if (!validatePassword(form.password)) {
-      setError('Password must contain at least one number and one special character.');
+    if (!passwordValid(password)) {
+      setMessage('Password must contain at least one number and one symbol.');
       return;
     }
 
     try {
-      const res = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password
-        })
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
+        name,
+        email,
+        password,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Signup failed.');
-      }
-
-      setSuccess('Signup successful! Redirecting to login…');
-      setTimeout(() => navigate('/login'), 1500);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      const errorMsg = err.response?.data?.message || 'Signup failed';
+      setMessage(errorMsg);
     }
   };
 
+  const handleCancel = () => {
+    navigate('/');
+  };
+
   return (
-    <Layout>
-      <div className="max-w-md mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Create Account</h1>
-        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
-        {success && <p className="text-green-600 mb-4 text-center">{success}</p>}
-        <form onSubmit={handleSubmit} className="card space-y-6">
+    <>
+      <Header />
+      <div className="card max-w-md mx-auto mt-20 text-textLight">
+        <h2 className="text-3xl font-bold mb-6 text-center">Create Account</h2>
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
-            <label htmlFor="name" className="block font-semibold mb-1">
-              Name <span className="text-red-500">*</span>
+            <label htmlFor="name" className="block mb-2 font-semibold">
+              Name
             </label>
             <input
               id="name"
-              name="name"
               type="text"
-              value={form.name}
-              onChange={handleChange}
+              value={name}
+              onChange={e => setName(e.target.value)}
               required
               className="input"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block font-semibold mb-1">
-              Email <span className="text-red-500">*</span>
+            <label htmlFor="email" className="block mb-2 font-semibold">
+              Email
             </label>
             <input
               id="email"
-              name="email"
               type="email"
-              value={form.email}
-              onChange={handleChange}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
+              autoComplete="username"
               className="input"
             />
           </div>
-          <div>
-            <label htmlFor="password" className="block font-semibold mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                className="input w-full pr-8"
-                value={form.password}
-                onChange={handleChange}
-                required
-              />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group cursor-default">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-gray-400 hover:text-gray-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <title>Password must contain at least one number and one special character</title>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20 10 10 0 010-20z" />
-                </svg>
-                <div className="absolute bottom-full mb-2 w-max max-w-xs text-sm px-2 py-1 bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  Must contain at least one number and one special character.
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <label htmlFor="confirmPassword" className="block font-semibold mb-1">
-              Confirm Password <span className="text-red-500">*</span>
+          <div className="relative">
+            <label htmlFor="password" className="block mb-2 font-semibold flex items-center gap-2">
+              Password
+              <span
+                className="text-xs bg-gray-600 text-white px-2 py-0.5 rounded cursor-default"
+                title="Must contain at least one number and one symbol"
+              >
+                ?
+              </span>
             </label>
             <input
-              id="confirmPassword"
-              name="confirmPassword"
+              id="password"
               type="password"
-              value={form.confirmPassword}
-              onChange={handleChange}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               required
+              autoComplete="new-password"
               className="input"
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full">
-            Sign Up
-          </button>
+          <div>
+            <label htmlFor="confirm" className="block mb-2 font-semibold">
+              Confirm Password
+            </label>
+            <input
+              id="confirm"
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              className="input"
+            />
+          </div>
+          <div className="flex flex-col gap-4">
+            <button type="submit" className="btn btn-primary w-full">
+              Sign Up
+            </button>
+            <button type="button" onClick={handleCancel} className="btn btn-negative w-full">
+              Cancel
+            </button>
+          </div>
+          <div className="flex justify-center mt-4">
+            <Link to="/login" className="w-1/2">
+              <button type="button" className="btn btn-primary w-full text-sm">
+                Sign In
+              </button>
+            </Link>
+          </div>
         </form>
+        {message && (
+          <p className="mt-4 text-center text-red-500 font-semibold" role="alert">
+            {message}
+          </p>
+        )}
       </div>
-    </Layout>
+    </>
   );
 };
 
