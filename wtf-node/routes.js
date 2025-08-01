@@ -336,7 +336,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
         principal,
         interest_rate: Number(interest_rate).toFixed(2),
         compounding_frequency,
-        total_interest_paid,,
+        total_interest_paid,
         created_at,
         updated_at,
         next_payment_amount: Number(calc.nextPaymentAmount).toFixed(2),
