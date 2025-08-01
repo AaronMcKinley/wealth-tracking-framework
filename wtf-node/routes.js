@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const authenticateToken = require('./middleware/authenticateToken');
-const { calculateCompoundSavings, formatEuro, toFixed2 } = require('./helpers/savings');
+const { calculateCompoundSavings, formatEuro, formatAmount } = require('./helpers/savings');
 
 const router = express.Router();
 const pool = new Pool();
@@ -337,12 +337,12 @@ router.get('/savings', authenticateToken, async (req, res) => {
         id,
         provider,
         principal: formatEuro(principal),
-        interest_rate: toFixed2(interest_rate),
+        interest_rate: formatAmount(interest_rate),
         compounding_frequency,
         total_interest_paid: formatEuro(total_interest_paid),
         created_at,
         updated_at,
-        next_payment_amount: toFixed2(calc.nextPaymentAmount),
+        next_payment_amount: formatAmount(calc.nextPaymentAmount),
         next_payout: formatPaymentAmount(calc.nextPaymentAmount)
       };
     });
@@ -372,14 +372,14 @@ router.post('/savings', authenticateToken, async (req, res) => {
 
     if (existing.rows.length > 0) {
       const current = existing.rows[0];
-      const newPrincipal = toFixed2(parseFloat(current.principal) + parseFloat(principal));
+      const newPrincipal = formatAmount(parseFloat(current.principal) + parseFloat(principal));
       await pool.query(
         `UPDATE savings_accounts
          SET principal = $1, interest_rate = $2, compounding_frequency = $3, updated_at = NOW()
          WHERE id = $4`,
         [
           newPrincipal,
-          toFixed2(interest_rate),
+          formatAmount(interest_rate),
           compounding_frequency,
           current.id
         ]
@@ -398,8 +398,8 @@ router.post('/savings', authenticateToken, async (req, res) => {
         [
           userId,
           provider,
-          toFixed2(principal),
-          toFixed2(interest_rate),
+          formatAmount(principal),
+          formatAmount(interest_rate),
           compounding_frequency
         ]
       );

@@ -31,10 +31,18 @@ function formatEuro(val) {
   return '€' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function toFixed2(val) {
+function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 }) {
   const num = Number(val);
-  if (isNaN(num)) return 0.00;
-  return Number(num.toFixed(2));
+  if (isNaN(num)) return '—';
+
+  const { lessThan, prefix, minDigits } = options;
+
+  if (num === 0) return prefix + '0.00';
+  if (num > 0 && num < lessThan) return prefix + '<' + lessThan.toFixed(minDigits);
+  return prefix + num.toLocaleString(undefined, {
+    minimumFractionDigits: minDigits,
+    maximumFractionDigits: minDigits
+  });
 }
 
-module.exports = { calculateCompoundSavings, formatEuro, toFixed2 };
+module.exports = { calculateCompoundSavings, formatEuro, formatAmount };
