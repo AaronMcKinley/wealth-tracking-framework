@@ -81,8 +81,7 @@ const Dashboard: React.FC = () => {
           }
         );
         setSavings(res.data);
-      } catch (err) {
-      }
+      } catch (err) {}
     };
 
     fetchInvestments();
@@ -227,14 +226,14 @@ const Dashboard: React.FC = () => {
       <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
         <button
           className="btn btn-primary"
-          onClick={() => navigate('/add-savings')}
+          onClick={() => navigate('/savings')}
           type="button"
         >
           Add Savings
         </button>
         <button
           className="btn btn-negative"
-          onClick={() => navigate('/remove-savings')}
+          onClick={() => navigate('/savings', { state: { mode: 'remove' } })}
           type="button"
         >
           Remove Savings

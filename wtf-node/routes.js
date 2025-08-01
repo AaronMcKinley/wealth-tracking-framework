@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const authenticateToken = require('./middleware/authenticateToken');
+const { calculateCompoundInterest, formatEuroAmount, getNextPayoutDate } = require('./helpers/savings');
 
 const router = express.Router();
 const pool = new Pool();
@@ -302,14 +303,63 @@ router.post('/investments', authenticateToken, async (req, res) => {
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-    const result = await pool.query(
-      `SELECT id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid
-       FROM savings_accounts
-       WHERE user_id = $1
-       ORDER BY principal DESC`,
-      [userId]
-    );
-    res.json(result.rows);
+    const q = `
+      SELECT id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at
+      FROM savings_accounts
+      WHERE user_id = $1
+      ORDER BY principal DESC
+    `;
+    const result = await pool.query(q, [userId]);
+    const now = new Date();
+
+    let updates = [];
+    let savingsWithCalc = result.rows.map(account => {
+      let {
+        principal,
+        interest_rate,
+        compounding_frequency,
+        total_interest_paid,
+        created_at,
+        id
+      } = account;
+
+      const { newPrincipal, accruedInterest, periodsSince, nextPayoutDate, interestJustPaid } = calculateCompoundInterest(
+        Number(principal),
+        Number(interest_rate),
+        compounding_frequency,
+        new Date(created_at),
+        now
+      );
+
+      let interestPaid = Number(total_interest_paid) + interestJustPaid;
+
+      if (Number(principal) !== newPrincipal || Number(total_interest_paid) !== interestPaid) {
+        updates.push(pool.query(
+          `UPDATE savings_accounts SET principal = $1, total_interest_paid = $2 WHERE id = $3`,
+          [newPrincipal, interestPaid, id]
+        ));
+      }
+
+      return {
+        ...account,
+        principal: newPrincipal,
+        total_interest_paid: interestPaid,
+        accrued_interest: accruedInterest,
+        next_payout: nextPayoutDate,
+        expected_next_interest: accruedInterest
+      };
+    });
+
+    if (updates.length > 0) await Promise.all(updates);
+
+    res.json(savingsWithCalc.map(acc => ({
+      ...acc,
+      principal: formatEuroAmount(acc.principal),
+      total_interest_paid: formatEuroAmount(acc.total_interest_paid),
+      accrued_interest: formatEuroAmount(acc.accrued_interest),
+      expected_next_interest: formatEuroAmount(acc.expected_next_interest),
+      next_payout: acc.next_payout
+    })));
   } catch (err) {
     handleError(res, 'Failed to fetch savings accounts');
   }
@@ -324,14 +374,29 @@ router.post('/savings', authenticateToken, async (req, res) => {
       return handleError(res, 'Missing required fields', 400);
     }
 
+    const now = new Date();
+    const { newPrincipal, accruedInterest, nextPayoutDate } = calculateCompoundInterest(
+      Number(principal),
+      Number(interest_rate),
+      compounding_frequency,
+      now,
+      now
+    );
+
     const result = await pool.query(
       `INSERT INTO savings_accounts
          (user_id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 0, NOW())
-       RETURNING id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid`,
-      [userId, account_name, provider, principal, interest_rate, compounding_frequency]
+       VALUES ($1, $2, $3, $4, $5, $6, 0, $7)
+       RETURNING id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at`,
+      [userId, account_name, provider, newPrincipal, interest_rate, compounding_frequency, now]
     );
-    res.status(201).json(result.rows[0]);
+
+    res.status(201).json({
+      ...result.rows[0],
+      accrued_interest: formatEuroAmount(accruedInterest),
+      expected_next_interest: formatEuroAmount(accruedInterest),
+      next_payout: nextPayoutDate
+    });
   } catch (err) {
     handleError(res, err.message || 'Failed to add savings account');
   }
