@@ -84,4 +84,10 @@ function formatEuro(val) {
   return '€' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-module.exports = { calculateCompoundSavings, formatEuro };
+function toFixed2(val) {
+  const num = Number(val);
+  if (isNaN(num)) return 0.00;
+  return Number(num.toFixed(2));
+}
+
+module.exports = { calculateCompoundSavings, formatEuro, toFixed2 };
