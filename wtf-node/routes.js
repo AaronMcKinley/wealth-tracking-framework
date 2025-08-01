@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const authenticateToken = require('./middleware/authenticateToken');
-const { calculateCompoundSavings, formatEuro, formatAmount } = require('./helpers/savings');
+const { calculateCompoundSavings, formatAmount } = require('./helpers/savings');
 
 const router = express.Router();
 const pool = new Pool();
@@ -327,23 +327,20 @@ router.get('/savings', authenticateToken, async (req, res) => {
       const calc = calculateCompoundSavings({
         principal,
         annualRate: interest_rate,
-        compoundingFrequency: compounding_frequency,
-        startDate: new Date(created_at),
-        lastUpdate: new Date(updated_at || created_at),
-        today: now,
+        compoundingFrequency: compounding_frequency
       });
 
       return {
         id,
         provider,
-        principal: formatEuro(principal),
-        interest_rate: formatAmount(interest_rate),
+        principal,
+        interest_rate: Number(interest_rate).toFixed(2),
         compounding_frequency,
-        total_interest_paid: formatEuro(total_interest_paid),
+        total_interest_paid,,
         created_at,
         updated_at,
-        next_payment_amount: formatAmount(calc.nextPaymentAmount),
-        next_payout: formatPaymentAmount(calc.nextPaymentAmount)
+        next_payment_amount: Number(calc.nextPaymentAmount).toFixed(2),
+        next_payout
       };
     });
 
@@ -372,14 +369,15 @@ router.post('/savings', authenticateToken, async (req, res) => {
 
     if (existing.rows.length > 0) {
       const current = existing.rows[0];
-      const newPrincipal = formatAmount(parseFloat(current.principal) + parseFloat(principal));
+      const newPrincipal = Number(current.principal) + Number(principal);
+
       await pool.query(
         `UPDATE savings_accounts
          SET principal = $1, interest_rate = $2, compounding_frequency = $3, updated_at = NOW()
          WHERE id = $4`,
         [
           newPrincipal,
-          formatAmount(interest_rate),
+          Number(interest_rate),
           compounding_frequency,
           current.id
         ]
@@ -398,8 +396,8 @@ router.post('/savings', authenticateToken, async (req, res) => {
         [
           userId,
           provider,
-          formatAmount(principal),
-          formatAmount(interest_rate),
+          Number(principal),
+          Number(interest_rate),
           compounding_frequency
         ]
       );
@@ -412,5 +410,6 @@ router.post('/savings', authenticateToken, async (req, res) => {
     handleError(res, err.message || 'Failed to add savings account');
   }
 });
+
 
 module.exports = router;

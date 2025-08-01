@@ -25,12 +25,6 @@ function calculateCompoundSavings({
   return { nextPaymentAmount };
 }
 
-function formatEuro(val) {
-  const n = typeof val === 'number' ? val : Number(val);
-  if (isNaN(n)) return '—';
-  return '€' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 }) {
   const num = Number(val);
   if (isNaN(num)) return '—';
@@ -45,4 +39,4 @@ function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 
   });
 }
 
-module.exports = { calculateCompoundSavings, formatEuro, formatAmount };
+module.exports = { calculateCompoundSavings, formatAmount };
