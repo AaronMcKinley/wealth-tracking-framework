@@ -229,7 +229,6 @@ const Dashboard: React.FC = () => {
                   <td className="px-6 py-4">{s.interest_rate}</td>
                   <td className="px-6 py-4">{s.total_interest_paid}</td>
                   <td className="px-6 py-4">{s.expected_next_interest}</td>
-                  <td className="px-6 py-4">{s.next_payout ? new Date(s.next_payout).toLocaleDateString() : '—'}</td>
                   <td className="px-6 py-4">
                     {(() => {
                       const p = parseEuroString(s.principal);

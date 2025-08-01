@@ -8,9 +8,11 @@ function calculateCompoundSavings({
 }) {
   principal = Number(principal);
   annualRate = Number(annualRate);
-  if (isNaN(principal) || isNaN(annualRate)) return { principal, interest: 0, periods: 0 };
+  if (isNaN(principal) || isNaN(annualRate)) return { principal, interest: 0, periods: 0, nextPaymentAmount: 0 };
+
   const freqMap = { daily: 365, weekly: 52, monthly: 12, yearly: 1 };
   const periodsPerYear = freqMap[compoundingFrequency] || 12;
+
   const from = new Date(lastUpdate || startDate);
   const to = today;
   let periods = 0;
@@ -42,7 +44,10 @@ function calculateCompoundSavings({
   const ratePerPeriod = annualRate / 100 / periodsPerYear;
   const finalPrincipal = principal * Math.pow(1 + ratePerPeriod, periods);
   const interest = finalPrincipal - principal;
-  return { periods, principal: finalPrincipal, interest };
+
+  const nextPaymentAmount = finalPrincipal * ratePerPeriod;
+
+  return { periods, principal: finalPrincipal, interest, nextPaymentAmount };
 }
 
 function formatEuro(value) {
