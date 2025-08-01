@@ -53,6 +53,6 @@ function formatEuro(value) {
 }
 
 module.exports = {
-  calculateCompoundedSavings,
+  calculateCompoundSavings,
   formatEuro,
 };
