@@ -1,129 +1,121 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header';
-import { Link } from 'react-router-dom';
+import Layout from '../components/Layout';
 
-interface SignupResponse {
-  message: string;
-  token: string;
-  user: {
-    id: number;
-    email: string;
-    name: string;
-  };
-}
+const API_BASE = '/api';
 
 const Signup: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    const { name, email, password, confirmPassword } = form;
+
+    if (!name || !email || !password || !confirmPassword) {
+      setError('All fields are required.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await axios.post<SignupResponse>(
-        `${process.env.REACT_APP_API_URL}/api/signup`,
-        { name, email, password }
-      );
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      login(res.data.token);
-      navigate('/dashboard');
+      const res = await fetch(`${API_BASE}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Signup failed.');
+      }
+
+      navigate('/login');
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || 'Signup failed';
-      setMessage(errorMsg);
+      setError(err.message || 'Signup failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate('/');
-  };
-
   return (
-    <>
-      <Header />
-      <div className="card max-w-md mx-auto mt-20 text-textLight">
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Wealth Tracking Framework – Sign Up
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+    <Layout>
+      <div className="max-w-md mx-auto card p-6">
+        <h1 className="text-3xl font-bold mb-6 text-center">Create Account</h1>
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="name" className="block mb-2 font-semibold">
-              Name
-            </label>
+            <label htmlFor="name" className="block mb-1 font-semibold">Name</label>
             <input
               id="name"
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
+              name="name"
               className="input"
+              value={form.name}
+              onChange={handleChange}
+              required
             />
           </div>
           <div>
-            <label htmlFor="email" className="block mb-2 font-semibold">
-              Email
-            </label>
+            <label htmlFor="email" className="block mb-1 font-semibold">Email</label>
             <input
               id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="username"
               className="input"
+              value={form.email}
+              onChange={handleChange}
+              required
             />
           </div>
           <div>
-            <label htmlFor="password" className="block mb-2 font-semibold">
-              Password
-            </label>
+            <label htmlFor="password" className="block mb-1 font-semibold">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
               className="input"
+              value={form.password}
+              onChange={handleChange}
+              required
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <button type="submit" className="btn btn-primary w-full">
-              Sign Up
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="btn btn-negative w-full"
-            >
-              Cancel
-            </button>
+          <div>
+            <label htmlFor="confirmPassword" className="block mb-1 font-semibold">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              className="input"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              required
+            />
           </div>
-          <div className="flex justify-center mt-4">
-             <Link to="/login" className="w-1/2">
-               <button type="button" className="btn btn-primary w-full">
-                 Login
-               </button>
-             </Link>
-           </div>
+          <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+            {loading ? 'Signing up...' : 'Sign Up'}
+          </button>
         </form>
-        {message && (
-          <p
-            className="mt-4 text-center text-red-500 font-semibold"
-            role="alert"
-            aria-live="polite"
-          >
-            {message}
-          </p>
-        )}
       </div>
-    </>
+    </Layout>
   );
 };
 
