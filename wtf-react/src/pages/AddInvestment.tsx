@@ -31,7 +31,8 @@ const AddInvestment: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [totalSpend, setTotalSpend] = useState<string>(''); // renamed from buyPrice
+  const [totalSpend, setTotalSpend] = useState<string>('');
+  const [currentPrice, setCurrentPrice] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
@@ -58,6 +59,30 @@ const AddInvestment: React.FC = () => {
         });
     }
   }, [isSellMode]);
+
+  useEffect(() => {
+    async function fetchPrice(asset: Asset | null) {
+      if (!asset) {
+        setCurrentPrice('');
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/assets/${asset.ticker}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        if (data && data.current_price) {
+          setCurrentPrice(String(data.current_price));
+        } else {
+          setCurrentPrice('');
+        }
+      } catch {
+        setCurrentPrice('');
+      }
+    }
+    fetchPrice(selectedAsset);
+  }, [selectedAsset]);
 
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
@@ -130,6 +155,11 @@ const AddInvestment: React.FC = () => {
       return;
     }
 
+    if (!currentPrice || Number(currentPrice) <= 0) {
+      setError('Please enter a valid current price (greater than 0).');
+      return;
+    }
+
     setError('');
     setShowConfirm(true);
   };
@@ -147,6 +177,7 @@ const AddInvestment: React.FC = () => {
     const userObj = JSON.parse(user);
     const amt = Number(amount);
     const signedAmount = isSellMode ? -Math.abs(amt) : amt;
+
     try {
       const response = await fetch(`${API_BASE}/investments`, {
         method: 'POST',
@@ -160,6 +191,7 @@ const AddInvestment: React.FC = () => {
           amount: signedAmount,
           total_value: Number(totalSpend),
           type,
+          current_price: Number(currentPrice),
         }),
       });
 
@@ -280,7 +312,21 @@ const AddInvestment: React.FC = () => {
               disabled={isSellMode && !selectedAsset}
             />
           </div>
-          {/* Move Type field here */}
+          <div>
+            <label htmlFor="currentPrice" className="block mb-2 font-semibold">
+              Current Price (€)
+            </label>
+            <input
+              id="currentPrice"
+              type="number"
+              step="any"
+              value={currentPrice}
+              onChange={e => setCurrentPrice(e.target.value)}
+              min="0"
+              className="input"
+              disabled={!selectedAsset}
+            />
+          </div>
           <div>
             <label className="block mb-2 font-semibold">Type *</label>
             <input
@@ -309,7 +355,8 @@ const AddInvestment: React.FC = () => {
                   Name: <strong>{selectedAsset?.fullName}</strong><br />
                   Ticker: <strong>{selectedAsset?.ticker}</strong><br />
                   {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
-                  {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong>
+                  {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong><br />
+                  Current Price: <strong>€{currentPrice}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
                   <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
