@@ -173,7 +173,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
 
     if (transactionType === 'sell') {
       const invRes = await pool.query(
-        `SELECT total_quantity, average_buy_price, total_profit_loss
+        `SELECT total_quantity, average_buy_price
          FROM investments WHERE user_id = $1 AND asset_ticker = $2`,
         [user_id, asset.ticker]
       );
@@ -182,7 +182,6 @@ router.post('/investments', authenticateToken, async (req, res) => {
       }
       const currentQty = parseFloat(invRes.rows[0].total_quantity);
       const avgBuy = parseFloat(invRes.rows[0].average_buy_price);
-      const currentPL = parseFloat(invRes.rows[0].total_profit_loss);
 
       if (quantity > currentQty) {
         return handleError(res, `Insufficient holdings. You only have ${currentQty}.`, 400);
@@ -205,10 +204,9 @@ router.post('/investments', authenticateToken, async (req, res) => {
            SET total_quantity = 0,
                current_value = 0,
                profit_loss = 0,
-               total_profit_loss = $1,
                updated_at = NOW()
-           WHERE user_id = $2 AND asset_ticker = $3`,
-          [currentPL + realizedProfitLoss, user_id, asset.ticker]
+           WHERE user_id = $1 AND asset_ticker = $2`,
+          [user_id, asset.ticker]
         );
       } else {
         await pool.query(
@@ -219,6 +217,18 @@ router.post('/investments', authenticateToken, async (req, res) => {
           [remainingQty, user_id, asset.ticker]
         );
       }
+
+      await pool.query(
+        `UPDATE investments
+         SET total_profit_loss = (
+           SELECT COALESCE(SUM(realized_profit_loss), 0)
+           FROM transactions
+           WHERE user_id = $1 AND asset_ticker = $2 AND transaction_type = 'sell'
+         ), updated_at = NOW()
+         WHERE user_id = $1 AND asset_ticker = $2`,
+        [user_id, asset.ticker]
+      );
+
       return res.status(201).json({ message: 'Sell recorded', realizedProfitLoss });
     }
 

@@ -15,7 +15,7 @@ interface Investment {
   current_value?: number | string | null;
   profit_loss?: number | string | null;
   percent_change_24h?: number | string | null;
-  created_at: string;
+  total_profit_loss?: number | string | null;
 }
 
 const formatNumberWithCommas = (num?: number | string | null) => {
@@ -55,7 +55,6 @@ const Dashboard: React.FC = () => {
           window.history.replaceState({}, document.title);
         }
       } catch (err) {
-        console.error('Error fetching investments:', err);
         setError('Failed to fetch investments');
       }
     };
@@ -68,13 +67,17 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-  const totalCost = investments.reduce((sum, inv) => {
-    const quantity = typeof inv.total_quantity === 'number' ? inv.total_quantity : Number(inv.total_quantity);
-    const avgPrice = typeof inv.average_buy_price === 'number' ? inv.average_buy_price : Number(inv.average_buy_price);
-    return sum + (isNaN(quantity * avgPrice) ? 0 : quantity * avgPrice);
+  const unrealizedPL = investments.reduce((sum, inv) => {
+    const pl = typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss);
+    return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
 
-  const profitLoss = totalValue - totalCost;
+  const realizedPL = investments.reduce((sum, inv) => {
+    const pl = typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss);
+    return sum + (isNaN(pl) ? 0 : pl);
+  }, 0);
+
+  const totalPL = unrealizedPL + realizedPL;
 
   const hasSellable = investments.some(inv => Number(inv.total_quantity) > 0);
 
@@ -97,8 +100,8 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
-          <p className={`text-3xl font-bold ${profitLoss < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
-            €{formatNumberWithCommas(profitLoss)}
+          <p className={`text-3xl font-bold ${totalPL < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
+            €{formatNumberWithCommas(totalPL)}
           </p>
         </div>
       </div>
@@ -117,7 +120,6 @@ const Dashboard: React.FC = () => {
                 'Current Value',
                 'Profit / Loss',
                 '% Change 24h',
-                'Date Added',
               ].map(header => (
                 <th key={header} className="px-6 py-3 text-left font-semibold">
                   {header}
@@ -139,9 +141,10 @@ const Dashboard: React.FC = () => {
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.profit_loss)}</td>
+                <td className="px-6 py-4">
+                  €{formatNumberWithCommas(inv.profit_loss)}
+                </td>
                 <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
-                <td className="px-6 py-4">{new Date(inv.created_at).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
