@@ -4,18 +4,17 @@ import { useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 
 const Signup: React.FC = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const validatePassword = (password: string) => {
@@ -24,22 +23,35 @@ const Signup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
+      setError('All fields are required.');
+      return;
+    }
+
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
+
     if (!validatePassword(form.password)) {
-      setError('Password must include a number and a symbol.');
+      setError('Password must contain at least one number and one symbol.');
       return;
     }
 
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
         name: form.name,
         email: form.email,
-        password: form.password,
+        password: form.password
       });
-      navigate('/login');
+
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Signup failed';
       setError(msg);
@@ -88,7 +100,7 @@ const Signup: React.FC = () => {
           </div>
           <div>
             <label htmlFor="password" className="block mb-2 font-semibold">
-              Password <span title="Must contain a number and symbol" className="ml-1 text-sm text-gray-400 cursor-help">?</span>
+              Password
             </label>
             <input
               id="password"
@@ -99,6 +111,9 @@ const Signup: React.FC = () => {
               required
               className="input"
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Must include at least one number and one symbol.
+            </p>
           </div>
           <div>
             <label htmlFor="confirmPassword" className="block mb-2 font-semibold">
@@ -114,6 +129,7 @@ const Signup: React.FC = () => {
               className="input"
             />
           </div>
+
           <div className="flex flex-col gap-4">
             <button type="submit" className="btn btn-primary w-full">
               Sign Up
@@ -135,7 +151,11 @@ const Signup: React.FC = () => {
           </div>
         </form>
         {error && (
-          <p className="mt-4 text-center text-red-500 font-semibold" role="alert">
+          <p
+            className="mt-4 text-center text-red-500 font-semibold"
+            role="alert"
+            aria-live="polite"
+          >
             {error}
           </p>
         )}
