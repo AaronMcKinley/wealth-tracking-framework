@@ -1,4 +1,4 @@
-function calculateCompoundedSavings({
+function calculateCompoundSavings({
   principal,
   annualRate,
   compoundingFrequency,

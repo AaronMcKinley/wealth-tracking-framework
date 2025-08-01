@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const authenticateToken = require('./middleware/authenticateToken');
-const { calculateCompoundedSavings, formatEuro } = require('./helpers/savings');
+const { calculateCompoundSavings, formatEuro } = require('./helpers/savings');
 
 const router = express.Router();
 const pool = new Pool();
@@ -323,7 +323,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
         id
       } = account;
 
-      const { newPrincipal, accruedInterest, periodsSince, nextPayoutDate, interestJustPaid } = calculateCompoundInterest(
+      const { newPrincipal, accruedInterest, periodsSince, nextPayoutDate, interestJustPaid } = calculateCompoundSavings(
         Number(principal),
         Number(interest_rate),
         compounding_frequency,
