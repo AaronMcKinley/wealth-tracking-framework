@@ -12,7 +12,7 @@ interface Transaction {
   total_value: number;
   fees: number;
   transaction_date: string;
-  notes?: string | null;
+  realized_profit_loss?: number | null;
 }
 
 const formatNumber = (num?: number | string | null) => {
@@ -82,19 +82,13 @@ const Transactions: React.FC = () => {
           <table className="table">
             <thead>
               <tr>
-                {[
-                  'Type',
-                  'Quantity',
-                  'Price per Unit (€)',
-                  'Total Value (€)',
-                  'Fees (€)',
-                  'Date',
-                  'Notes',
-                ].map((header) => (
-                  <th key={header} className="px-6 py-3 text-left font-semibold">
-                    {header}
-                  </th>
-                ))}
+                <th className="px-6 py-3 text-left font-semibold">Type</th>
+                <th className="px-6 py-3 text-left font-semibold">Quantity</th>
+                <th className="px-6 py-3 text-left font-semibold">Price per Unit (€)</th>
+                <th className="px-6 py-3 text-left font-semibold">Total Value (€)</th>
+                <th className="px-6 py-3 text-left font-semibold">Fees (€)</th>
+                <th className="px-6 py-3 text-left font-semibold">Date</th>
+                <th className="px-6 py-3 text-left font-semibold">Realized P/L (€)</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +105,22 @@ const Transactions: React.FC = () => {
                   <td className="px-6 py-4">
                     {new Date(tx.transaction_date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4">{tx.notes || '—'}</td>
+                  <td
+                    className={
+                      'px-6 py-4 ' +
+                      (tx.realized_profit_loss != null
+                        ? tx.realized_profit_loss > 0
+                          ? 'text-green-600 font-semibold'
+                          : tx.realized_profit_loss < 0
+                          ? 'text-red-600 font-semibold'
+                          : ''
+                        : '')
+                    }
+                  >
+                    {tx.realized_profit_loss != null
+                      ? formatNumber(tx.realized_profit_loss)
+                      : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -120,7 +129,10 @@ const Transactions: React.FC = () => {
       )}
 
       <div className="text-center">
-        <button onClick={() => navigate('/dashboard')} className="btn btn-primary">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="btn btn-primary"
+        >
           Back to Dashboard
         </button>
       </div>

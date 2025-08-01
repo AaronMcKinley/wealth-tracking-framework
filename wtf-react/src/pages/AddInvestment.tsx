@@ -31,7 +31,7 @@ const AddInvestment: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [buyPrice, setBuyPrice] = useState<string>('');
+  const [totalSpend, setTotalSpend] = useState<string>(''); // renamed from buyPrice
   const [error, setError] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
@@ -125,8 +125,8 @@ const AddInvestment: React.FC = () => {
       }
     }
 
-    if (!buyPrice || Number(buyPrice) <= 0) {
-      setError('Please enter a valid price (greater than 0).');
+    if (!totalSpend || Number(totalSpend) <= 0) {
+      setError('Please enter a valid total value (greater than 0).');
       return;
     }
 
@@ -145,8 +145,8 @@ const AddInvestment: React.FC = () => {
     }
 
     const userObj = JSON.parse(user);
-    const signedAmount = isSellMode ? -Math.abs(Number(amount)) : Number(amount);
-
+    const amt = Number(amount);
+    const signedAmount = isSellMode ? -Math.abs(amt) : amt;
     try {
       const response = await fetch(`${API_BASE}/investments`, {
         method: 'POST',
@@ -158,7 +158,7 @@ const AddInvestment: React.FC = () => {
           user_id: userObj.id,
           name: selectedAsset!.ticker,
           amount: signedAmount,
-          buy_price: Number(buyPrice),
+          total_value: Number(totalSpend),
           type,
         }),
       });
@@ -187,16 +187,6 @@ const AddInvestment: React.FC = () => {
           <div className="text-center mb-4">Loading your holdings…</div>
         )}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
-          <div>
-            <label className="block mb-2 font-semibold">Type *</label>
-            <input
-              type="text"
-              value={type ? type.charAt(0).toUpperCase() + type.slice(1) : ''}
-              readOnly
-              placeholder="Select an asset"
-              className="input cursor-not-allowed"
-            />
-          </div>
           <div className="relative">
             {isSellMode ? (
               <>
@@ -275,19 +265,30 @@ const AddInvestment: React.FC = () => {
             />
           </div>
           <div>
-            <label htmlFor="buyPrice" className="block mb-2 font-semibold">
-              {isSellMode ? 'Sell Price (€)' : 'Buy Price (€)'} <span className="text-red-500">*</span>
+            <label htmlFor="totalSpend" className="block mb-2 font-semibold">
+              {isSellMode ? 'Total Sale Value (€)' : 'Total Spend (€)'} <span className="text-red-500">*</span>
             </label>
             <input
-              id="buyPrice"
+              id="totalSpend"
               type="number"
               step="any"
-              value={buyPrice}
-              onChange={e => setBuyPrice(e.target.value)}
+              value={totalSpend}
+              onChange={e => setTotalSpend(e.target.value)}
               required
               min="0"
               className="input"
               disabled={isSellMode && !selectedAsset}
+            />
+          </div>
+          {/* Move Type field here */}
+          <div>
+            <label className="block mb-2 font-semibold">Type *</label>
+            <input
+              type="text"
+              value={type ? type.charAt(0).toUpperCase() + type.slice(1) : ''}
+              readOnly
+              placeholder="Select an asset"
+              className="input cursor-not-allowed"
             />
           </div>
           <div className="flex justify-end space-x-4">
@@ -308,7 +309,7 @@ const AddInvestment: React.FC = () => {
                   Name: <strong>{selectedAsset?.fullName}</strong><br />
                   Ticker: <strong>{selectedAsset?.ticker}</strong><br />
                   {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
-                  {isSellMode ? 'Sell Price' : 'Buy Price'}: <strong>€{buyPrice}</strong>
+                  {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
                   <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>

@@ -21,7 +21,6 @@ router.get('/health', async (req, res) => {
       return res.status(500).json({ status: 'db query failed' });
     }
   } catch (err) {
-    console.error('Healthcheck DB error:', err.message);
     return res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
@@ -48,7 +47,6 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, email: user.email, name: user.name },
     });
   } catch (err) {
-    console.error('Login error:', err.stack || err);
     handleError(res);
   }
 });
@@ -56,7 +54,6 @@ router.post('/login', async (req, res) => {
 router.get('/investments', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-
     const query = `
       SELECT
         i.id, i.user_id, i.asset_name, i.asset_ticker, i.type,
@@ -76,11 +73,9 @@ router.get('/investments', authenticateToken, async (req, res) => {
       WHERE i.user_id = $1
       ORDER BY i.created_at DESC
     `;
-
     const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching investments:', err.stack || err);
     handleError(res, 'Failed to fetch investments');
   }
 });
@@ -89,18 +84,15 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const { ticker } = req.params;
-
     const query = `
       SELECT id, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date
       FROM transactions
       WHERE user_id = $1 AND LOWER(asset_ticker) = LOWER($2)
       ORDER BY transaction_date DESC
     `;
-
     const result = await pool.query(query, [userId, ticker]);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching transactions:', err.stack || err);
     handleError(res, 'Failed to fetch transactions');
   }
 });
@@ -132,7 +124,6 @@ router.post('/signup', async (req, res) => {
       user
     });
   } catch (err) {
-    console.error('Signup error:', err.stack || err);
     res.status(500).json({ message: 'Signup failed' });
   }
 });
@@ -140,19 +131,21 @@ router.post('/signup', async (req, res) => {
 router.post('/investments', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.userId;
-    const { name, type, amount, buy_price } = req.body;
+    const { name, type, amount, total_value } = req.body;
 
-    if (!name || !type || amount === undefined || !buy_price) {
+    if (!name || !type || amount === undefined || !total_value) {
       return handleError(res, 'Missing required fields', 400);
     }
 
     const quantity = Math.abs(Number(amount));
-    const pricePerUnit = Number(buy_price);
-    const transactionType = Number(amount) > 0 ? 'buy' : 'sell';
-
     if (isNaN(quantity) || quantity === 0) {
       return handleError(res, 'Amount must be non-zero', 400);
     }
+    const pricePerUnit = Number(total_value) / quantity;
+    if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
+      return handleError(res, 'Invalid total or price per unit', 400);
+    }
+    const transactionType = Number(amount) > 0 ? 'buy' : 'sell';
 
     let assetResult;
     const lowerType = type.toLowerCase();
@@ -176,8 +169,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
     }
 
     const asset = assetResult.rows[0];
-    const totalValue = quantity * pricePerUnit;
-    let realizedProfitLoss = 0;
+    let realizedProfitLoss = null;
 
     if (transactionType === 'sell') {
       const invRes = await pool.query(
@@ -185,11 +177,9 @@ router.post('/investments', authenticateToken, async (req, res) => {
          FROM investments WHERE user_id = $1 AND asset_ticker = $2`,
         [user_id, asset.ticker]
       );
-
       if (invRes.rows.length === 0) {
         return handleError(res, 'No holdings to sell', 400);
       }
-
       const currentQty = parseFloat(invRes.rows[0].total_quantity);
       const avgBuy = parseFloat(invRes.rows[0].average_buy_price);
       const currentPL = parseFloat(invRes.rows[0].total_profit_loss);
@@ -204,7 +194,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
         `INSERT INTO transactions
          (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
          VALUES ($1, $2, 'sell', $3, $4, $5, 0, $6, NOW())`,
-        [user_id, asset.ticker, quantity, pricePerUnit, totalValue, realizedProfitLoss]
+        [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value), realizedProfitLoss]
       );
 
       const remainingQty = currentQty - quantity;
@@ -229,16 +219,14 @@ router.post('/investments', authenticateToken, async (req, res) => {
           [remainingQty, user_id, asset.ticker]
         );
       }
-
       return res.status(201).json({ message: 'Sell recorded', realizedProfitLoss });
     }
 
-    // Buy transaction
     await pool.query(
       `INSERT INTO transactions
         (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
-       VALUES ($1, $2, 'buy', $3, $4, $5, 0, 0, NOW())`,
-      [user_id, asset.ticker, quantity, pricePerUnit, totalValue]
+       VALUES ($1, $2, 'buy', $3, $4, $5, 0, null, NOW())`,
+      [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value)]
     );
 
     const agg = await pool.query(
@@ -277,7 +265,6 @@ router.post('/investments', authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: 'Buy recorded', quantity: total_quantity });
   } catch (err) {
-    console.error('Error in /investments:', err.stack || err);
     handleError(res, err.message || 'Failed to record transaction');
   }
 });
