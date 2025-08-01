@@ -71,6 +71,7 @@ exports.up = (pgm) => {
     interest_rate: { type: 'numeric', notNull: true },
     compounding_frequency: { type: 'varchar(20)', notNull: true },
     total_interest_paid: { type: 'numeric', notNull: true, default: 0 },
+    next_payment_amount: { type: 'numeric', notNull: false },
     created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
   });
 };
