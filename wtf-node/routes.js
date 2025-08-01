@@ -368,35 +368,44 @@ router.get('/savings', authenticateToken, async (req, res) => {
 router.post('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-    const { account_name, provider, principal, interest_rate, compounding_frequency } = req.body;
+    const { provider, principal, interest_rate, compounding_frequency } = req.body;
 
-    if (!account_name || principal == null || interest_rate == null || !compounding_frequency) {
+    if (!provider || principal == null || interest_rate == null || !compounding_frequency) {
       return handleError(res, 'Missing required fields', 400);
     }
 
-    const now = new Date();
-    const { newPrincipal, accruedInterest, nextPayoutDate } = calculateCompoundInterest(
-      Number(principal),
-      Number(interest_rate),
-      compounding_frequency,
-      now,
-      now
+    const existing = await pool.query(
+      `SELECT id, principal, interest_rate, compounding_frequency
+       FROM savings_accounts
+       WHERE user_id = $1 AND LOWER(provider) = LOWER($2)`,
+      [userId, provider]
     );
 
-    const result = await pool.query(
-      `INSERT INTO savings_accounts
-         (user_id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 0, $7)
-       RETURNING id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at`,
-      [userId, account_name, provider, newPrincipal, interest_rate, compounding_frequency, now]
-    );
+    if (existing.rows.length > 0) {
+      const current = existing.rows[0];
+      const newPrincipal = parseFloat(current.principal) + parseFloat(principal);
 
-    res.status(201).json({
-      ...result.rows[0],
-      accrued_interest: formatEuroAmount(accruedInterest),
-      expected_next_interest: formatEuroAmount(accruedInterest),
-      next_payout: nextPayoutDate
-    });
+      await pool.query(
+        `UPDATE savings_accounts
+         SET principal = $1, interest_rate = $2, compounding_frequency = $3, updated_at = NOW()
+         WHERE id = $4`,
+        [newPrincipal, interest_rate, compounding_frequency, current.id]
+      );
+
+      return res.status(200).json({
+        message: 'Updated existing savings account',
+        principal: newPrincipal
+      });
+    } else {
+      const result = await pool.query(
+        `INSERT INTO savings_accounts
+          (user_id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at)
+         VALUES ($1, $2, $3, $4, $5, 0, NOW())
+         RETURNING id, provider, principal, interest_rate, compounding_frequency, total_interest_paid`,
+        [userId, provider, principal, interest_rate, compounding_frequency]
+      );
+      return res.status(201).json(result.rows[0]);
+    }
   } catch (err) {
     handleError(res, err.message || 'Failed to add savings account');
   }

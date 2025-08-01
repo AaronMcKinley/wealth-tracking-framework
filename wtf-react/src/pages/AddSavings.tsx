@@ -4,28 +4,24 @@ import Layout from '../components/Layout';
 
 const API_BASE = '/api';
 
-type Frequency = 'monthly' | 'yearly' | 'daily';
+type Frequency = 'monthly' | 'yearly' | 'daily' | 'weekly';
 
 interface SavingsAccount {
   id?: number;
-  account_name: string;
   provider: string;
   principal: string;
   interest_rate: string;
   compounding_frequency: Frequency;
-  next_expected_payment: string;
 }
 
 const initialForm: SavingsAccount = {
-  account_name: '',
   provider: '',
   principal: '',
   interest_rate: '',
   compounding_frequency: 'monthly',
-  next_expected_payment: '',
 };
 
-const AddSavings: React.FC = () => {
+const AddSavingsAccount: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isRemoveMode = location.state?.mode === 'remove';
@@ -43,7 +39,7 @@ const AddSavings: React.FC = () => {
       fetch(`${API_BASE}/savings`, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setAccounts(data))
-        .catch(() => setError('Failed to fetch accounts'));
+        .catch(() => setAccounts([]));
     }
   }, [isRemoveMode]);
 
@@ -62,7 +58,7 @@ const AddSavings: React.FC = () => {
       setShowConfirm(true);
       return;
     }
-    if (!form.account_name || !form.principal || !form.interest_rate || !form.compounding_frequency) {
+    if (!form.provider || !form.principal || !form.interest_rate || !form.compounding_frequency) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -90,21 +86,17 @@ const AddSavings: React.FC = () => {
       return;
     }
     try {
-      const reqBody: any = {
-        ...form,
-        principal: Number(form.principal),
-        interest_rate: Number(form.interest_rate),
-      };
-      if (form.next_expected_payment) {
-        reqBody.next_expected_payment = Number(form.next_expected_payment);
-      }
       const res = await fetch(`${API_BASE}/savings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(reqBody),
+        body: JSON.stringify({
+          ...form,
+          principal: Number(form.principal),
+          interest_rate: Number(form.interest_rate),
+        }),
       });
       if (!res.ok) {
         const msg = (await res.json()).message || 'Failed to add savings account';
@@ -138,7 +130,7 @@ const AddSavings: React.FC = () => {
                 <option value="">Choose an account…</option>
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id}>
-                    {acc.account_name} ({acc.provider}) — €{acc.principal}
+                    {acc.provider} — €{acc.principal}
                   </option>
                 ))}
               </select>
@@ -146,24 +138,8 @@ const AddSavings: React.FC = () => {
           ) : (
             <>
               <div>
-                <label htmlFor="account_name" className="block mb-2 font-semibold">
-                  Account Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="account_name"
-                  name="account_name"
-                  type="text"
-                  value={form.account_name}
-                  onChange={handleChange}
-                  required
-                  className="input"
-                  placeholder="e.g. Revolut Savings"
-                  autoFocus
-                />
-              </div>
-              <div>
                 <label htmlFor="provider" className="block mb-2 font-semibold">
-                  Provider / App / Bank
+                  Provider / App / Bank <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="provider"
@@ -171,6 +147,7 @@ const AddSavings: React.FC = () => {
                   type="text"
                   value={form.provider}
                   onChange={handleChange}
+                  required
                   className="input"
                   placeholder="e.g. Revolut"
                 />
@@ -183,7 +160,7 @@ const AddSavings: React.FC = () => {
                   id="principal"
                   name="principal"
                   type="number"
-                  step="0.01"
+                  step="any"
                   value={form.principal}
                   onChange={handleChange}
                   required
@@ -199,7 +176,7 @@ const AddSavings: React.FC = () => {
                   id="interest_rate"
                   name="interest_rate"
                   type="number"
-                  step="0.01"
+                  step="any"
                   value={form.interest_rate}
                   onChange={handleChange}
                   required
@@ -220,25 +197,10 @@ const AddSavings: React.FC = () => {
                   required
                 >
                   <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
                   <option value="yearly">Yearly</option>
                   <option value="daily">Daily</option>
                 </select>
-              </div>
-              <div>
-                <label htmlFor="next_expected_payment" className="block mb-2 font-semibold">
-                  Next Expected Payment (€)
-                </label>
-                <input
-                  id="next_expected_payment"
-                  name="next_expected_payment"
-                  type="number"
-                  step="0.01"
-                  value={form.next_expected_payment}
-                  onChange={handleChange}
-                  className="input"
-                  min="0"
-                  placeholder="Auto-calculate or enter manually"
-                />
               </div>
             </>
           )}
@@ -247,7 +209,7 @@ const AddSavings: React.FC = () => {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              {isRemoveMode ? 'Remove Savings' : 'Add Savings'}
+              {isRemoveMode ? 'Remove' : 'Add Savings'}
             </button>
           </div>
           {showConfirm && (
@@ -257,16 +219,14 @@ const AddSavings: React.FC = () => {
                 <p className="mb-4">
                   {isRemoveMode ? (
                     <>
-                      Account: <strong>{accounts.find(a => String(a.id) === selectedAccountId)?.account_name}</strong>
+                      Account: <strong>{accounts.find(a => String(a.id) === selectedAccountId)?.provider}</strong>
                     </>
                   ) : (
                     <>
-                      Name: <strong>{form.account_name}</strong><br />
                       Provider: <strong>{form.provider}</strong><br />
                       Amount: <strong>€{form.principal}</strong><br />
                       APR: <strong>{form.interest_rate}%</strong><br />
-                      Compounding: <strong>{form.compounding_frequency}</strong><br />
-                      Next Payment: <strong>€{form.next_expected_payment}</strong>
+                      Compounding: <strong>{form.compounding_frequency}</strong>
                     </>
                   )}
                 </p>
@@ -283,4 +243,4 @@ const AddSavings: React.FC = () => {
   );
 };
 
-export default AddSavings;
+export default AddSavingsAccount;
