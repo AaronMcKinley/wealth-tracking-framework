@@ -32,7 +32,7 @@ const AddInvestment: React.FC = () => {
   const [sellAssetTicker, setSellAssetTicker] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [totalSpend, setTotalSpend] = useState<string>('');
-  const [currentPrice, setCurrentPrice] = useState<string>('');
+  const [assetPrice, setAssetPrice] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
@@ -63,7 +63,7 @@ const AddInvestment: React.FC = () => {
   useEffect(() => {
     async function fetchPrice(asset: Asset | null) {
       if (!asset) {
-        setCurrentPrice('');
+        setAssetPrice(null);
         return;
       }
       try {
@@ -73,16 +73,25 @@ const AddInvestment: React.FC = () => {
         });
         const data = await res.json();
         if (data && data.current_price) {
-          setCurrentPrice(String(data.current_price));
+          setAssetPrice(Number(data.current_price));
         } else {
-          setCurrentPrice('');
+          setAssetPrice(null);
         }
       } catch {
-        setCurrentPrice('');
+        setAssetPrice(null);
       }
     }
     fetchPrice(selectedAsset);
   }, [selectedAsset]);
+
+  useEffect(() => {
+    if (assetPrice && amount && selectedAsset) {
+      const autoValue = (Number(amount) * assetPrice).toFixed(2);
+      if (!totalSpend || totalSpend === '0.00' || totalSpend === (Number(amount) * assetPrice).toFixed(2)) {
+        setTotalSpend(autoValue);
+      }
+    }
+  }, [assetPrice, amount, selectedAsset]);
 
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
@@ -155,11 +164,6 @@ const AddInvestment: React.FC = () => {
       return;
     }
 
-    if (!currentPrice || Number(currentPrice) <= 0) {
-      setError('Please enter a valid current price (greater than 0).');
-      return;
-    }
-
     setError('');
     setShowConfirm(true);
   };
@@ -191,7 +195,6 @@ const AddInvestment: React.FC = () => {
           amount: signedAmount,
           total_value: Number(totalSpend),
           type,
-          current_price: Number(currentPrice),
         }),
       });
 
@@ -297,6 +300,19 @@ const AddInvestment: React.FC = () => {
             />
           </div>
           <div>
+            <label htmlFor="unitPrice" className="block mb-2 font-semibold">
+              Unit Price (€)
+            </label>
+            <input
+              id="unitPrice"
+              type="text"
+              value={assetPrice !== null ? `€${assetPrice.toFixed(2)}` : ''}
+              readOnly
+              className="input cursor-not-allowed bg-gray-100"
+              tabIndex={-1}
+            />
+          </div>
+          <div>
             <label htmlFor="totalSpend" className="block mb-2 font-semibold">
               {isSellMode ? 'Total Sale Value (€)' : 'Total Spend (€)'} <span className="text-red-500">*</span>
             </label>
@@ -310,21 +326,6 @@ const AddInvestment: React.FC = () => {
               min="0"
               className="input"
               disabled={isSellMode && !selectedAsset}
-            />
-          </div>
-          <div>
-            <label htmlFor="currentPrice" className="block mb-2 font-semibold">
-              Current Price (€)
-            </label>
-            <input
-              id="currentPrice"
-              type="number"
-              step="any"
-              value={currentPrice}
-              onChange={e => setCurrentPrice(e.target.value)}
-              min="0"
-              className="input"
-              disabled={!selectedAsset}
             />
           </div>
           <div>
@@ -345,7 +346,6 @@ const AddInvestment: React.FC = () => {
               {isSellMode ? 'Sell' : 'Add Investment'}
             </button>
           </div>
-
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">
@@ -355,8 +355,8 @@ const AddInvestment: React.FC = () => {
                   Name: <strong>{selectedAsset?.fullName}</strong><br />
                   Ticker: <strong>{selectedAsset?.ticker}</strong><br />
                   {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
-                  {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong><br />
-                  Current Price: <strong>€{currentPrice}</strong>
+                  Unit Price: <strong>{assetPrice !== null ? `€${assetPrice.toFixed(2)}` : ''}</strong><br />
+                  {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
                   <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
