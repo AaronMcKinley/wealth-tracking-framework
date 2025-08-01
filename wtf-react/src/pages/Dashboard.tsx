@@ -67,17 +67,12 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-  const unrealizedPL = investments.reduce((sum, inv) => {
-    const pl = typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss);
+
+  const totalPL = investments.reduce((sum, inv) => {
+    const pl = ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
+               ((typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss)) || 0);
     return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
-
-  const realizedPL = investments.reduce((sum, inv) => {
-    const pl = typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss);
-    return sum + (isNaN(pl) ? 0 : pl);
-  }, 0);
-
-  const totalPL = unrealizedPL + realizedPL;
 
   const hasSellable = investments.some(inv => Number(inv.total_quantity) > 0);
 
@@ -110,21 +105,15 @@ const Dashboard: React.FC = () => {
         <table className="table w-full">
           <thead className="bg-cardBg">
             <tr>
-              {[
-                'Name',
-                'Ticker',
-                'Type',
-                'Quantity',
-                'Avg Buy Price',
-                'Current Price',
-                'Current Value',
-                'Profit / Loss',
-                '% Change 24h',
-              ].map(header => (
-                <th key={header} className="px-6 py-3 text-left font-semibold">
-                  {header}
-                </th>
-              ))}
+              <th className="px-6 py-3 text-left font-semibold">Name</th>
+              <th className="px-6 py-3 text-left font-semibold">Ticker</th>
+              <th className="px-6 py-3 text-left font-semibold">Type</th>
+              <th className="px-6 py-3 text-left font-semibold">Quantity</th>
+              <th className="px-6 py-3 text-left font-semibold">Avg Buy Price</th>
+              <th className="px-6 py-3 text-left font-semibold">Current Price</th>
+              <th className="px-6 py-3 text-left font-semibold">Profit / Loss</th>
+              <th className="px-6 py-3 text-left font-semibold">% Change 24h</th>
+              <th className="px-6 py-3 text-left font-semibold">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -140,11 +129,14 @@ const Dashboard: React.FC = () => {
                 <td className="px-6 py-4">{formatNumberWithCommas(inv.total_quantity)}</td>
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
-                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
                 <td className="px-6 py-4">
-                  €{formatNumberWithCommas(inv.profit_loss)}
+                  €{formatNumberWithCommas(
+                    ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
+                    ((typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss)) || 0)
+                  )}
                 </td>
                 <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
+                <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_value)}</td>
               </tr>
             ))}
           </tbody>
