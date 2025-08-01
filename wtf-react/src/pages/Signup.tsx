@@ -1,60 +1,67 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 
 const Signup: React.FC = () => {
-  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
+  };
+
+  const validatePassword = (password: string) => {
+    return /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
+      return;
+    }
+    if (!validatePassword(form.password)) {
+      setError('Password must include a number and a symbol.');
       return;
     }
 
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
         name: form.name,
         email: form.email,
-        password: form.password
+        password: form.password,
       });
-      if (res.status === 201) {
-        setMessage('Signup successful. Redirecting to login...');
-        setTimeout(() => navigate('/'), 2000);
-      }
+      navigate('/login');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Signup failed';
       setError(msg);
     }
   };
 
+  const handleCancel = () => {
+    navigate('/');
+  };
+
   return (
     <>
       <Header />
       <div className="card max-w-md mx-auto mt-20 text-textLight">
-        <h2 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework – Sign Up</h2>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        {message && <p className="text-green-500 text-center mb-4">{message}</p>}
+        <h2 className="text-3xl font-bold mb-6 text-center">
+          Wealth Tracking Framework – Signup
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
-            <label htmlFor="name" className="block mb-2 font-semibold">Name</label>
+            <label htmlFor="name" className="block mb-2 font-semibold">
+              Name
+            </label>
             <input
               id="name"
               name="name"
@@ -66,7 +73,9 @@ const Signup: React.FC = () => {
             />
           </div>
           <div>
-            <label htmlFor="email" className="block mb-2 font-semibold">Email</label>
+            <label htmlFor="email" className="block mb-2 font-semibold">
+              Email
+            </label>
             <input
               id="email"
               name="email"
@@ -74,12 +83,13 @@ const Signup: React.FC = () => {
               value={form.email}
               onChange={handleChange}
               required
-              autoComplete="username"
               className="input"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block mb-2 font-semibold">Password</label>
+            <label htmlFor="password" className="block mb-2 font-semibold">
+              Password <span title="Must contain a number and symbol" className="ml-1 text-sm text-gray-400 cursor-help">?</span>
+            </label>
             <input
               id="password"
               name="password"
@@ -87,15 +97,13 @@ const Signup: React.FC = () => {
               value={form.password}
               onChange={handleChange}
               required
-              autoComplete="new-password"
               className="input"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Must include at least 1 symbol and 1 number.
-            </p>
           </div>
           <div>
-            <label htmlFor="confirmPassword" className="block mb-2 font-semibold">Confirm Password</label>
+            <label htmlFor="confirmPassword" className="block mb-2 font-semibold">
+              Confirm Password
+            </label>
             <input
               id="confirmPassword"
               name="confirmPassword"
@@ -106,8 +114,31 @@ const Signup: React.FC = () => {
               className="input"
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full">Sign Up</button>
+          <div className="flex flex-col gap-4">
+            <button type="submit" className="btn btn-primary w-full">
+              Sign Up
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="btn btn-negative w-full"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="flex justify-center mt-4">
+            <Link to="/login" className="w-1/2">
+              <button type="button" className="btn btn-primary w-full text-sm">
+                Sign In
+              </button>
+            </Link>
+          </div>
         </form>
+        {error && (
+          <p className="mt-4 text-center text-red-500 font-semibold" role="alert">
+            {error}
+          </p>
+        )}
       </div>
     </>
   );
