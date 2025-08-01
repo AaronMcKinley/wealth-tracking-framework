@@ -79,7 +79,7 @@ router.get('/investments', authenticateToken, async (req, res) => {
         FROM stocks_and_funds
       ) m ON i.asset_ticker = m.ticker
       WHERE i.user_id = $1
-      ORDER BY i.created_at DESC
+      ORDER BY (COALESCE(m.current_price, 0) * i.total_quantity) DESC
     `;
     const result = await pool.query(query, [userId]);
     res.json(result.rows);
