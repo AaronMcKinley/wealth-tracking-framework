@@ -15,37 +15,36 @@ const Signup: React.FC = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      setMessage('Passwords do not match');
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    // Password requirements check
+    const passReq = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
+    if (!passReq.test(password)) {
+      setMessage('Password must contain at least one number and one symbol.');
       return;
     }
 
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
-        name,
-        email,
-        password,
-      });
-
-      if (
-        typeof res.data === 'object' &&
-        'token' in res.data &&
-        'user' in res.data
-      ) {
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/signup`,
+        { name, email, password }
+      );
+      const data = res.data as any;
+      if (data.token && data.user) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/dashboard');
       } else {
-        throw new Error('Unexpected response from server');
+        setMessage(data.message || 'Signup failed');
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || 'Signup failed';
-      setMessage(errorMsg);
+      setMessage(err.response?.data?.message || 'Signup failed');
     }
   };
 
-  const handleCancel = () => {
-    navigate('/');
-  };
+  const handleCancel = () => navigate('/');
 
   return (
     <>
@@ -66,6 +65,7 @@ const Signup: React.FC = () => {
               onChange={e => setName(e.target.value)}
               required
               className="input"
+              autoComplete="name"
             />
           </div>
           <div>
@@ -79,6 +79,7 @@ const Signup: React.FC = () => {
               onChange={e => setEmail(e.target.value)}
               required
               className="input"
+              autoComplete="email"
             />
           </div>
           <div>
@@ -91,13 +92,12 @@ const Signup: React.FC = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              pattern="^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{6,})"
-              autoComplete="new-password"
               className="input"
+              autoComplete="new-password"
             />
-            <p className="text-sm text-gray-400 mt-1">
-              Password must include at least one number and one special character.
-            </p>
+            <div className="text-xs mt-1 text-gray-400">
+              Must contain at least one number and one symbol.
+            </div>
           </div>
           <div>
             <label htmlFor="confirmPassword" className="block mb-2 font-semibold">
@@ -109,8 +109,8 @@ const Signup: React.FC = () => {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               required
-              autoComplete="new-password"
               className="input"
+              autoComplete="new-password"
             />
           </div>
           <div className="flex flex-col gap-4">
