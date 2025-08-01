@@ -299,7 +299,6 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch asset price' });
   }
 });
-
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -360,6 +359,12 @@ router.post('/savings', authenticateToken, async (req, res) => {
       return handleError(res, 'Missing required fields', 400);
     }
 
+    const calc = calculateCompoundSavings({
+      principal,
+      annualRate: interest_rate,
+      compoundingFrequency: compounding_frequency
+    });
+
     const existing = await pool.query(
       `SELECT id, principal, interest_rate, compounding_frequency
        FROM savings_accounts
@@ -371,14 +376,22 @@ router.post('/savings', authenticateToken, async (req, res) => {
       const current = existing.rows[0];
       const newPrincipal = Number(current.principal) + Number(principal);
 
+      const updatedCalc = calculateCompoundSavings({
+        principal: newPrincipal,
+        annualRate: interest_rate,
+        compoundingFrequency: compounding_frequency
+      });
+
       await pool.query(
         `UPDATE savings_accounts
-         SET principal = $1, interest_rate = $2, compounding_frequency = $3, updated_at = NOW()
-         WHERE id = $4`,
+         SET principal = $1, interest_rate = $2, compounding_frequency = $3,
+             next_payment_amount = $4, updated_at = NOW()
+         WHERE id = $5`,
         [
           newPrincipal,
           Number(interest_rate),
           compounding_frequency,
+          updatedCalc.nextPaymentAmount,
           current.id
         ]
       );
@@ -391,14 +404,15 @@ router.post('/savings', authenticateToken, async (req, res) => {
       await pool.query(
         `INSERT INTO savings_accounts
           (user_id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount, created_at)
-         VALUES ($1, $2, $3, $4, $5, 0, 0, NOW())
-         RETURNING id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount`,
+         VALUES ($1, $2, $3, $4, $5, 0, $6, NOW())
+         RETURNING id`,
         [
           userId,
           provider,
           Number(principal),
           Number(interest_rate),
-          compounding_frequency
+          compounding_frequency,
+          calc.nextPaymentAmount
         ]
       );
       return res.status(201).json({
