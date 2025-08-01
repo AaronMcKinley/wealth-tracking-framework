@@ -5,56 +5,36 @@ import Header from '../components/Header';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [error, setError] = useState('');
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const validatePassword = (password: string) => {
-    return /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
-  };
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError('All fields are required.');
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (!validatePassword(form.password)) {
-      setError('Password must contain at least one number and one symbol.');
+    if (password !== confirmPassword) {
+      setMessage('Passwords do not match');
       return;
     }
 
     try {
       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
-        name: form.name,
-        email: form.email,
-        password: form.password
+        name,
+        email,
+        password,
       });
 
-      if (res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+      const data = res.data as { token: string; user: any };
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/dashboard');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Signup failed';
-      setError(msg);
+      const errorMsg = err.response?.data?.message || 'Signup failed';
+      setMessage(errorMsg);
     }
   };
 
@@ -66,9 +46,7 @@ const Signup: React.FC = () => {
     <>
       <Header />
       <div className="card max-w-md mx-auto mt-20 text-textLight">
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Wealth Tracking Framework – Signup
-        </h2>
+        <h2 className="text-3xl font-bold mb-6 text-center">Sign Up</h2>
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
             <label htmlFor="name" className="block mb-2 font-semibold">
@@ -76,10 +54,9 @@ const Signup: React.FC = () => {
             </label>
             <input
               id="name"
-              name="name"
               type="text"
-              value={form.name}
-              onChange={handleChange}
+              value={name}
+              onChange={e => setName(e.target.value)}
               required
               className="input"
             />
@@ -90,10 +67,9 @@ const Signup: React.FC = () => {
             </label>
             <input
               id="email"
-              name="email"
               type="email"
-              value={form.email}
-              onChange={handleChange}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
               className="input"
             />
@@ -104,15 +80,14 @@ const Signup: React.FC = () => {
             </label>
             <input
               id="password"
-              name="password"
               type="password"
-              value={form.password}
-              onChange={handleChange}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               required
               className="input"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Must include at least one number and one symbol.
+            <p className="text-sm text-gray-500 mt-1">
+              Password must contain at least one number and one special character.
             </p>
           </div>
           <div>
@@ -121,15 +96,13 @@ const Signup: React.FC = () => {
             </label>
             <input
               id="confirmPassword"
-              name="confirmPassword"
               type="password"
-              value={form.confirmPassword}
-              onChange={handleChange}
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
               required
               className="input"
             />
           </div>
-
           <div className="flex flex-col gap-4">
             <button type="submit" className="btn btn-primary w-full">
               Sign Up
@@ -150,13 +123,13 @@ const Signup: React.FC = () => {
             </Link>
           </div>
         </form>
-        {error && (
+        {message && (
           <p
             className="mt-4 text-center text-red-500 font-semibold"
             role="alert"
             aria-live="polite"
           >
-            {error}
+            {message}
           </p>
         )}
       </div>
