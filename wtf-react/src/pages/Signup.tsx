@@ -1,137 +1,113 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 
 const Signup: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
-  const passwordValid = (pwd: string) =>
-    /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setMessage('Passwords do not match.');
-      return;
-    }
-    if (!passwordValid(password)) {
-      setMessage('Password must contain at least one number and one symbol.');
+    setError('');
+    setMessage('');
+
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     try {
       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
-        name,
-        email,
-        password,
+        name: form.name,
+        email: form.email,
+        password: form.password
       });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/dashboard');
+      if (res.status === 201) {
+        setMessage('Signup successful. Redirecting to login...');
+        setTimeout(() => navigate('/'), 2000);
+      }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || 'Signup failed';
-      setMessage(errorMsg);
+      const msg = err.response?.data?.message || 'Signup failed';
+      setError(msg);
     }
-  };
-
-  const handleCancel = () => {
-    navigate('/');
   };
 
   return (
     <>
       <Header />
       <div className="card max-w-md mx-auto mt-20 text-textLight">
-        <h2 className="text-3xl font-bold mb-6 text-center">Create Account</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework – Sign Up</h2>
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+        {message && <p className="text-green-500 text-center mb-4">{message}</p>}
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
-            <label htmlFor="name" className="block mb-2 font-semibold">
-              Name
-            </label>
+            <label htmlFor="name" className="block mb-2 font-semibold">Name</label>
             <input
               id="name"
+              name="name"
               type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
+              value={form.name}
+              onChange={handleChange}
               required
               className="input"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block mb-2 font-semibold">
-              Email
-            </label>
+            <label htmlFor="email" className="block mb-2 font-semibold">Email</label>
             <input
               id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              value={form.email}
+              onChange={handleChange}
               required
               autoComplete="username"
               className="input"
             />
           </div>
-          <div className="relative">
-            <label htmlFor="password" className="block mb-2 font-semibold flex items-center gap-2">
-              Password
-              <span
-                className="text-xs bg-gray-600 text-white px-2 py-0.5 rounded cursor-default"
-                title="Must contain at least one number and one symbol"
-              >
-                ?
-              </span>
-            </label>
+          <div>
+            <label htmlFor="password" className="block mb-2 font-semibold">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+              value={form.password}
+              onChange={handleChange}
               required
               autoComplete="new-password"
               className="input"
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Must include at least 1 symbol and 1 number.
+            </p>
           </div>
           <div>
-            <label htmlFor="confirm" className="block mb-2 font-semibold">
-              Confirm Password
-            </label>
+            <label htmlFor="confirmPassword" className="block mb-2 font-semibold">Confirm Password</label>
             <input
-              id="confirm"
+              id="confirmPassword"
+              name="confirmPassword"
               type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              value={form.confirmPassword}
+              onChange={handleChange}
               required
-              autoComplete="new-password"
               className="input"
             />
           </div>
-          <div className="flex flex-col gap-4">
-            <button type="submit" className="btn btn-primary w-full">
-              Sign Up
-            </button>
-            <button type="button" onClick={handleCancel} className="btn btn-negative w-full">
-              Cancel
-            </button>
-          </div>
-          <div className="flex justify-center mt-4">
-            <Link to="/login" className="w-1/2">
-              <button type="button" className="btn btn-primary w-full text-sm">
-                Sign In
-              </button>
-            </Link>
-          </div>
+          <button type="submit" className="btn btn-primary w-full">Sign Up</button>
         </form>
-        {message && (
-          <p className="mt-4 text-center text-red-500 font-semibold" role="alert">
-            {message}
-          </p>
-        )}
       </div>
     </>
   );
