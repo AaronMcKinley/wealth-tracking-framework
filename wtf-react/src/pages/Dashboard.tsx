@@ -20,12 +20,14 @@ interface Investment {
 
 interface SavingsAccount {
   id: number;
-  account_name: string;
-  provider: string | null;
-  principal: number;
-  interest_rate: number;
+  provider: string;
+  principal: string;
+  interest_rate: string;
   compounding_frequency: string;
-  total_interest_paid: number;
+  total_interest_paid: string;
+  accrued_interest?: string;
+  expected_next_interest?: string;
+  next_payout?: string;
 }
 
 const formatNumberWithCommas = (num?: number | string | null) => {
@@ -34,6 +36,11 @@ const formatNumberWithCommas = (num?: number | string | null) => {
   return isNaN(n)
     ? '—'
     : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseEuroString = (val: string | undefined | null) => {
+  if (!val) return 0;
+  return Number(val.replace(/[^0-9.-]+/g,""));
 };
 
 const Dashboard: React.FC = () => {
@@ -99,8 +106,14 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
 
-  const totalSavingsValue = savings.reduce((sum, s) => sum + (s.principal || 0) + (s.total_interest_paid || 0), 0);
-  const totalSavingsInterest = savings.reduce((sum, s) => sum + (s.total_interest_paid || 0), 0);
+  // For savings, parse formatted euro strings
+  const totalSavingsValue = savings.reduce((sum, s) => {
+    return sum + parseEuroString(s.principal) + parseEuroString(s.total_interest_paid);
+  }, 0);
+
+  const totalSavingsInterest = savings.reduce((sum, s) => {
+    return sum + parseEuroString(s.total_interest_paid);
+  }, 0);
 
   const hasSellable = investments.some(inv => Number(inv.total_quantity) > 0);
 
@@ -199,23 +212,32 @@ const Dashboard: React.FC = () => {
           <table className="table w-full">
             <thead className="bg-cardBg">
               <tr>
-                <th className="px-6 py-3 text-left font-semibold">Account Name</th>
                 <th className="px-6 py-3 text-left font-semibold">Provider</th>
                 <th className="px-6 py-3 text-left font-semibold">Principal</th>
                 <th className="px-6 py-3 text-left font-semibold">APR (%)</th>
                 <th className="px-6 py-3 text-left font-semibold">Interest Paid</th>
+                <th className="px-6 py-3 text-left font-semibold">Next Payment (€)</th>
+                <th className="px-6 py-3 text-left font-semibold">Next Payout</th>
                 <th className="px-6 py-3 text-left font-semibold">Total Value</th>
               </tr>
             </thead>
             <tbody>
               {savings.map(s => (
                 <tr key={s.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
-                  <td className="px-6 py-4">{s.account_name}</td>
                   <td className="px-6 py-4">{s.provider || '—'}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(s.principal)}</td>
-                  <td className="px-6 py-4">{formatNumberWithCommas(s.interest_rate)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(s.total_interest_paid)}</td>
-                  <td className="px-6 py-4">€{formatNumberWithCommas(s.principal + s.total_interest_paid)}</td>
+                  <td className="px-6 py-4">{s.principal}</td>
+                  <td className="px-6 py-4">{s.interest_rate}</td>
+                  <td className="px-6 py-4">{s.total_interest_paid}</td>
+                  <td className="px-6 py-4">{s.expected_next_interest}</td>
+                  <td className="px-6 py-4">{s.next_payout ? new Date(s.next_payout).toLocaleDateString() : '—'}</td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const p = parseEuroString(s.principal);
+                      const t = parseEuroString(s.total_interest_paid);
+                      if (isNaN(p + t)) return '—';
+                      return '€' + (p + t).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    })()}
+                  </td>
                 </tr>
               ))}
             </tbody>
