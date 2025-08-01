@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ASSETS, Asset } from '../data/assets';
 import Layout from '../components/Layout';
@@ -36,6 +36,7 @@ const AddInvestment: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
+  const [totalSpendManuallyEdited, setTotalSpendManuallyEdited] = useState(false);
 
   useEffect(() => {
     if (isSellMode) {
@@ -85,13 +86,11 @@ const AddInvestment: React.FC = () => {
   }, [selectedAsset]);
 
   useEffect(() => {
-    if (assetPrice && amount && selectedAsset) {
+    if (assetPrice && amount && selectedAsset && !totalSpendManuallyEdited) {
       const autoValue = (Number(amount) * assetPrice).toFixed(2);
-      if (!totalSpend || totalSpend === '0.00' || totalSpend === (Number(amount) * assetPrice).toFixed(2)) {
-        setTotalSpend(autoValue);
-      }
+      setTotalSpend(autoValue);
     }
-  }, [assetPrice, amount, selectedAsset]);
+  }, [assetPrice, amount, selectedAsset, totalSpendManuallyEdited]);
 
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
@@ -131,6 +130,23 @@ const AddInvestment: React.FC = () => {
     setSearchInput(`${asset.fullName} (${asset.ticker})`);
     setSuggestions([]);
     setError('');
+    setTotalSpendManuallyEdited(false);
+  };
+
+  const handleTotalSpendChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTotalSpend(e.target.value);
+    setTotalSpendManuallyEdited(true);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAmount(e.target.value);
+    if (!totalSpendManuallyEdited) {
+      if (assetPrice && e.target.value) {
+        setTotalSpend((Number(e.target.value) * assetPrice).toFixed(2));
+      } else {
+        setTotalSpend('');
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -289,7 +305,7 @@ const AddInvestment: React.FC = () => {
               type="number"
               step="any"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onChange={handleAmountChange}
               required
               min="0"
               max={isSellMode && selectedAsset
@@ -321,7 +337,7 @@ const AddInvestment: React.FC = () => {
               type="number"
               step="any"
               value={totalSpend}
-              onChange={e => setTotalSpend(e.target.value)}
+              onChange={handleTotalSpendChange}
               required
               min="0"
               className="input"
