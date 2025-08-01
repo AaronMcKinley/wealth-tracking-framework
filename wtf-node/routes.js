@@ -68,7 +68,15 @@ router.get('/investments', authenticateToken, async (req, res) => {
       LEFT JOIN (
         SELECT ticker, current_price, price_change_percentage_24h AS percent_change_24h FROM cryptocurrencies
         UNION ALL
-        SELECT ticker, current_price, previous_close AS percent_change_24h FROM stocks_and_funds
+        SELECT
+          ticker,
+          current_price,
+          CASE
+            WHEN previous_close IS NOT NULL AND previous_close <> 0
+              THEN ROUND(((current_price - previous_close) / previous_close) * 100, 2)
+            ELSE NULL
+          END AS percent_change_24h
+        FROM stocks_and_funds
       ) m ON i.asset_ticker = m.ticker
       WHERE i.user_id = $1
       ORDER BY i.created_at DESC

@@ -317,7 +317,7 @@ const AddInvestment: React.FC = () => {
           </div>
           <div>
             <label htmlFor="unitPrice" className="block mb-2 font-semibold">
-              Unit Price (€)
+              Current Unit Price (€)
             </label>
             <input
               id="unitPrice"
