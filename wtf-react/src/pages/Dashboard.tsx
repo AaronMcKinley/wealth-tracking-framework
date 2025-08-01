@@ -106,7 +106,6 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
 
-  // For savings, parse formatted euro strings
   const totalSavingsValue = savings.reduce((sum, s) => {
     return sum + parseEuroString(s.principal) + parseEuroString(s.total_interest_paid);
   }, 0);
@@ -186,14 +185,14 @@ const Dashboard: React.FC = () => {
 
       <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
         <button
-          className="btn btn-primary"
+          className="btn btn-primary min-w-[160px]"
           onClick={() => navigate('/add-investment')}
           type="button"
         >
           Add Investment
         </button>
         <button
-          className="btn btn-negative"
+          className="btn btn-negative min-w-[160px]"
           onClick={() => navigate('/add-investment', { state: { mode: 'sell' } })}
           type="button"
         >
@@ -245,14 +244,14 @@ const Dashboard: React.FC = () => {
 
       <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
         <button
-          className="btn btn-primary"
+          className="btn btn-primary min-w-[160px]"
           onClick={() => navigate('/savings')}
           type="button"
         >
           Add Savings
         </button>
         <button
-          className="btn btn-negative"
+          className="btn btn-negative min-w-[160px]"
           onClick={() => navigate('/savings', { state: { mode: 'remove' } })}
           type="button"
         >
