@@ -13,6 +13,7 @@ const Signup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (password !== confirmPassword) {
       setMessage('Passwords do not match');
       return;
@@ -25,12 +26,16 @@ const Signup: React.FC = () => {
         password,
       });
 
-      const data = res.data as { token: string; user: any };
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+      if (
+        typeof res.data === 'object' &&
+        'token' in res.data &&
+        'user' in res.data
+      ) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
         navigate('/dashboard');
+      } else {
+        throw new Error('Unexpected response from server');
       }
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Signup failed';
@@ -46,7 +51,9 @@ const Signup: React.FC = () => {
     <>
       <Header />
       <div className="card max-w-md mx-auto mt-20 text-textLight">
-        <h2 className="text-3xl font-bold mb-6 text-center">Sign Up</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center">
+          Wealth Tracking Framework – Sign Up
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
             <label htmlFor="name" className="block mb-2 font-semibold">
@@ -84,10 +91,12 @@ const Signup: React.FC = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              pattern="^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{6,})"
+              autoComplete="new-password"
               className="input"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              Password must contain at least one number and one special character.
+            <p className="text-sm text-gray-400 mt-1">
+              Password must include at least one number and one special character.
             </p>
           </div>
           <div>
@@ -100,6 +109,7 @@ const Signup: React.FC = () => {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               required
+              autoComplete="new-password"
               className="input"
             />
           </div>
