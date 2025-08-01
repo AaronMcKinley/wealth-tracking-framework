@@ -11,7 +11,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({
   children,
-  menuItems = ['Dashboard', 'Add Investment', 'Settings', 'Logout'],
+  menuItems = ['Dashboard', 'Add Investment', 'Add Savings', 'Settings', 'Logout'],
 }) => {
   return (
     <div className="flex flex-col min-h-screen bg-darkBg text-textLight">

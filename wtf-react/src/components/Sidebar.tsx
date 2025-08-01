@@ -15,6 +15,12 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
       case 'Dashboard':
         navigate('/dashboard');
         break;
+      case 'Add Investment':
+        navigate('/add-investment');
+        break;
+      case 'Add Savings':
+        navigate('/savings');
+        break;
       case 'Settings':
         navigate('/settings');
         break;
