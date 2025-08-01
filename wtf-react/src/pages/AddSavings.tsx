@@ -25,7 +25,7 @@ const initialForm: SavingsAccount = {
   next_expected_payment: '',
 };
 
-const AddSavingsAccount: React.FC = () => {
+const AddSavings: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isRemoveMode = location.state?.mode === 'remove';
@@ -283,4 +283,4 @@ const AddSavingsAccount: React.FC = () => {
   );
 };
 
-export default AddSavingsAccount;
+export default AddSavings;

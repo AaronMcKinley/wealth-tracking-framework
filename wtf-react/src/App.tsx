@@ -10,6 +10,8 @@ import NotFound from './pages/NotFound';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import PrivateRoute from './routes/PrivateRoute';
 import Settings from './pages/Settings';
+import AddSavings from './pages/AddSavings';
+
 
 const ConditionalFallback = () => {
   const { isAuthenticated } = useAuth();
