@@ -78,4 +78,10 @@ function calculateCompoundSavings({
   };
 }
 
-module.exports = { calculateCompoundSavings };
+function formatEuro(val) {
+  const n = typeof val === 'number' ? val : Number(val);
+  if (isNaN(n)) return '—';
+  return '€' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+module.exports = { calculateCompoundSavings, formatEuro };
