@@ -299,4 +299,42 @@ router.post('/investments', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/savings', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const result = await pool.query(
+      `SELECT id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid
+       FROM savings_accounts
+       WHERE user_id = $1
+       ORDER BY principal DESC`,
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    handleError(res, 'Failed to fetch savings accounts');
+  }
+});
+
+router.post('/savings', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { account_name, provider, principal, interest_rate, compounding_frequency } = req.body;
+
+    if (!account_name || principal == null || interest_rate == null || !compounding_frequency) {
+      return handleError(res, 'Missing required fields', 400);
+    }
+
+    const result = await pool.query(
+      `INSERT INTO savings_accounts
+         (user_id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 0, NOW())
+       RETURNING id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid`,
+      [userId, account_name, provider, principal, interest_rate, compounding_frequency]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    handleError(res, err.message || 'Failed to add savings account');
+  }
+});
+
 module.exports = router;

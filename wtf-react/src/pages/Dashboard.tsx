@@ -18,6 +18,16 @@ interface Investment {
   total_profit_loss?: number | string | null;
 }
 
+interface SavingsAccount {
+  id: number;
+  account_name: string;
+  provider: string | null;
+  principal: number;
+  interest_rate: number;
+  compounding_frequency: string;
+  total_interest_paid: number;
+}
+
 const formatNumberWithCommas = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
@@ -28,6 +38,7 @@ const formatNumberWithCommas = (num?: number | string | null) => {
 
 const Dashboard: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [savings, setSavings] = useState<SavingsAccount[]>([]);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -59,7 +70,23 @@ const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchSavings = async () => {
+      try {
+        const res = await axios.get<SavingsAccount[]>(
+          `${process.env.REACT_APP_API_URL}/api/savings`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setSavings(res.data);
+      } catch (err) {
+      }
+    };
+
     fetchInvestments();
+    fetchSavings();
   }, [location.state, token, isAuthenticated]);
 
   const totalValue = investments.reduce((sum, inv) => {
@@ -67,12 +94,14 @@ const Dashboard: React.FC = () => {
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-
   const totalPL = investments.reduce((sum, inv) => {
     const pl = ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
                ((typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss)) || 0);
     return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
+
+  const totalSavingsValue = savings.reduce((sum, s) => sum + (s.principal || 0) + (s.total_interest_paid || 0), 0);
+  const totalSavingsInterest = savings.reduce((sum, s) => sum + (s.total_interest_paid || 0), 0);
 
   const hasSellable = investments.some(inv => Number(inv.total_quantity) > 0);
 
@@ -90,13 +119,13 @@ const Dashboard: React.FC = () => {
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
           <p className="text-3xl font-bold text-primaryGreen">
-            €{formatNumberWithCommas(totalValue)}
+            €{formatNumberWithCommas(totalValue + totalSavingsValue)}
           </p>
         </div>
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
-          <p className={`text-3xl font-bold ${totalPL < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
-            €{formatNumberWithCommas(totalPL)}
+          <p className={`text-3xl font-bold ${totalPL + totalSavingsInterest < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
+            €{formatNumberWithCommas(totalPL + totalSavingsInterest)}
           </p>
         </div>
       </div>
@@ -164,6 +193,53 @@ const Dashboard: React.FC = () => {
           Nothing to sell
         </div>
       )}
+
+      {savings.length > 0 && (
+        <div className="overflow-x-auto shadow-lg mt-10 rounded-lg">
+          <h2 className="text-xl font-bold text-center py-4">Savings Accounts</h2>
+          <table className="table w-full">
+            <thead className="bg-cardBg">
+              <tr>
+                <th className="px-6 py-3 text-left font-semibold">Account Name</th>
+                <th className="px-6 py-3 text-left font-semibold">Provider</th>
+                <th className="px-6 py-3 text-left font-semibold">Principal</th>
+                <th className="px-6 py-3 text-left font-semibold">APR (%)</th>
+                <th className="px-6 py-3 text-left font-semibold">Interest Paid</th>
+                <th className="px-6 py-3 text-left font-semibold">Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {savings.map(s => (
+                <tr key={s.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
+                  <td className="px-6 py-4">{s.account_name}</td>
+                  <td className="px-6 py-4">{s.provider || '—'}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.principal)}</td>
+                  <td className="px-6 py-4">{formatNumberWithCommas(s.interest_rate)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.total_interest_paid)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.principal + s.total_interest_paid)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+        <button
+          className="btn btn-primary"
+          onClick={() => navigate('/add-savings')}
+          type="button"
+        >
+          Add Savings
+        </button>
+        <button
+          className="btn btn-negative"
+          onClick={() => navigate('/remove-savings')}
+          type="button"
+        >
+          Remove Savings
+        </button>
+      </div>
     </Layout>
   );
 };

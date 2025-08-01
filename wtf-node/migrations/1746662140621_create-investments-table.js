@@ -56,9 +56,27 @@ exports.up = (pgm) => {
   pgm.addConstraint('investments', 'unique_user_asset', {
     unique: ['user_id', 'asset_ticker'],
   });
+
+  pgm.createTable('savings_accounts', {
+    id: 'id',
+    user_id: {
+      type: 'integer',
+      notNull: true,
+      references: '"users"',
+      onDelete: 'cascade',
+    },
+    account_name: { type: 'varchar(100)', notNull: true },
+    provider: { type: 'varchar(100)', notNull: false },
+    principal: { type: 'numeric', notNull: true },
+    interest_rate: { type: 'numeric', notNull: true },
+    compounding_frequency: { type: 'varchar(20)', notNull: true },
+    total_interest_paid: { type: 'numeric', notNull: true, default: 0 },
+    created_at: { type: 'timestamp', default: pgm.func('current_timestamp') },
+  });
 };
 
 exports.down = (pgm) => {
+  pgm.dropTable('savings_accounts');
   pgm.dropConstraint('investments', 'unique_user_asset');
   pgm.dropTable('investments');
   pgm.dropTable('transactions');
