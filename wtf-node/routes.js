@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const authenticateToken = require('./middleware/authenticateToken');
-const { calculateCompoundInterest, formatEuroAmount, getNextPayoutDate } = require('./helpers/savings');
+const { calculateCompoundedSavings, formatEuro } = require('./helpers/savings');
 
 const router = express.Router();
 const pool = new Pool();
