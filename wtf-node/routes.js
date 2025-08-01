@@ -304,71 +304,6 @@ router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const q = `
-      SELECT id, account_name, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at
-      FROM savings_accounts
-      WHERE user_id = $1
-      ORDER BY principal DESC
-    `;
-    const result = await pool.query(q, [userId]);
-    const now = new Date();
-
-    let updates = [];
-    let savingsWithCalc = result.rows.map(account => {
-      let {
-        principal,
-        interest_rate,
-        compounding_frequency,
-        total_interest_paid,
-        created_at,
-        id
-      } = account;
-
-      const { newPrincipal, accruedInterest, periodsSince, nextPayoutDate, interestJustPaid } = calculateCompoundSavings(
-        Number(principal),
-        Number(interest_rate),
-        compounding_frequency,
-        new Date(created_at),
-        now
-      );
-
-      let interestPaid = Number(total_interest_paid) + interestJustPaid;
-
-      if (Number(principal) !== newPrincipal || Number(total_interest_paid) !== interestPaid) {
-        updates.push(pool.query(
-          `UPDATE savings_accounts SET principal = $1, total_interest_paid = $2 WHERE id = $3`,
-          [newPrincipal, interestPaid, id]
-        ));
-      }
-
-      return {
-        ...account,
-        principal: newPrincipal,
-        total_interest_paid: interestPaid,
-        accrued_interest: accruedInterest,
-        next_payout: nextPayoutDate,
-        expected_next_interest: accruedInterest
-      };
-    });
-
-    if (updates.length > 0) await Promise.all(updates);
-
-    res.json(savingsWithCalc.map(acc => ({
-      ...acc,
-      principal: formatEuroAmount(acc.principal),
-      total_interest_paid: formatEuroAmount(acc.total_interest_paid),
-      accrued_interest: formatEuroAmount(acc.accrued_interest),
-      expected_next_interest: formatEuroAmount(acc.expected_next_interest),
-      next_payout: acc.next_payout
-    })));
-  } catch (err) {
-    handleError(res, 'Failed to fetch savings accounts');
-  }
-});
-
-router.get('/savings', authenticateToken, async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const q = `
       SELECT id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at
       FROM savings_accounts
       WHERE user_id = $1
@@ -388,20 +323,21 @@ router.get('/savings', authenticateToken, async (req, res) => {
         id
       } = account;
 
-      const { newPrincipal, accruedInterest, periodsSince, nextPayoutDate, interestJustPaid, nextPaymentAmount } = calculateCompoundInterest(
-        Number(principal),
-        Number(interest_rate),
-        compounding_frequency,
-        new Date(created_at),
-        now
-      );
+      const { principal: newPrincipal, interest: accruedInterest, periods } = calculateCompoundSavings({
+        principal,
+        annualRate: interest_rate,
+        compoundingFrequency: compounding_frequency,
+        startDate: new Date(created_at),
+        lastUpdate: new Date(created_at),
+        today: now,
+      });
 
-      let interestPaid = Number(total_interest_paid) + interestJustPaid;
+      let interestPaid = Number(total_interest_paid) + accruedInterest;
 
-      if (Number(principal) !== newPrincipal || Number(total_interest_paid) !== interestPaid || typeof nextPaymentAmount !== 'undefined') {
+      if (Number(principal) !== newPrincipal || Number(total_interest_paid) !== interestPaid) {
         updates.push(pool.query(
-          `UPDATE savings_accounts SET principal = $1, total_interest_paid = $2, next_payment_amount = $3 WHERE id = $4`,
-          [newPrincipal, interestPaid, nextPaymentAmount, id]
+          `UPDATE savings_accounts SET principal = $1, total_interest_paid = $2 WHERE id = $3`,
+          [newPrincipal, interestPaid, id]
         ));
       }
 
@@ -410,8 +346,8 @@ router.get('/savings', authenticateToken, async (req, res) => {
         principal: newPrincipal,
         total_interest_paid: interestPaid,
         accrued_interest: accruedInterest,
-        next_payout: nextPayoutDate,
-        expected_next_interest: nextPaymentAmount
+        expected_next_interest: accruedInterest,
+        next_payout: null
       };
     });
 
@@ -419,10 +355,10 @@ router.get('/savings', authenticateToken, async (req, res) => {
 
     res.json(savingsWithCalc.map(acc => ({
       ...acc,
-      principal: formatEuroAmount(acc.principal),
-      total_interest_paid: formatEuroAmount(acc.total_interest_paid),
-      accrued_interest: formatEuroAmount(acc.accrued_interest),
-      expected_next_interest: formatEuroAmount(acc.expected_next_interest),
+      principal: formatEuro(acc.principal),
+      total_interest_paid: formatEuro(acc.total_interest_paid),
+      accrued_interest: formatEuro(acc.accrued_interest),
+      expected_next_interest: formatEuro(acc.expected_next_interest),
       next_payout: acc.next_payout
     })));
   } catch (err) {
@@ -462,13 +398,13 @@ router.post('/savings', authenticateToken, async (req, res) => {
         principal: newPrincipal
       });
     } else {
-      const { nextPaymentAmount } = calculateCompoundInterest(
-        Number(principal),
-        Number(interest_rate),
-        compounding_frequency,
-        new Date(),
-        new Date()
-      );
+      const { interest: nextPaymentAmount } = calculateCompoundSavings({
+        principal: Number(principal),
+        annualRate: Number(interest_rate),
+        compoundingFrequency: compounding_frequency,
+        startDate: new Date(),
+        lastUpdate: new Date()
+      });
       const result = await pool.query(
         `INSERT INTO savings_accounts
           (user_id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount, created_at)
