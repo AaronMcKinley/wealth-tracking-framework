@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 
-const API_BASE = '/api';
-
 const Signup: React.FC = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -13,35 +11,42 @@ const Signup: React.FC = () => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
+  };
+
+  const validatePassword = (password: string) => {
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return hasNumber && hasSpecial;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
-    const { name, email, password, confirmPassword } = form;
-
-    if (!name || !email || !password || !confirmPassword) {
-      setError('All fields are required.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
+    if (form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
+    if (!validatePassword(form.password)) {
+      setError('Password must contain at least one number and one special character.');
+      return;
+    }
 
-    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/signup`, {
+      const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password
+        })
       });
 
       if (!res.ok) {
@@ -49,69 +54,95 @@ const Signup: React.FC = () => {
         throw new Error(data.message || 'Signup failed.');
       }
 
-      navigate('/login');
+      setSuccess('Signup successful! Redirecting to login…');
+      setTimeout(() => navigate('/login'), 1500);
     } catch (err: any) {
-      setError(err.message || 'Signup failed.');
-    } finally {
-      setLoading(false);
+      setError(err.message);
     }
   };
 
   return (
     <Layout>
-      <div className="max-w-md mx-auto card p-6">
+      <div className="max-w-md mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Create Account</h1>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {success && <p className="text-green-600 mb-4 text-center">{success}</p>}
+        <form onSubmit={handleSubmit} className="card space-y-6">
           <div>
-            <label htmlFor="name" className="block mb-1 font-semibold">Name</label>
+            <label htmlFor="name" className="block font-semibold mb-1">
+              Name <span className="text-red-500">*</span>
+            </label>
             <input
               id="name"
               name="name"
-              className="input"
+              type="text"
               value={form.name}
               onChange={handleChange}
               required
+              className="input"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block mb-1 font-semibold">Email</label>
+            <label htmlFor="email" className="block font-semibold mb-1">
+              Email <span className="text-red-500">*</span>
+            </label>
             <input
               id="email"
               name="email"
               type="email"
-              className="input"
               value={form.email}
               onChange={handleChange}
               required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block mb-1 font-semibold">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
               className="input"
-              value={form.password}
-              onChange={handleChange}
-              required
             />
           </div>
           <div>
-            <label htmlFor="confirmPassword" className="block mb-1 font-semibold">Confirm Password</label>
+            <label htmlFor="password" className="block font-semibold mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                className="input w-full pr-8"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group cursor-default">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-gray-400 hover:text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <title>Password must contain at least one number and one special character</title>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20 10 10 0 010-20z" />
+                </svg>
+                <div className="absolute bottom-full mb-2 w-max max-w-xs text-sm px-2 py-1 bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  Must contain at least one number and one special character.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block font-semibold mb-1">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
             <input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
-              className="input"
               value={form.confirmPassword}
               onChange={handleChange}
               required
+              className="input"
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-            {loading ? 'Signing up...' : 'Sign Up'}
+          <button type="submit" className="btn btn-primary w-full">
+            Sign Up
           </button>
         </form>
       </div>
