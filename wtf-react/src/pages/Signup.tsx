@@ -15,11 +15,10 @@ const Signup: React.FC = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      setMessage("Passwords do not match.");
+      setMessage('Passwords do not match.');
       return;
     }
 
-    // Password requirements check
     const passReq = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
     if (!passReq.test(password)) {
       setMessage('Password must contain at least one number and one symbol.');
