@@ -15,6 +15,29 @@
         msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
       when: ansible_distribution != "Ubuntu"
 
+    - name: Stop React and NGINX containers (if running)
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        services:
+          - wtf-react
+          - wtf-nginx
+        state: absent
+      ignore_errors: true
+
+    - name: Remove wtf-react-build volume
+      community.docker.docker_volume:
+        name: "{{ react_build_volume }}"
+        state: absent
+
+    - name: Remove React and NGINX images
+      community.docker.docker_image:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest
+        - nginx:alpine
+      ignore_errors: true
+
     - name: Log into GitLab Container Registry using Vault secrets
       community.docker.docker_login:
         registry_url: "{{ artifactory_registry }}"
