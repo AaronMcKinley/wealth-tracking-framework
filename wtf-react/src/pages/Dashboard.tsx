@@ -224,10 +224,10 @@ const Dashboard: React.FC = () => {
               {savings.map(s => (
                 <tr key={s.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
                   <td className="px-6 py-4">{s.provider || '—'}</td>
-                  <td className="px-6 py-4">{s.principal}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.principal)}</td>
                   <td className="px-6 py-4">{s.interest_rate}</td>
-                  <td className="px-6 py-4">{s.total_interest_paid}</td>
-                  <td className="px-6 py-4">{s.expected_next_interest}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.total_interest_paid)}</td>
+                  <td className="px-6 py-4">€{formatNumberWithCommas(s.next_payout)}</td>
                   <td className="px-6 py-4">
                     {(() => {
                       const p = parseEuroString(s.principal);
