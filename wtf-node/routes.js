@@ -299,6 +299,7 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch asset price' });
   }
 });
+
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -353,17 +354,17 @@ router.get('/savings', authenticateToken, async (req, res) => {
 router.post('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-    const { provider, principal, interest_rate, compounding_frequency } = req.body;
+    const {
+      provider,
+      principal,
+      interest_rate,
+      compounding_frequency,
+      mode = 'add'
+    } = req.body;
 
-    if (!provider || principal == null || interest_rate == null || !compounding_frequency) {
+    if (!provider || principal == null || !compounding_frequency) {
       return handleError(res, 'Missing required fields', 400);
     }
-
-    const calc = calculateCompoundSavings({
-      principal,
-      annualRate: interest_rate,
-      compoundingFrequency: compounding_frequency
-    });
 
     const existing = await pool.query(
       `SELECT id, principal, interest_rate, compounding_frequency
@@ -374,22 +375,36 @@ router.post('/savings', authenticateToken, async (req, res) => {
 
     if (existing.rows.length > 0) {
       const current = existing.rows[0];
-      const newPrincipal = Number(current.principal) + Number(principal);
+      const currentPrincipal = Number(current.principal);
+      const change = Number(principal);
+      const newPrincipal = mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+
+      if (newPrincipal < 0) {
+        return handleError(res, 'Cannot withdraw more than the current balance', 400);
+      }
+
+      if (newPrincipal === 0) {
+        await pool.query(`DELETE FROM savings_accounts WHERE id = $1`, [current.id]);
+        return res.status(200).json({ message: 'Savings account removed completely' });
+      }
 
       const updatedCalc = calculateCompoundSavings({
         principal: newPrincipal,
-        annualRate: interest_rate,
+        annualRate: interest_rate ?? current.interest_rate,
         compoundingFrequency: compounding_frequency
       });
 
       await pool.query(
         `UPDATE savings_accounts
-         SET principal = $1, interest_rate = $2, compounding_frequency = $3,
-             next_payment_amount = $4, updated_at = NOW()
+         SET principal = $1,
+             interest_rate = $2,
+             compounding_frequency = $3,
+             next_payment_amount = $4,
+             updated_at = NOW()
          WHERE id = $5`,
         [
           newPrincipal,
-          Number(interest_rate),
+          Number(interest_rate ?? current.interest_rate),
           compounding_frequency,
           updatedCalc.nextPaymentAmount,
           current.id
@@ -397,15 +412,26 @@ router.post('/savings', authenticateToken, async (req, res) => {
       );
 
       return res.status(200).json({
-        message: 'Updated existing savings account',
+        message: mode === 'remove'
+          ? 'Amount withdrawn from savings'
+          : 'Updated existing savings account',
         principal: newPrincipal
       });
     } else {
+      if (mode === 'remove') {
+        return handleError(res, 'No savings account found to remove from', 404);
+      }
+
+      const calc = calculateCompoundSavings({
+        principal,
+        annualRate: interest_rate,
+        compoundingFrequency: compounding_frequency
+      });
+
       await pool.query(
         `INSERT INTO savings_accounts
           (user_id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount, created_at)
-         VALUES ($1, $2, $3, $4, $5, 0, $6, NOW())
-         RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, 0, $6, NOW())`,
         [
           userId,
           provider,
@@ -421,7 +447,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
     }
   } catch (err) {
     console.error("Savings API error (POST):", err);
-    handleError(res, err.message || 'Failed to add savings account');
+    handleError(res, err.message || 'Failed to update savings account');
   }
 });
 

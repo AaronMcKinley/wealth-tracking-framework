@@ -31,6 +31,7 @@ const AddSavingsAccount: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [accounts, setAccounts] = useState<SavingsAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [removeAmount, setRemoveAmount] = useState('');
 
   useEffect(() => {
     if (isRemoveMode) {
@@ -55,6 +56,11 @@ const AddSavingsAccount: React.FC = () => {
         setError('Select an account to remove.');
         return;
       }
+      if (!removeAmount || isNaN(Number(removeAmount)) || Number(removeAmount) <= 0) {
+        setError('Enter a valid amount to remove.');
+        return;
+      }
+      setError('');
       setShowConfirm(true);
       return;
     }
@@ -72,19 +78,38 @@ const AddSavingsAccount: React.FC = () => {
       setError('User not logged in');
       return;
     }
+
     if (isRemoveMode) {
+      const account = accounts.find(a => String(a.id) === selectedAccountId);
+      if (!account) {
+        setError('Account not found.');
+        return;
+      }
       try {
-        const res = await fetch(`${API_BASE}/savings/${selectedAccountId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`${API_BASE}/savings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            provider: account.provider,
+            principal: Number(removeAmount),
+            compounding_frequency: account.compounding_frequency,
+            mode: 'remove',
+          }),
         });
-        if (!res.ok) throw new Error('Failed to remove account');
+        if (!res.ok) {
+          const msg = (await res.json()).message || 'Failed to remove savings';
+          throw new Error(msg);
+        }
         navigate('/dashboard', { state: { savingsChanged: true } });
       } catch (err: any) {
-        setError(err.message || 'Failed to remove savings account.');
+        setError(err.message || 'Failed to remove savings.');
       }
       return;
     }
+
     try {
       const res = await fetch(`${API_BASE}/savings`, {
         method: 'POST',
@@ -114,27 +139,44 @@ const AddSavingsAccount: React.FC = () => {
     <Layout>
       <div className="max-w-xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">
-          {isRemoveMode ? 'Remove Savings Account' : 'Add Savings Account'}
+          {isRemoveMode ? 'Remove Savings Amount' : 'Add Savings Account'}
         </h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
           {isRemoveMode ? (
-            <div>
-              <label className="block mb-2 font-semibold">Select Account to Remove *</label>
-              <select
-                className="input"
-                value={selectedAccountId}
-                onChange={e => setSelectedAccountId(e.target.value)}
-                required
-              >
-                <option value="">Choose an account…</option>
-                {accounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.provider} — €{acc.principal}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block mb-2 font-semibold">Select Account *</label>
+                <select
+                  className="input"
+                  value={selectedAccountId}
+                  onChange={e => setSelectedAccountId(e.target.value)}
+                  required
+                >
+                  <option value="">Choose an account…</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.provider} — €{acc.principal}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="removeAmount" className="block mb-2 font-semibold">
+                  Amount to Remove (€) *
+                </label>
+                <input
+                  id="removeAmount"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={removeAmount}
+                  onChange={(e) => setRemoveAmount(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
+            </>
           ) : (
             <>
               <div>
@@ -209,17 +251,21 @@ const AddSavingsAccount: React.FC = () => {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              {isRemoveMode ? 'Remove' : 'Add Savings'}
+              {isRemoveMode ? 'Remove Amount' : 'Add Savings'}
             </button>
           </div>
+
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">
-                <h2 className="text-2xl font-bold mb-4">Confirm {isRemoveMode ? 'Removal' : 'Savings Account'}</h2>
+                <h2 className="text-2xl font-bold mb-4">
+                  Confirm {isRemoveMode ? 'Removal' : 'Savings Account'}
+                </h2>
                 <p className="mb-4">
                   {isRemoveMode ? (
                     <>
-                      Account: <strong>{accounts.find(a => String(a.id) === selectedAccountId)?.provider}</strong>
+                      Account: <strong>{accounts.find(a => String(a.id) === selectedAccountId)?.provider}</strong><br />
+                      Amount to remove: <strong>€{removeAmount}</strong>
                     </>
                   ) : (
                     <>
