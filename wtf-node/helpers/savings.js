@@ -60,7 +60,13 @@ function calculateCompoundSavings({
   if (periods < 0) periods = 0;
 
   const finalPrincipal = principal * Math.pow(1 + ratePerPeriod, periods);
-  const interest = finalPrincipal - principal;
+
+  let interest;
+  if (periods === 0) {
+    interest = principal * ratePerPeriod;
+  } else {
+    interest = finalPrincipal - principal;
+  }
 
   const nextPaymentAmount = finalPrincipal * ratePerPeriod;
 

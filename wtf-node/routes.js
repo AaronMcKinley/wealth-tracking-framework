@@ -13,6 +13,12 @@ const handleError = (res, msg = 'Internal server error', code = 500) => {
   return res.status(code).json({ message: msg });
 };
 
+function formatPaymentAmount(value) {
+  if (value >= 0.01) return value.toFixed(2);
+  if (value > 0) return '<0.01';
+  return '0.00';
+}
+
 router.get('/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1');
@@ -304,7 +310,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const q = `
-      SELECT id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at
+      SELECT id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at, updated_at
       FROM savings_accounts
       WHERE user_id = $1
       ORDER BY principal DESC
@@ -312,55 +318,43 @@ router.get('/savings', authenticateToken, async (req, res) => {
     const result = await pool.query(q, [userId]);
     const now = new Date();
 
-    let updates = [];
-    let savingsWithCalc = result.rows.map(account => {
-      let {
+    const savingsWithCalc = result.rows.map(account => {
+      const {
+        id,
+        provider,
         principal,
         interest_rate,
         compounding_frequency,
         total_interest_paid,
         created_at,
-        id
+        updated_at
       } = account;
 
-      const { principal: newPrincipal, interest: accruedInterest, periods } = calculateCompoundSavings({
+      const calc = calculateCompoundSavings({
         principal,
         annualRate: interest_rate,
         compoundingFrequency: compounding_frequency,
         startDate: new Date(created_at),
-        lastUpdate: new Date(created_at),
+        lastUpdate: new Date(updated_at || created_at),
         today: now,
       });
 
-      let interestPaid = Number(total_interest_paid) + accruedInterest;
-
-      if (Number(principal) !== newPrincipal || Number(total_interest_paid) !== interestPaid) {
-        updates.push(pool.query(
-          `UPDATE savings_accounts SET principal = $1, total_interest_paid = $2 WHERE id = $3`,
-          [newPrincipal, interestPaid, id]
-        ));
-      }
-
       return {
-        ...account,
-        principal: newPrincipal,
-        total_interest_paid: interestPaid,
-        accrued_interest: accruedInterest,
-        expected_next_interest: accruedInterest,
-        next_payout: null
+        id,
+        provider,
+        principal: formatEuro(calc.principal),
+        interest_rate,
+        compounding_frequency,
+        total_interest_paid: formatEuro(calc.interest),
+        created_at,
+        updated_at,
+        accrued_interest: formatEuro(calc.interest),
+        expected_next_interest: formatEuro(calc.nextPaymentAmount),
+        next_payout: formatPaymentAmount(calc.nextPaymentAmount)
       };
     });
 
-    if (updates.length > 0) await Promise.all(updates);
-
-    res.json(savingsWithCalc.map(acc => ({
-      ...acc,
-      principal: formatEuro(acc.principal),
-      total_interest_paid: formatEuro(acc.total_interest_paid),
-      accrued_interest: formatEuro(acc.accrued_interest),
-      expected_next_interest: formatEuro(acc.expected_next_interest),
-      next_payout: acc.next_payout
-    })));
+    res.json(savingsWithCalc);
   } catch (err) {
     handleError(res, 'Failed to fetch savings accounts');
   }
@@ -398,7 +392,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
         principal: newPrincipal
       });
     } else {
-      const { interest: nextPaymentAmount } = calculateCompoundSavings({
+      const { nextPaymentAmount } = calculateCompoundSavings({
         principal: Number(principal),
         annualRate: Number(interest_rate),
         compoundingFrequency: compounding_frequency,
