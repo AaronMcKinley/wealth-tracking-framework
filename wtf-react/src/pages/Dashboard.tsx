@@ -217,7 +217,6 @@ const Dashboard: React.FC = () => {
                 <th className="px-6 py-3 text-left font-semibold">APR (%)</th>
                 <th className="px-6 py-3 text-left font-semibold">Interest Paid</th>
                 <th className="px-6 py-3 text-left font-semibold">Next Payment (€)</th>
-                <th className="px-6 py-3 text-left font-semibold">Next Payout</th>
                 <th className="px-6 py-3 text-left font-semibold">Total Value</th>
               </tr>
             </thead>
