@@ -356,7 +356,8 @@ router.get('/savings', authenticateToken, async (req, res) => {
 
     res.json(savingsWithCalc);
   } catch (err) {
-    handleError(res, 'Failed to fetch savings accounts');
+    console.error("Savings API error:", err); // This will now log the real error!
+    res.status(500).json({ message: 'Failed to fetch savings accounts', error: err.message, stack: err.stack });
   }
 });
 
@@ -409,6 +410,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
       return res.status(201).json(result.rows[0]);
     }
   } catch (err) {
+    console.error("Savings API error (POST):", err); // Add error logging for POST too!
     handleError(res, err.message || 'Failed to add savings account');
   }
 });
