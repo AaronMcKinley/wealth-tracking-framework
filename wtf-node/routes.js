@@ -13,12 +13,6 @@ const handleError = (res, msg = 'Internal server error', code = 500) => {
   return res.status(code).json({ message: msg });
 };
 
-function formatPaymentAmount(value) {
-  if (value >= 0.01) return Number(value).toFixed(2);
-  if (value > 0) return '<0.01';
-  return '0.00';
-}
-
 router.get('/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1');
@@ -342,14 +336,12 @@ router.get('/savings', authenticateToken, async (req, res) => {
       return {
         id,
         provider,
-        principal: formatEuro(calc.principal),
+        principal: formatEuro(principal),
         interest_rate: toFixed2(interest_rate),
         compounding_frequency,
-        total_interest_paid: formatEuro(calc.interest),
+        total_interest_paid: formatEuro(total_interest_paid),
         created_at,
         updated_at,
-        accrued_interest: formatEuro(calc.interest),
-        expected_next_interest: formatEuro(calc.nextPaymentAmount),
         next_payment_amount: toFixed2(calc.nextPaymentAmount),
         next_payout: formatPaymentAmount(calc.nextPaymentAmount)
       };
@@ -381,7 +373,6 @@ router.post('/savings', authenticateToken, async (req, res) => {
     if (existing.rows.length > 0) {
       const current = existing.rows[0];
       const newPrincipal = toFixed2(parseFloat(current.principal) + parseFloat(principal));
-
       await pool.query(
         `UPDATE savings_accounts
          SET principal = $1, interest_rate = $2, compounding_frequency = $3, updated_at = NOW()
@@ -399,26 +390,17 @@ router.post('/savings', authenticateToken, async (req, res) => {
         principal: newPrincipal
       });
     } else {
-      const { nextPaymentAmount } = calculateCompoundSavings({
-        principal: Number(principal),
-        annualRate: Number(interest_rate),
-        compoundingFrequency: compounding_frequency,
-        startDate: new Date(),
-        lastUpdate: new Date()
-      });
-
       await pool.query(
         `INSERT INTO savings_accounts
           (user_id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount, created_at)
-         VALUES ($1, $2, $3, $4, $5, 0, $6, NOW())
+         VALUES ($1, $2, $3, $4, $5, 0, 0, NOW())
          RETURNING id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount`,
         [
           userId,
           provider,
           toFixed2(principal),
           toFixed2(interest_rate),
-          compounding_frequency,
-          toFixed2(nextPaymentAmount)
+          compounding_frequency
         ]
       );
       return res.status(201).json({
