@@ -310,7 +310,6 @@ router.get('/savings', authenticateToken, async (req, res) => {
       ORDER BY principal DESC
     `;
     const result = await pool.query(q, [userId]);
-    const now = new Date();
 
     const savingsWithCalc = result.rows.map(account => {
       const {
@@ -330,6 +329,8 @@ router.get('/savings', authenticateToken, async (req, res) => {
         compoundingFrequency: compounding_frequency
       });
 
+      const next_payout = Number(calc.nextPaymentAmount).toFixed(2);
+
       return {
         id,
         provider,
@@ -339,7 +340,6 @@ router.get('/savings', authenticateToken, async (req, res) => {
         total_interest_paid,
         created_at,
         updated_at,
-        next_payment_amount: Number(calc.nextPaymentAmount).toFixed(2),
         next_payout
       };
     });
@@ -410,6 +410,5 @@ router.post('/savings', authenticateToken, async (req, res) => {
     handleError(res, err.message || 'Failed to add savings account');
   }
 });
-
 
 module.exports = router;
