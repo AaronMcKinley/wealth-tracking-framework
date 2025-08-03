@@ -22,11 +22,11 @@ interface Asset {
   name: string;
   ticker: string;
   type: string;
-  open?: number;
-  high?: number;
-  low?: number;
-  current_price: number;
-  previous_close?: number;
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  current_price: number | null;
+  previous_close?: number | null;
   timestamp?: string;
 }
 
@@ -43,8 +43,25 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 const ALL_CHUNKS = chunkArray(ALL_tickerS, CHUNK_SIZE);
 
+async function getUsdToEurRate(): Promise<number> {
+  try {
+    const response = await axios.get('https://api.exchangerate.host/latest', {
+      params: { base: 'USD', symbols: 'EUR' },
+    });
+    const rate = response.data && response.data.rates && response.data.rates.EUR;
+    if (!rate) throw new Error('No EUR rate found');
+    return rate;
+  } catch (err: any) {
+    console.error('Error fetching USD→EUR rate:', err.message || err);
+    return 1;
+  }
+}
+
 async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
   const results: Asset[] = [];
+  const usdToEur = await getUsdToEurRate();
+  console.log(`Using USD→EUR rate: ${usdToEur}`);
+
   for (const { ticker, type } of chunk) {
     try {
       const quoteResponse = await axios.get('https://finnhub.io/api/v1/quote', {
@@ -59,18 +76,26 @@ async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
         profileData.name && profileData.name.trim() !== ''
           ? profileData.name
           : ticker;
+
+      const open = quoteData.o ? quoteData.o * usdToEur : null;
+      const high = quoteData.h ? quoteData.h * usdToEur : null;
+      const low = quoteData.l ? quoteData.l * usdToEur : null;
+      const current_price = quoteData.c ? quoteData.c * usdToEur : null;
+      const previous_close = quoteData.pc ? quoteData.pc * usdToEur : null;
+
       const asset: Asset = {
         name: assetName,
         ticker,
         type,
-        open: quoteData.o,
-        high: quoteData.h,
-        low: quoteData.l,
-        current_price: quoteData.c,
-        previous_close: quoteData.pc,
+        open,
+        high,
+        low,
+        current_price,
+        previous_close,
         timestamp: new Date().toISOString(),
       };
       results.push(asset);
+
       await pool.query(
         `
         INSERT INTO stocks_and_funds (
@@ -100,7 +125,7 @@ async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
           asset.timestamp,
         ]
       );
-      console.log(`Upserted ${ticker} (${asset.name}) successfully.`);
+      console.log(`Upserted ${ticker} (${asset.name}) in EUR successfully.`);
     } catch (innerErr: any) {
       console.error(`Error fetching/updating ${ticker}:`, innerErr.message || innerErr);
     }
