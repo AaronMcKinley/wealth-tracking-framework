@@ -1,0 +1,101 @@
+pipeline {
+  agent any
+
+  environment {
+    PROJECT_DIR = '/opt/wealth-tracking-framework'
+    REACT_BUILD_VOLUME = 'wtf-react-build'
+    REACT_IMAGE = 'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest'
+    NGINX_IMAGE = 'nginx:alpine'
+    REGISTRY = 'registry.gitlab.com'
+    REGISTRY_USER = credentials('gitlab_user')
+    REGISTRY_TOKEN = credentials('gitlab_token')
+  }
+
+  stages {
+    stage('Stop all containers') {
+      steps {
+        dir("${PROJECT_DIR}") {
+          sh 'docker compose down || true'
+        }
+      }
+    }
+
+    stage('Clean Down React/NGINX') {
+      steps {
+        sh '''
+          docker volume rm -f ${REACT_BUILD_VOLUME} || true
+          docker image rm -f ${REACT_IMAGE} || true
+          docker image rm -f ${NGINX_IMAGE} || true
+        '''
+      }
+    }
+
+    stage('Pull & Prepare Images') {
+      steps {
+        sh '''
+          echo $REGISTRY_TOKEN | docker login -u $REGISTRY_USER --password-stdin $REGISTRY
+          docker volume create ${REACT_BUILD_VOLUME} || true
+        '''
+        dir("${PROJECT_DIR}") {
+          sh 'docker compose pull'
+        }
+      }
+    }
+
+    stage('Start all services') {
+      steps {
+        dir("${PROJECT_DIR}") {
+          sh 'docker compose up -d --no-build'
+        }
+      }
+    }
+
+    stage('Run DB migrations') {
+      steps {
+        script {
+          def maxTries = 5
+          def attempt = 0
+          def success = false
+          while (attempt < maxTries && !success) {
+            try {
+              sh 'docker exec wtf-node npm run migrate'
+              success = true
+            } catch (err) {
+              attempt++
+              if (attempt == maxTries) {
+                error("DB migrations failed after ${maxTries} attempts")
+              }
+              sleep 5
+            }
+          }
+        }
+      }
+    }
+
+    stage('Restart fetchers') {
+      steps {
+        dir("${PROJECT_DIR}") {
+          sh '''
+            docker compose restart wtf-coingecko
+            docker compose restart wtf-finnhub
+          '''
+        }
+      }
+    }
+
+    stage('Set permissions on React build directory') {
+      steps {
+        sh 'chmod -R 0755 ${PROJECT_DIR}/wtf-react/build || true'
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "WTF project deployed successfully on ${env.NODE_NAME}"
+    }
+    failure {
+      echo "Deployment failed!"
+    }
+  }
+}
