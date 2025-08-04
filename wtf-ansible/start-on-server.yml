@@ -93,11 +93,6 @@
         mode: '0755'
         recurse: yes
 
-    - name: Reload NGINX after obtaining certs
-      shell: docker compose exec wtf-nginx nginx -s reload
-      args:
-        chdir: "{{ project_dir }}"
-
     - name: Confirm deployment success message
       debug:
         msg: "WTF project deployed successfully on {{ inventory_hostname }}"
