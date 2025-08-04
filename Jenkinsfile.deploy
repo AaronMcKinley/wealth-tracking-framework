@@ -1,27 +1,11 @@
-environment {
-  PROJECT_DIR = '/opt/wealth-tracking-framework'
-  REACT_BUILD_VOLUME = 'wtf-react-build'
-  REGISTRY = 'registry.gitlab.com'
-  REGISTRY_USER = credentials('gitlab_user')
-  REGISTRY_TOKEN = credentials('gitlab-registry-pat')
-}
-
-def cleanupImages = [
-  'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest',
-  'nginx:alpine'
-]
-
-def appServices = [
-  'wtf-node',
-  'wtf-react',
-  'wtf-nginx',
-  'wtf-postgres',
-  'wtf-coingecko',
-  'wtf-finnhub'
-]
-
 pipeline {
   agent any
+
+  environment {
+    PROJECT_DIR = '/opt/wealth-tracking-framework'
+    REACT_BUILD_VOLUME = 'wtf-react-build'
+    REGISTRY = 'registry.gitlab.com'
+  }
 
   stages {
     stage('Login to GitLab Registry') {
@@ -40,10 +24,9 @@ pipeline {
       }
     }
 
-
     stage('Stop all containers') {
       steps {
-        dir("${PROJECT_DIR}") {
+        dir("${env.PROJECT_DIR}") {
           sh 'docker compose down || true'
         }
       }
@@ -51,8 +34,14 @@ pipeline {
 
     stage('Clean Down React and NGINX') {
       steps {
-        sh "docker volume rm -f ${REACT_BUILD_VOLUME} || true"
         script {
+          sh "docker volume rm -f ${env.REACT_BUILD_VOLUME} || true"
+
+          def cleanupImages = [
+            'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest',
+            'nginx:alpine'
+          ]
+
           cleanupImages.each { img ->
             sh "docker image rm -f ${img} || true"
           }
@@ -62,8 +51,16 @@ pipeline {
 
     stage('Pull App Images (exclude Jenkins)') {
       steps {
-        dir("${PROJECT_DIR}") {
-          script {
+        script {
+          def appServices = [
+            'wtf-node',
+            'wtf-react',
+            'wtf-nginx',
+            'wtf-postgres',
+            'wtf-coingecko',
+            'wtf-finnhub'
+          ]
+          dir("${env.PROJECT_DIR}") {
             appServices.each { svc ->
               sh "docker compose -f docker-compose.yml pull ${svc} || true"
             }
@@ -74,14 +71,22 @@ pipeline {
 
     stage('Create React Volume') {
       steps {
-        sh "docker volume create ${REACT_BUILD_VOLUME} || true"
+        sh "docker volume create ${env.REACT_BUILD_VOLUME} || true"
       }
     }
 
     stage('Start App Services') {
       steps {
-        dir("${PROJECT_DIR}") {
-          script {
+        script {
+          def appServices = [
+            'wtf-node',
+            'wtf-react',
+            'wtf-nginx',
+            'wtf-postgres',
+            'wtf-coingecko',
+            'wtf-finnhub'
+          ]
+          dir("${env.PROJECT_DIR}") {
             appServices.each { svc ->
               sh "docker compose -f docker-compose.yml up -d --no-build ${svc}"
             }
@@ -114,7 +119,7 @@ pipeline {
 
     stage('Restart Fetchers') {
       steps {
-        dir("${PROJECT_DIR}") {
+        dir("${env.PROJECT_DIR}") {
           sh '''
             docker compose up -d --no-build wtf-coingecko || true
             docker compose up -d --no-build wtf-finnhub || true
@@ -125,7 +130,7 @@ pipeline {
 
     stage('Set Permissions on React Build Directory') {
       steps {
-        sh 'chmod -R 0755 ${PROJECT_DIR}/wtf-react/build || true'
+        sh "chmod -R 0755 ${env.PROJECT_DIR}/wtf-react/build || true"
       }
     }
   }
