@@ -23,21 +23,22 @@ def appServices = [
 pipeline {
   agent any
 
-  stage('Login to GitLab Registry') {
-    steps {
-      withCredentials([
-        usernamePassword(
-          credentialsId: 'gitlab-docker-login',
-          usernameVariable: 'REGISTRY_USER',
-          passwordVariable: 'REGISTRY_TOKEN'
-        )
-      ]) {
-        sh '''
-          echo "$REGISTRY_TOKEN" | docker login registry.gitlab.com -u "$REGISTRY_USER" --password-stdin
-        '''
+  stages {
+    stage('Login to GitLab Registry') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'gitlab-docker-login',
+            usernameVariable: 'REGISTRY_USER',
+            passwordVariable: 'REGISTRY_TOKEN'
+          )
+        ]) {
+          sh '''
+            echo "$REGISTRY_TOKEN" | docker login registry.gitlab.com -u "$REGISTRY_USER" --password-stdin
+          '''
+        }
       }
     }
-  }
 
 
     stage('Stop all containers') {
