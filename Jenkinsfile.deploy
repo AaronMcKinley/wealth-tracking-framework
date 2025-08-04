@@ -24,6 +24,22 @@ pipeline {
       }
     }
 
+    stage('Create .env') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'pg-user', variable: 'PGUSER'),
+          string(credentialsId: 'pg-password', variable: 'PGPASSWORD'),
+          string(credentialsId: 'pg-database', variable: 'PGDATABASE')
+        ]) {
+          writeFile file: '.env', text: """\
+            PGUSER=${PGUSER}
+            PGPASSWORD=${PGPASSWORD}
+            PGDATABASE=${PGDATABASE}
+          """.stripIndent()
+        }
+      }
+    }
+
     stage('Stop all containers') {
       steps {
         dir("${env.PROJECT_DIR}") {
