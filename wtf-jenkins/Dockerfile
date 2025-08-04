@@ -29,4 +29,7 @@ RUN mkdir -p ~/.docker/cli-plugins && \
         -o ~/.docker/cli-plugins/docker-buildx && \
     chmod +x ~/.docker/cli-plugins/docker-buildx
 
+COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
+
 USER jenkins

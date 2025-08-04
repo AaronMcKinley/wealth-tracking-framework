@@ -1,4 +1,6 @@
 workflow-aggregator
+workflow-stage-step
+pipeline-stage-view
 blueocean
 git
 allure-jenkins-plugin

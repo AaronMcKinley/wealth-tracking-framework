@@ -55,7 +55,6 @@
         pull: "always"
       register: pull_result
       failed_when: pull_result.failed
-      ignore_errors: false
 
     - name: Stop running containers (ignore errors if none)
       community.docker.docker_compose_v2:
@@ -63,14 +62,13 @@
         state: absent
       ignore_errors: true
 
-    - name: Start or restart all services detached (no build)
+    - name: Start all services without building
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         state: present
         build: "never"
       register: up_result
       failed_when: up_result.failed
-      ignore_errors: false
 
     - name: Run database migrations inside node container
       shell: docker exec wtf-node npm run migrate
@@ -95,25 +93,19 @@
         mode: '0755'
         recurse: yes
 
-    - name: Ensure NGINX container is up using docker-compose up
-      community.docker.docker_compose_v2:
-        project_src: "{{ project_dir }}"
-        state: restarted
-        services:
-          - wtf-nginx
-      register: nginx_result
-      failed_when: nginx_result.failed
-      ignore_errors: false
+    - name: Obtain HTTPS certificates with Certbot (one-time/manual)
+      shell: docker compose run --rm certbot
+      args:
+        chdir: "{{ project_dir }}"
+      register: certbot_result
+      retries: 3
+      delay: 10
+      until: certbot_result.rc == 0
 
-    - name: Wait for frontend proxy health endpoint to respond
-      uri:
-        url: http://localhost/api/health
-        method: GET
-        status_code: 200
-      register: healthcheck
-      retries: 10
-      delay: 5
-      until: healthcheck.status == 200
+    - name: Reload NGINX after obtaining certs
+      shell: docker compose exec wtf-nginx nginx -s reload
+      args:
+        chdir: "{{ project_dir }}"
 
     - name: Confirm deployment success message
       debug:
