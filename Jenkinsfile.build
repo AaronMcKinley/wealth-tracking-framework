@@ -21,6 +21,8 @@ pipeline {
                     sh 'ls -al ./wtf-react'
                     sh 'ls -al ./wtf-node'
                     sh 'ls -al ./wtf-jenkins'
+                    sh 'ls -al ./wtf-coingecko'
+                    sh 'ls -al ./wtf-finnhub'
                 }
             }
         }
@@ -38,33 +40,20 @@ pipeline {
         stage('Build & Push Images') {
             steps {
                 script {
-                    sh """
-                        docker build -t $REGISTRY/wtf-node:latest ./wtf-node --file ./wtf-node/Dockerfile
-                        docker push $REGISTRY/wtf-node:latest
-                    """
-
-                    sh """
-                        echo "Building wtf-react..."
-                        cd ./wtf-react
-                        npm install --silent
-                        npm run build --silent
-                    """
-
-                    sh 'ls -al ./wtf-react/build'
-                    sh "docker push $REGISTRY/wtf-react:latest"
-
-                    sh """
-                        docker build -t $REGISTRY/wtf-jenkins:latest ./wtf-jenkins --file ./wtf-jenkins/Dockerfile
-                        docker push $REGISTRY/wtf-jenkins:latest
-                    """
-                }
-            }
-        }
-
-        stage('Verify Build Folder in wtf-react') {
-            steps {
-                script {
-                    sh 'ls -al ./wtf-react/build'
+                    def images = [
+                        'wtf-node',
+                        'wtf-react',
+                        'wtf-jenkins',
+                        'wtf-coingecko',
+                        'wtf-finnhub'
+                    ]
+                    images.each { img ->
+                        sh """
+                            echo "Building $img..."
+                            docker build -t $REGISTRY/${img}:latest ./${img}
+                            docker push $REGISTRY/${img}:latest
+                        """
+                    }
                 }
             }
         }
