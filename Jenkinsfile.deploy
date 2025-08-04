@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   environment {
-    PROJECT_DIR = '/opt/wealth-tracking-framework'
+    PROJECT_DIR = "${WORKSPACE}"
     REACT_BUILD_VOLUME = 'wtf-react-build'
     REGISTRY = 'registry.gitlab.com'
   }
