@@ -1,17 +1,37 @@
+environment {
+  PROJECT_DIR = '/opt/wealth-tracking-framework'
+  REACT_BUILD_VOLUME = 'wtf-react-build'
+  REGISTRY = 'registry.gitlab.com'
+  REGISTRY_USER = credentials('gitlab_user')
+  REGISTRY_TOKEN = credentials('gitlab-registry-pat')
+}
+
+def cleanupImages = [
+  'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest',
+  'nginx:alpine'
+]
+
+def appServices = [
+  'wtf-node',
+  'wtf-react',
+  'wtf-nginx',
+  'wtf-postgres',
+  'wtf-coingecko',
+  'wtf-finnhub'
+]
+
 pipeline {
   agent any
 
-  environment {
-    PROJECT_DIR = '/opt/wealth-tracking-framework'
-    REACT_BUILD_VOLUME = 'wtf-react-build'
-    REACT_IMAGE = 'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest'
-    NGINX_IMAGE = 'nginx:alpine'
-    REGISTRY = 'registry.gitlab.com'
-    REGISTRY_USER = credentials('gitlab_user')
-    REGISTRY_TOKEN = credentials('gitlab-registry-pat')
-  }
-
   stages {
+    stage('Login to Registry') {
+      steps {
+        sh '''
+          echo $REGISTRY_TOKEN | docker login -u $REGISTRY_USER --password-stdin $REGISTRY
+        '''
+      }
+    }
+
     stage('Stop all containers') {
       steps {
         dir("${PROJECT_DIR}") {
@@ -20,37 +40,48 @@ pipeline {
       }
     }
 
-    stage('Clean Down React/NGINX') {
+    stage('Clean Down React and NGINX') {
       steps {
-        sh '''
-          docker volume rm -f ${REACT_BUILD_VOLUME} || true
-          docker image rm -f ${REACT_IMAGE} || true
-          docker image rm -f ${NGINX_IMAGE} || true
-        '''
-      }
-    }
-
-    stage('Pull & Prepare Images') {
-      steps {
-        sh '''
-          echo $REGISTRY_TOKEN | docker login -u $REGISTRY_USER --password-stdin $REGISTRY
-          docker volume create ${REACT_BUILD_VOLUME} || true
-        '''
-        dir("${PROJECT_DIR}") {
-          sh 'docker compose pull'
+        sh "docker volume rm -f ${REACT_BUILD_VOLUME} || true"
+        script {
+          cleanupImages.each { img ->
+            sh "docker image rm -f ${img} || true"
+          }
         }
       }
     }
 
-    stage('Start all services') {
+    stage('Pull App Images (exclude Jenkins)') {
       steps {
         dir("${PROJECT_DIR}") {
-          sh 'docker compose up -d --no-build'
+          script {
+            appServices.each { svc ->
+              sh "docker compose -f docker-compose.yml pull ${svc} || true"
+            }
+          }
         }
       }
     }
 
-    stage('Run DB migrations') {
+    stage('Create React Volume') {
+      steps {
+        sh "docker volume create ${REACT_BUILD_VOLUME} || true"
+      }
+    }
+
+    stage('Start App Services') {
+      steps {
+        dir("${PROJECT_DIR}") {
+          script {
+            appServices.each { svc ->
+              sh "docker compose -f docker-compose.yml up -d --no-build ${svc}"
+            }
+          }
+        }
+      }
+    }
+
+    stage('Run DB Migrations') {
       steps {
         script {
           def maxTries = 5
@@ -72,18 +103,18 @@ pipeline {
       }
     }
 
-    stage('Restart fetchers') {
+    stage('Restart Fetchers') {
       steps {
         dir("${PROJECT_DIR}") {
           sh '''
-            docker compose restart wtf-coingecko
-            docker compose restart wtf-finnhub
+            docker compose up -d --no-build wtf-coingecko || true
+            docker compose up -d --no-build wtf-finnhub || true
           '''
         }
       }
     }
 
-    stage('Set permissions on React build directory') {
+    stage('Set Permissions on React Build Directory') {
       steps {
         sh 'chmod -R 0755 ${PROJECT_DIR}/wtf-react/build || true'
       }
@@ -92,10 +123,10 @@ pipeline {
 
   post {
     success {
-      echo "WTF project deployed successfully on ${env.NODE_NAME}"
+      echo "WTF services redeployed (excluding Jenkins)."
     }
     failure {
-      echo "Deployment failed!"
+      echo "Deployment failed."
     }
   }
 }
