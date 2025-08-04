@@ -27,7 +27,7 @@ pipeline {
     stage('Login to Registry') {
       steps {
         sh '''
-          echo "$REGISTRY_TOKEN" | docker login -u "$REGISTRY_USER" --password-stdin $REGISTRY
+          echo "$REGISTRY_TOKEN" | docker login -u "$REGISTRY_USER" --password-stdin registry.gitlab.com
         '''
       }
     }
