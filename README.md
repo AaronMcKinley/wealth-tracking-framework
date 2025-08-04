@@ -1,96 +1,123 @@
 # Wealth Tracking Framework (WTF)
 
-## macOS-Only Setup (for now)
-
-This project is designed for macOS users only at this stage.
-
 ## Project Overview
 
-The Wealth Tracking Framework is a full-stack, Dockerized investment tracking app built with:
+The Wealth Tracking Framework is a full-stack, Dockerized investment tracking app for managing crypto, stocks, ETFs, fixed savings, and alternative assets like whiskey or property.
 
-* React frontend
-* Node.js backend
-* PostgreSQL database
-* Cypress for end-to-end testing
-* Jenkins for CI/CD automation
-* Allure for test reporting
-* Ansible for system automation and environment setup
+### Tech Stack
 
-Users can track a variety of investments: crypto, stocks, fixed savings, or even alternative assets like whiskey or property.
+- **Frontend:** React + Tailwind CSS
+- **Backend:** Node.js/Express
+- **Database:** PostgreSQL
+- **Infrastructure:** Docker Compose, Ansible
+- **E2E Testing:** Cypress
+- **CI/CD:** Jenkins
+- **Test Reporting:** Allure
+
+---
 
 ## Prerequisites
 
-To run this project, you must have:
+- macOS 12+ (for local dev)
+- [Homebrew](https://brew.sh/)
+- Ansible (`brew install ansible`)
+- Docker Desktop (for local, not needed for server)
+- SSH access for production server setup
 
-* A Mac running macOS 12 or later
-* Homebrew installed
-* Ansible installed (`brew install ansible`)
+---
 
 ## Setup Instructions
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/wtf-wealth-tracking-framework.git
-cd wtf-wealth-tracking-framework/ansible
+git clone https://github.com/AaronMcKinley/wealth-tracking-framework.git
+cd wealth-tracking-framework/ansible
 ```
 
-### 2. Run the Setup Playbook
+### 2. Run the Setup Playbook (Local macOS)
 
-This will install all required packages, start Docker, and generate your `.env` file.
+This installs required packages, starts Docker, and generates your `.env` file.
 
 ```bash
 ansible-playbook -i inventory setup-darwin.yml --ask-vault-pass
 ```
 
-#### Running the Setup Playbook on server
+### 3. Provision an Ubuntu Server (Production/Cloud)
 
-Run the following command to provision the Ubuntu server. Replace `<your-server-ip>` and `<path-to-your-ssh-key>` with your actual server IP and SSH private key path:
+Replace `<your-server-ip>` and `<path-to-your-ssh-key>`:
 
 ```bash
 ansible-playbook -i <your-server-ip>, setup-ubuntu.yml --ask-vault-pass --ask-become-pass -u root --private-key <path-to-your-ssh-key>
 ```
 
-### 3. Start the Full Stack
+### 4. Start the Full Stack (Local or Server)
 
+**Local:**
 ```bash
 ansible-playbook start-locally.yml
 ```
+**Server:**  
+(SSH into your server, then run Docker Compose or use the provided Ansible playbook.)
 
-### 4. Reset the Database (Optional)
-
-If you need to reset and recreate the database schema:
+#### Reset the Database (Optional)
 
 ```bash
 ansible-playbook start-locally.yml -e reset_db=true
 ```
 
+---
+
 ## Access the App
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- Backend API: [http://localhost:4000](http://localhost:4000)
-- Jenkins: [http://localhost:8080](http://localhost:8080)
-- Allure Report Viewer: [http://localhost:5252](http://localhost:5252)
+### **Local Environment**
+
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:4000
+- **Jenkins:** http://localhost:8080
+- **Allure Report Viewer:** http://localhost:5252
+
+### **Production/Server Environment**
+
+- **Frontend:** https://wealth-tracking-framework.com
+- **Jenkins:** https://jenkins.wealth-tracking-framework.com
+
+*Note: The API is proxied under `/api` on the production frontend URL.*
+
+---
 
 ## Ansible Vault
 
-Ansible Vault is being used for secrets. The encrypted `secrets.yml` is used to dynamically generate the `.env` file during setup.
+Secrets are encrypted in `secrets.yml` and used to generate the `.env` file during setup.  
+No real credentials are ever committed.
 
-- No real secrets in `secrets.yml`
-- Only use it for demo or development purposes
-- The vault password must be known or securely stored elsewhere (not committed)
-
-To edit the secrets:
+Edit secrets with:
 
 ```bash
 ansible-vault edit secrets.yml
 ```
 
+---
+
 ## Testing
 
-- Cypress tests in the future
+- Cypress E2E tests (work in progress)
+- Jenkins CI pipeline (auto-builds, E2E tests, and Allure reporting)
+
+---
 
 ## Coming Soon
 
-- Investment filtering and analytics features  
-- Custom investments
+- Investment filtering and analytics features
+- Custom investment types and asset classes
+- Portfolio visualizations
+- More robust test coverage
+
+---
+
+## Contributing
+
+Open to PRs! Please file issues or reach out via [GitHub Issues](https://github.com/AaronMcKinley/wealth-tracking-framework/issues).
+
+---
+
