@@ -93,15 +93,6 @@
         mode: '0755'
         recurse: yes
 
-    - name: Obtain HTTPS certificates with Certbot (one-time/manual)
-      shell: docker compose run --rm certbot
-      args:
-        chdir: "{{ project_dir }}"
-      register: certbot_result
-      retries: 3
-      delay: 10
-      until: certbot_result.rc == 0
-
     - name: Reload NGINX after obtaining certs
       shell: docker compose exec wtf-nginx nginx -s reload
       args:
