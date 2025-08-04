@@ -8,7 +8,7 @@ pipeline {
     NGINX_IMAGE = 'nginx:alpine'
     REGISTRY = 'registry.gitlab.com'
     REGISTRY_USER = credentials('gitlab_user')
-    REGISTRY_TOKEN = credentials('gitlab_token')
+    REGISTRY_TOKEN = credentials('gitlab-registry-pat')
   }
 
   stages {
