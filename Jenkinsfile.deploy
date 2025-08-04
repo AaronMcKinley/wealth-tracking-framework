@@ -40,10 +40,13 @@ pipeline {
       }
     }
 
-    stage('Stop all containers') {
+    stage('Stop App Containers') {
       steps {
         dir("${env.PROJECT_DIR}") {
-          sh 'docker compose down || true'
+          sh '''
+            docker compose stop wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub || true
+            docker compose rm -f wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub || true
+          '''
         }
       }
     }
