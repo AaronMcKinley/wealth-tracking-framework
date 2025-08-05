@@ -38,6 +38,7 @@ pipeline {
             PGPASSWORD=${PGPASSWORD}
             PGDATABASE=${PGDATABASE}
             PGHOST=${PGHOST}
+            JWT_SECRET=${JWT_SECRET}
           """.stripIndent()
         }
       }
