@@ -53,13 +53,21 @@
       register: pull_result
       failed_when: pull_result.failed
 
-    - name: Start all services without building
+    - name: Start app services without building
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         state: present
         build: "never"
       register: up_result
       failed_when: up_result.failed
+
+    - name: Deploy Jenkins stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}/wtf-jenkins"
+        pull: "always"
+        state: present
+        build: "never"
+
 
     - name: Run database migrations inside node container
       shell: docker exec wtf-node npm run migrate

@@ -1,0 +1,25 @@
+services:
+  wtf-jenkins:
+    build:
+      context: .
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-jenkins:latest
+    container_name: wtf-jenkins
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - ../:/opt/wealth-tracking-framework
+    networks:
+      - wtfnet
+
+volumes:
+  jenkins_data:
+
+networks:
+  wtfnet:
+    external: true
