@@ -18,7 +18,7 @@ pipeline {
           )
         ]) {
           sh '''
-            echo "$REGISTRY_TOKEN" | docker login registry.gitlab.com -u "$REGISTRY_USER" --password-stdin
+            echo "$REGISTRY_TOKEN" | docker login $REGISTRY -u "$REGISTRY_USER" --password-stdin
           '''
         }
       }
@@ -35,6 +35,7 @@ pipeline {
             PGUSER=${PGUSER}
             PGPASSWORD=${PGPASSWORD}
             PGDATABASE=${PGDATABASE}
+            PGHOST=wtf-postgres
           """.stripIndent()
         }
       }
@@ -42,11 +43,21 @@ pipeline {
 
     stage('Stop App Containers') {
       steps {
-        dir("${env.PROJECT_DIR}") {
-          sh '''
-            docker compose stop wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub || true
-            docker compose rm -f wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub || true
-          '''
+        script {
+          def appServices = [
+            'wtf-node',
+            'wtf-react',
+            'wtf-nginx',
+            'wtf-postgres',
+            'wtf-coingecko',
+            'wtf-finnhub'
+          ]
+          dir("${env.PROJECT_DIR}") {
+            appServices.each { svc ->
+              sh "docker compose stop ${svc} || true"
+              sh "docker compose rm -f ${svc} || true"
+            }
+          }
         }
       }
     }
@@ -81,7 +92,7 @@ pipeline {
           ]
           dir("${env.PROJECT_DIR}") {
             appServices.each { svc ->
-              sh "docker compose -f docker-compose.yml pull ${svc} || true"
+              sh "docker compose pull ${svc} || true"
             }
           }
         }
@@ -106,9 +117,7 @@ pipeline {
             'wtf-finnhub'
           ]
           dir("${env.PROJECT_DIR}") {
-            appServices.each { svc ->
-              sh "docker compose -f docker-compose.yml up -d --no-build ${svc}"
-            }
+            sh "docker compose up -d --no-build ${appServices.join(' ')}"
           }
         }
       }
@@ -156,10 +165,10 @@ pipeline {
 
   post {
     success {
-      echo "WTF services redeployed (excluding Jenkins)."
+      echo "WTF app services deployed successfully. Jenkins remains running."
     }
     failure {
-      echo "Deployment failed."
+      echo "Deployment failed. Check logs for details."
     }
   }
 }
