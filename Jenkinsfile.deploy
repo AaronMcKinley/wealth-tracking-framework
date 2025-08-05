@@ -54,8 +54,7 @@ pipeline {
           ]
           dir("${env.PROJECT_DIR}") {
             appServices.each { svc ->
-              sh "docker compose stop ${svc} || true"
-              sh "docker compose rm -f ${svc} || true"
+              sh "docker rm -f ${svc} || true"
             }
           }
         }
