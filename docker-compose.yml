@@ -109,6 +109,27 @@ services:
       timeout: 3s
       retries: 5
 
+  wtf-certbot-renew:
+    image: certbot/certbot
+    container_name: certbot-renew
+    entrypoint: |
+      /bin/sh -c '
+        trap exit TERM;
+        while true; do
+          echo "[Certbot] Checking for renewal...";
+          certbot renew --quiet --deploy-hook "nginx -s reload";
+          sleep 12h;
+        done
+      '
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - /var/lib/docker/volumes/certbot-etc/_data:/etc/letsencrypt
+      - wtf-react-build:/usr/share/nginx/html:ro
+    depends_on:
+      - wtf-nginx
+    networks:
+      - wtfnet
+
 volumes:
   postgres_data:
   jenkins_data:
