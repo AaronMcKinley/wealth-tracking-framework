@@ -29,9 +29,9 @@ pipeline {
         withCredentials([
           string(credentialsId: 'PGUSER', variable: 'PGUSER'),
           string(credentialsId: 'PGPASSWORD', variable: 'PGPASSWORD'),
-          string(credentialsId: 'PGDATABASE', variable: 'PGDATABASE')
-          string(credentialsId: 'PGHOST', variable: 'PGHOST')
-          JWT_SECRET=${JWT_SECRET}
+          string(credentialsId: 'PGDATABASE', variable: 'PGDATABASE'),
+          string(credentialsId: 'PGHOST', variable: 'PGHOST'),
+          string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET')
         ]) {
           writeFile file: '.env', text: """\
             PGUSER=${PGUSER}
