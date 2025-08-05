@@ -56,7 +56,7 @@ services:
       - wtfnet
     depends_on:
       - wtf-node
-      - postgres
+      - wtf-postgres
 
   wtf-coingecko:
     build:
@@ -69,7 +69,7 @@ services:
       - wtfnet
     depends_on:
       - wtf-node
-      - postgres
+      - wtf-postgres
 
   wtf-jenkins:
     build:
@@ -89,7 +89,7 @@ services:
     networks:
       - wtfnet
 
-  postgres:
+  wtf-postgres:
     image: postgres:15
     container_name: wtf-postgres
     restart: unless-stopped
