@@ -21,6 +21,11 @@
         state: absent
       ignore_errors: true
 
+    - name: Remove any containers from previous runs (ignore errors)
+      shell: |
+        docker rm -f wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub wtf-certbot-renew wtf-jenkins || true
+      ignore_errors: true
+
     - name: Remove wtf-react-build volume
       community.docker.docker_volume:
         name: "{{ react_build_volume }}"
@@ -46,28 +51,18 @@
         name: "{{ react_build_volume }}"
         state: present
 
-    - name: Pull latest images from GitLab Registry
+    - name: Ensure wtfnet Docker network exists
+      community.docker.docker_network:
+        name: wtfnet
+        state: present
+        driver: bridge
+
+    - name: Deploy all WTF services including Jenkins
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         pull: "always"
-      register: pull_result
-      failed_when: pull_result.failed
-
-    - name: Start app services without building
-      community.docker.docker_compose_v2:
-        project_src: "{{ project_dir }}"
         state: present
         build: "never"
-      register: up_result
-      failed_when: up_result.failed
-
-    - name: Deploy Jenkins stack
-      community.docker.docker_compose_v2:
-        project_src: "{{ project_dir }}/wtf-jenkins"
-        pull: "always"
-        state: present
-        build: "never"
-
 
     - name: Run database migrations inside node container
       shell: docker exec wtf-node npm run migrate

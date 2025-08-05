@@ -30,12 +30,14 @@ pipeline {
           string(credentialsId: 'PGUSER', variable: 'PGUSER'),
           string(credentialsId: 'PGPASSWORD', variable: 'PGPASSWORD'),
           string(credentialsId: 'PGDATABASE', variable: 'PGDATABASE')
+          string(credentialsId: 'PGHOST', variable: 'PGHOST')
+          JWT_SECRET=${JWT_SECRET}
         ]) {
           writeFile file: '.env', text: """\
             PGUSER=${PGUSER}
             PGPASSWORD=${PGPASSWORD}
             PGDATABASE=${PGDATABASE}
-            PGHOST=wtf-postgres
+            PGHOST=${PGHOST}
           """.stripIndent()
         }
       }
