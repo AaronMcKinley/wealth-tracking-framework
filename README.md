@@ -117,7 +117,6 @@ ansible-vault edit secrets.yml
 
 ## Contributing
 
-Open to PRs! Please file issues or reach out via [GitHub Issues](https://github.com/AaronMcKinley/wealth-tracking-framework/issues).
 
 ---
 
