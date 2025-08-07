@@ -7,6 +7,12 @@ RUN apt-get update && \
     pip3 install ansible docker && \
     apt-get clean
 
+# Install docker compose v2 plugin (latest version recommended)
+RUN mkdir -p /usr/libexec/docker/cli-plugins && \
+    curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 \
+      -o /usr/libexec/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
 # Install required Ansible collections
 RUN ansible-galaxy collection install community.docker
 

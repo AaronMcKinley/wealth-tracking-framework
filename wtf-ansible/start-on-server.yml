@@ -15,11 +15,10 @@
         msg: "This playbook only supports Ubuntu. Detected {{ ansible_distribution }} {{ ansible_distribution_version }}."
       when: ansible_distribution != "Ubuntu"
 
-    - name: Stop all running containers (ignore errors if none)
+    - name: Stop all running containers
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         state: absent
-      ignore_errors: true
 
     - name: Remove any containers from previous runs (ignore errors)
       shell: |
