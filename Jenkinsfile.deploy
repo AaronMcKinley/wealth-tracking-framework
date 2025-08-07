@@ -2,7 +2,6 @@ pipeline {
   agent any
 
   environment {
-    DEPLOY_IMAGE = "wtf-deploy:latest"
     DEPLOY_DIR = "/opt/wealth-tracking-framework"
     CONTAINER_NAME = "wtf-deploy"
   }
@@ -23,7 +22,7 @@ pipeline {
       steps {
         sh """
           echo "Building deploy image locally..."
-          docker build -t ${DEPLOY_IMAGE} -f wtf-ansible/Dockerfile wtf-ansible
+          docker build -t ${CONTAINER_NAME}:latest -f wtf-ansible/Dockerfile wtf-ansible
         """
       }
     }
@@ -38,7 +37,7 @@ pipeline {
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v ${DEPLOY_DIR}:${DEPLOY_DIR} \
               -e ANSIBLE_VAULT_PASSWORD=${ANSIBLE_VAULT_PASSWORD} \
-              ${DEPLOY_IMAGE}
+              ${CONTAINER_NAME}:latest
           """
         }
       }
