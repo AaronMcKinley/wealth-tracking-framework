@@ -2,9 +2,8 @@ pipeline {
   agent any
 
   environment {
-    PROJECT_DIR = "${WORKSPACE}"
-    REACT_BUILD_VOLUME = 'wtf-react-build'
     REGISTRY = 'registry.gitlab.com'
+    DEPLOY_IMAGE = 'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-deployer:latest'
   }
 
   stages {
@@ -24,153 +23,29 @@ pipeline {
       }
     }
 
-    stage('Create .env') {
+    stage('Run Deployment Container') {
       steps {
         withCredentials([
-          string(credentialsId: 'PGUSER', variable: 'PGUSER'),
-          string(credentialsId: 'PGPASSWORD', variable: 'PGPASSWORD'),
-          string(credentialsId: 'PGDATABASE', variable: 'PGDATABASE'),
-          string(credentialsId: 'PGHOST', variable: 'PGHOST'),
-          string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET')
+          file(credentialsId: 'id_rsa', variable: 'SSH_KEY')
         ]) {
-          writeFile file: '.env', text: """\
-            PGUSER=${PGUSER}
-            PGPASSWORD=${PGPASSWORD}
-            PGDATABASE=${PGDATABASE}
-            PGHOST=${PGHOST}
-            JWT_SECRET=${JWT_SECRET}
-          """.stripIndent()
-        }
-      }
-    }
-
-    stage('Stop App Containers') {
-      steps {
-        script {
-          def appServices = [
-            'wtf-node',
-            'wtf-react',
-            'wtf-nginx',
-            'wtf-postgres',
-            'wtf-coingecko',
-            'wtf-finnhub'
-          ]
-          dir("${env.PROJECT_DIR}") {
-            appServices.each { svc ->
-              sh "docker rm -f ${svc} || true"
-            }
-          }
-        }
-      }
-    }
-
-    stage('Clean Down React and NGINX') {
-      steps {
-        script {
-          sh "docker volume rm -f ${env.REACT_BUILD_VOLUME} || true"
-
-          def cleanupImages = [
-            'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-react:latest',
-            'nginx:alpine'
-          ]
-
-          cleanupImages.each { img ->
-            sh "docker image rm -f ${img} || true"
-          }
-        }
-      }
-    }
-
-    stage('Pull App Images (exclude Jenkins)') {
-      steps {
-        script {
-          def appServices = [
-            'wtf-node',
-            'wtf-react',
-            'wtf-nginx',
-            'wtf-postgres',
-            'wtf-coingecko',
-            'wtf-finnhub'
-          ]
-          dir("${env.PROJECT_DIR}") {
-            appServices.each { svc ->
-              sh "docker compose pull ${svc} || true"
-            }
-          }
-        }
-      }
-    }
-
-    stage('Create React Volume') {
-      steps {
-        sh "docker volume create ${env.REACT_BUILD_VOLUME} || true"
-      }
-    }
-
-    stage('Start App Services') {
-      steps {
-        script {
-          def appServices = [
-            'wtf-node',
-            'wtf-react',
-            'wtf-nginx',
-            'wtf-postgres',
-            'wtf-coingecko',
-            'wtf-finnhub'
-          ]
-          dir("${env.PROJECT_DIR}") {
-            sh "docker compose up -d --no-build ${appServices.join(' ')}"
-          }
-        }
-      }
-    }
-
-    stage('Run DB Migrations') {
-      steps {
-        script {
-          def maxTries = 5
-          def attempt = 0
-          def success = false
-          while (attempt < maxTries && !success) {
-            try {
-              sh 'docker exec wtf-node npm run migrate'
-              success = true
-            } catch (err) {
-              attempt++
-              if (attempt == maxTries) {
-                error("DB migrations failed after ${maxTries} attempts")
-              }
-              sleep 5
-            }
-          }
-        }
-      }
-    }
-
-    stage('Restart Fetchers') {
-      steps {
-        dir("${env.PROJECT_DIR}") {
           sh '''
-            docker compose up -d --no-build wtf-coingecko || true
-            docker compose up -d --no-build wtf-finnhub || true
+            docker run --rm \
+              -v $SSH_KEY:/root/.ssh/id_rsa:ro \
+              -v /opt/wealth-tracking-framework:/opt/wealth-tracking-framework \
+              -e ANSIBLE_HOST_KEY_CHECKING=False \
+              ${DEPLOY_IMAGE}
           '''
         }
-      }
-    }
-
-    stage('Set Permissions on React Build Directory') {
-      steps {
-        sh "chmod -R 0755 ${env.PROJECT_DIR}/wtf-react/build || true"
       }
     }
   }
 
   post {
     success {
-      echo "WTF app services deployed successfully. Jenkins remains running."
+      echo "WTF deployed successfully."
     }
     failure {
-      echo "Deployment failed. Check logs for details."
+      echo "Deployment failed. Check logs."
     }
   }
 }

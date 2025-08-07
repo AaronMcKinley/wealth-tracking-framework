@@ -1,0 +1,25 @@
+- name: Render .env file for WTF deployment
+  hosts: all
+  become: yes
+  vars_files:
+    - secrets.yml
+
+  vars:
+    project_dir: /opt/wealth-tracking-framework
+
+  tasks:
+    - name: Render .env file from template
+      template:
+        src: templates/env.j2
+        dest: "{{ project_dir }}/.env"
+        mode: '0600'
+
+    - name: Confirm .env was rendered
+      stat:
+        path: "{{ project_dir }}/.env"
+      register: env_file
+
+    - name: Show confirmation message
+      debug:
+        msg: ".env successfully written to {{ project_dir }}/.env"
+      when: env_file.stat.exists
