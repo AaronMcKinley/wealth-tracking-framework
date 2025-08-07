@@ -9,6 +9,7 @@ pipeline {
   stages {
     stage('Remove Previous Deploy Container') {
       steps {
+        sh 'echo "Delay for 30 seconds so build pipeline finishes"; sleep 30'
         sh """
           if [ \$(docker ps -aq -f name=${CONTAINER_NAME}) ]; then
             echo "Removing existing ${CONTAINER_NAME} container..."
@@ -25,6 +26,10 @@ pipeline {
           docker build -t ${CONTAINER_NAME}:latest -f wtf-ansible/Dockerfile wtf-ansible
         """
       }
+    }
+
+    stage('Delay so previous pipeline completes') {
+      steps {
     }
 
     stage('Run Deploy Container Detached') {
