@@ -2,41 +2,63 @@ pipeline {
   agent any
 
   environment {
-    DEPLOY_IMAGE = 'registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-deploy:latest'
-    DEPLOY_DIR = '/opt/wealth-tracking-framework'
+    REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+    DEPLOY_IMAGE = "${REGISTRY}/wtf-deploy:latest"
+    DEPLOY_DIR = "/opt/wealth-tracking-framework"
+    CONTAINER_NAME = "wtf-deploy"
   }
 
-
   stages {
+    stage('Remove Previous Deploy Container') {
+      steps {
+        sh """
+          if [ \$(docker ps -aq -f name=${CONTAINER_NAME}) ]; then
+            echo "Removing existing ${CONTAINER_NAME} container..."
+            docker rm -f ${CONTAINER_NAME} || true
+          fi
+        """
+      }
+    }
+
     stage('Login to GitLab Registry') {
       steps {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
           sh '''
-          echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
+            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
           '''
         }
       }
     }
 
-    stage('Pull Latest Deploy Image') {
+    stage('Pull Deploy Image') {
       steps {
         sh "docker pull ${DEPLOY_IMAGE}"
       }
     }
 
-    stage('Run Deploy') {
+    stage('Run Deploy Container Detached') {
       steps {
         withCredentials([string(credentialsId: 'ansible_vault_password', variable: 'ANSIBLE_VAULT_PASSWORD')]) {
           sh """
-            docker run --rm \
+            echo "Running ${CONTAINER_NAME} in background..."
+            docker run -d \
+              --name ${CONTAINER_NAME} \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v ${DEPLOY_DIR}:${DEPLOY_DIR} \
-              -e ANSIBLE_VAULT_PASSWORD="${ANSIBLE_VAULT_PASSWORD}" \
-              -e DEPLOY_DELAY_SECONDS=180 \
+              -e ANSIBLE_VAULT_PASSWORD=${ANSIBLE_VAULT_PASSWORD} \
               ${DEPLOY_IMAGE}
           """
         }
       }
+    }
+  }
+
+  post {
+    success {
+      echo "Deploy container '${CONTAINER_NAME}' started successfully in background."
+    }
+    failure {
+      echo "Failed to start deploy container."
     }
   }
 }
