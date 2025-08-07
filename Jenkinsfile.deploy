@@ -23,7 +23,7 @@ pipeline {
       steps {
         sh """
           echo "Building deploy image locally..."
-          docker build -t ${DEPLOY_IMAGE} -f wtf-ansible/Dockerfile .
+          docker build -t ${DEPLOY_IMAGE} -f wtf-ansible/Dockerfile wtf-ansible
         """
       }
     }
