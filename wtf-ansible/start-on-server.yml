@@ -20,10 +20,9 @@
         project_src: "{{ project_dir }}"
         state: absent
 
-    - name: Remove any containers from previous runs (ignore errors)
+    - name: Remove any containers from previous runs
       shell: |
         docker rm -f wtf-node wtf-react wtf-nginx wtf-postgres wtf-coingecko wtf-finnhub wtf-certbot-renew wtf-jenkins || true
-      ignore_errors: true
 
     - name: Remove wtf-react-build volume
       community.docker.docker_volume:
