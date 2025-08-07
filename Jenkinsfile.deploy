@@ -7,17 +7,6 @@ pipeline {
   }
 
   stages {
-    stage('Create .env for Deployment') {
-      steps {
-        withCredentials([string(credentialsId: 'ansible_vault_password', variable: 'ANSIBLE_VAULT_PASSWORD')]) {
-          sh """
-            echo "ANSIBLE_VAULT_PASSWORD=${ANSIBLE_VAULT_PASSWORD}" > ${DEPLOY_DIR}/.env
-            echo "DEPLOY_DELAY_SECONDS=180" >> ${DEPLOY_DIR}/.env
-          """
-        }
-      }
-    }
-
     stage('Pull Latest Deploy Image') {
       steps {
         sh "docker pull ${DEPLOY_IMAGE}"
@@ -26,19 +15,16 @@ pipeline {
 
     stage('Run Deploy') {
       steps {
-        sh """
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v ${DEPLOY_DIR}:${DEPLOY_DIR} \
-            --env-file ${DEPLOY_DIR}/.env \
-            ${DEPLOY_IMAGE}
-        """
-      }
-    }
-
-    stage('Clean Up .env') {
-      steps {
-        sh "rm -f ${DEPLOY_DIR}/.env"
+        withCredentials([string(credentialsId: 'ansible_vault_password', variable: 'ANSIBLE_VAULT_PASSWORD')]) {
+          sh """
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v ${DEPLOY_DIR}:${DEPLOY_DIR} \
+              -e ANSIBLE_VAULT_PASSWORD="${ANSIBLE_VAULT_PASSWORD}" \
+              -e DEPLOY_DELAY_SECONDS=180 \
+              ${DEPLOY_IMAGE}
+          """
+        }
       }
     }
   }
