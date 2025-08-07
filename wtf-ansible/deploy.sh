@@ -19,7 +19,7 @@ error() {
 log "Starting deploy container..."
 
 echo "[DEPLOY] Delaying for 180 seconds before starting deployment..."
-read -t 180 -p "[DEPLOY] Delay complete. Continuing...\n" || true
+python3 -c "import time; print('[DEPLOY] Waiting 180 seconds...'); time.sleep(180)"
 
 log "Starting deployment..."
 

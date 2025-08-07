@@ -2,8 +2,7 @@ pipeline {
   agent any
 
   environment {
-    REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-    DEPLOY_IMAGE = "${REGISTRY}/wtf-deploy:latest"
+    DEPLOY_IMAGE = "wtf-deploy:latest"
     DEPLOY_DIR = "/opt/wealth-tracking-framework"
     CONTAINER_NAME = "wtf-deploy"
   }
@@ -20,19 +19,12 @@ pipeline {
       }
     }
 
-    stage('Login to GitLab Registry') {
+    stage('Build Deploy Image') {
       steps {
-        withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-          sh '''
-            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
-          '''
-        }
-      }
-    }
-
-    stage('Pull Deploy Image') {
-      steps {
-        sh "docker pull ${DEPLOY_IMAGE}"
+        sh """
+          echo "Building deploy image locally..."
+          docker build -t ${DEPLOY_IMAGE} -f wtf-ansible/Dockerfile .
+        """
       }
     }
 

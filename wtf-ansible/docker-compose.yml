@@ -1,0 +1,10 @@
+services:
+  wtf-deploy:
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-deploy:latest
+    container_name: wtf-deploy
+    environment:
+      - ANSIBLE_VAULT_PASSWORD=${ANSIBLE_VAULT_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/wealth-tracking-framework:/opt/wealth-tracking-framework
+    restart: "no"
