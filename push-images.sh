@@ -50,7 +50,6 @@ services=(
   "wtf-react"
   "wtf-finnhub"
   "wtf-coingecko"
-  "wtf-deploy"
 )
 
 for service in "${services[@]}"; do
