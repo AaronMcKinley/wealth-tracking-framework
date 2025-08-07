@@ -16,6 +16,10 @@ if (!process.env.JWT_SECRET) {
 app.use(cors());
 app.use(express.json());
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.get('/health', (req, res) => {
   res.redirect('/api/health');
 });
