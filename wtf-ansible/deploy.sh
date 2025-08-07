@@ -18,10 +18,8 @@ error() {
 
 log "Starting deploy container..."
 
-if [ ! -z "$DEPLOY_DELAY_SECONDS" ]; then
-  log "Sleeping for $DEPLOY_DELAY_SECONDS seconds before actual deployment."
-  sleep $DEPLOY_DELAY_SECONDS
-fi
+log "Sleeping for 180 seconds (3 minutes) before starting deployment..."
+sleep 180
 
 log "Starting deployment..."
 
