@@ -1,10 +1,10 @@
 #!/bin/bash
-set -e
+set -ex
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 log() {
   echo -e "${YELLOW}[DEPLOY]${NC} $1"
@@ -19,7 +19,7 @@ error() {
 log "Starting deploy container..."
 
 echo "[DEPLOY] Delaying for 180 seconds before starting deployment..."
-read -t 180 -p "[DEPLOY] Delay complete. Continuing...\n"
+read -t 180 -p "[DEPLOY] Delay complete. Continuing...\n" || true
 
 log "Starting deployment..."
 
