@@ -31,7 +31,7 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error('Unhandled server error:', err.stack || err);
+  console.error('Unhandled server error:', err.stack || err, err);
   res.status(500).json({ message: 'Internal Server Error' });
 });
 
