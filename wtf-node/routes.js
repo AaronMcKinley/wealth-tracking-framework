@@ -8,8 +8,12 @@ const { calculateCompoundSavings, formatAmount } = require('./helpers/savings');
 const router = express.Router();
 const pool = new Pool();
 
-const handleError = (res, msg = 'Internal server error', code = 500) => {
-  console.error(msg);
+const handleError = (res, msg = 'Internal server error', code = 500, err = null) => {
+  if (err) {
+    console.error('Error details:', err);
+  } else {
+    console.error(msg);
+  }
   return res.status(code).json({ message: msg });
 };
 
@@ -22,6 +26,7 @@ router.get('/health', async (req, res) => {
       return res.status(500).json({ status: 'db query failed' });
     }
   } catch (err) {
+    console.error('Healthcheck error:', err);
     return res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
@@ -48,7 +53,7 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, email: user.email, name: user.name },
     });
   } catch (err) {
-    handleError(res);
+    handleError(res, err.message || 'Internal server error', 500, err);
   }
 });
 
@@ -79,7 +84,8 @@ router.post('/signup', async (req, res) => {
       user
     });
   } catch (err) {
-    res.status(500).json({ message: 'Signup failed' });
+    console.error('Signup error:', err);
+    res.status(500).json({ message: 'Signup failed', error: err.message });
   }
 });
 
@@ -116,7 +122,7 @@ router.get('/investments', authenticateToken, async (req, res) => {
     const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
-    handleError(res, 'Failed to fetch investments');
+    handleError(res, 'Failed to fetch investments', 500, err);
   }
 });
 
@@ -257,7 +263,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: 'Buy recorded', quantity: total_quantity });
   } catch (err) {
-    handleError(res, err.message || 'Failed to record transaction');
+    handleError(res, err.message || 'Failed to record transaction', 500, err);
   }
 });
 
@@ -274,7 +280,7 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
     const result = await pool.query(query, [userId, ticker]);
     res.json(result.rows);
   } catch (err) {
-    handleError(res, 'Failed to fetch transactions');
+    handleError(res, 'Failed to fetch transactions', 500, err);
   }
 });
 
@@ -296,7 +302,8 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
     }
     res.json({ ticker: asset.rows[0].ticker, current_price: asset.rows[0].current_price });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch asset price' });
+    res.status(500).json({ message: 'Failed to fetch asset price', error: err.message });
+    console.error('Asset fetch error:', err);
   }
 });
 
@@ -447,7 +454,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
     }
   } catch (err) {
     console.error("Savings API error (POST):", err);
-    handleError(res, err.message || 'Failed to update savings account');
+    handleError(res, err.message || 'Failed to update savings account', 500, err);
   }
 });
 
