@@ -24,10 +24,9 @@ else
 fi
 
 REGISTRY="registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-GITLAB_USER="aaron09912"
 
-if [ -z "$GITLAB_TOKEN" ]; then
-  echo "ERROR: GITLAB_TOKEN is not set in .env"
+if [ -z "$GITLAB_USER" ] || [ -z "$GITLAB_TOKEN" ]; then
+  echo "ERROR: GITLAB_USER and/or GITLAB_TOKEN not set in .env"
   exit 1
 fi
 
@@ -39,9 +38,10 @@ if [ "$CLEAN" = true ]; then
   exit 0
 fi
 
+echo "Logging into GitLab Container Registry..."
 echo "$GITLAB_TOKEN" | docker login "$REGISTRY" -u "$GITLAB_USER" --password-stdin
 
-echo "Building images..."
+echo "Building images with Docker Compose..."
 docker compose build
 
 services=(
@@ -54,7 +54,8 @@ services=(
 
 for service in "${services[@]}"; do
   echo "Pushing image for $service..."
+  docker tag "$service:latest" "$REGISTRY/$service:latest"
   docker push "$REGISTRY/$service:latest"
 done
 
-echo "All images built and pushed successfully!"
+echo "All images built and pushed successfully."
