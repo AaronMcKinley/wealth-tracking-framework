@@ -18,8 +18,8 @@ error() {
 
 log "Starting deploy container..."
 
-log "Sleeping for 180 seconds (3 minutes) before starting deployment..."
-sleep 180
+echo "[DEPLOY] Delaying for 180 seconds before starting deployment..."
+read -t 180 -p "[DEPLOY] Delay complete. Continuing...\n"
 
 log "Starting deployment..."
 
