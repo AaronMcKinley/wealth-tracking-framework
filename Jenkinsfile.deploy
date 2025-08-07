@@ -6,17 +6,18 @@ pipeline {
     DEPLOY_DIR = '/opt/wealth-tracking-framework'
   }
 
-  stage('Login to GitLab Registry') {
-    steps {
-      withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-        sh '''
-        echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
-        '''
-      }
-    }
-  }
 
   stages {
+    stage('Login to GitLab Registry') {
+      steps {
+        withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
+          sh '''
+          echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
+          '''
+        }
+      }
+    }
+
     stage('Pull Latest Deploy Image') {
       steps {
         sh "docker pull ${DEPLOY_IMAGE}"
