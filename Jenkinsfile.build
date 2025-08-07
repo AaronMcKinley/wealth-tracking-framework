@@ -61,7 +61,8 @@ pipeline {
 
     post {
         success {
-            echo 'Build and push completed successfully.'
+            echo 'Build and push completed successfully. Starting Deploy'
+            build job: 'wtf-deploy'
         }
         failure {
             echo 'Build failed. Check the logs above for more details.'
