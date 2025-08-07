@@ -50,12 +50,17 @@ services=(
   "wtf-react"
   "wtf-finnhub"
   "wtf-coingecko"
+  "wtf-deploy"
 )
 
 for service in "${services[@]}"; do
-  echo "Pushing image for $service..."
-  docker tag "$service:latest" "$REGISTRY/$service:latest"
-  docker push "$REGISTRY/$service:latest"
+  IMAGE="$REGISTRY/$service:latest"
+  if docker image inspect "$IMAGE" > /dev/null 2>&1; then
+    echo "Pushing image for $service..."
+    docker push "$IMAGE"
+  else
+    echo "Skipping $service (image not built)"
+  fi
 done
 
-echo "All images built and pushed successfully."
+echo "All available images built and pushed successfully."

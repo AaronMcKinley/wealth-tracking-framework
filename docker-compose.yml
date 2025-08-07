@@ -130,6 +130,14 @@ services:
     networks:
       - wtfnet
 
+  wtf-deploy:
+    build:
+      context: ./wtf-ansible
+    image: registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework/wtf-deploy:latest
+    container_name: wtf-deploy
+    networks:
+      - wtfnet
+
 volumes:
   postgres_data:
   jenkins_data:
