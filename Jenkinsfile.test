@@ -40,7 +40,7 @@ pipeline {
                 --headless \
                 --reporter spec \
                 --config baseUrl=${CYPRESS_BASE_URL},video=false \
-                --spec "cypress/smoke/**/*.cy.js"
+                --spec "smoke/**/*.cy.js"
           """
         }
       }
