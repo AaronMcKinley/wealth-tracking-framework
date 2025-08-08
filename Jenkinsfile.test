@@ -31,6 +31,7 @@ pipeline {
               script: """
                 npx cypress run \
                   --browser chrome \
+                  --headless \
                   --config baseUrl=${CYPRESS_BASE_URL},video=false \
                   --spec "cypress/e2e/smoke/**/*.cy.js"
               """,
