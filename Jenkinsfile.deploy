@@ -28,9 +28,6 @@ pipeline {
       }
     }
 
-    stage('Delay so previous pipeline completes') {
-      steps {
-    }
 
     stage('Run Deploy Container Detached') {
       steps {
