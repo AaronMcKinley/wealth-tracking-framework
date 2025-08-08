@@ -6,6 +6,8 @@ pipeline {
     ALLURE_DOCKER_SERVICE_URL = "http://localhost:5050"
     ALLURE_PROJECT_ID = "wtf"
     REPORT_NAME = "E2E Tests"
+    CYPRESS_WORKDIR = "wtf-cypress"
+    CYPRESS_IMAGE = "custom-cypress:13.11"
   }
 
   stages {
@@ -15,36 +17,31 @@ pipeline {
       }
     }
 
-    stage('Install Dependencies') {
+    stage('Build Cypress Docker Image') {
       steps {
-        dir('wtf-cypress') {
-          sh 'npm ci'
+        dir("${CYPRESS_WORKDIR}") {
+          sh "docker build -t ${CYPRESS_IMAGE} ."
         }
       }
     }
 
-    stage('Run Cypress E2E Tests') {
+    stage('Run Cypress Smoke Tests') {
       steps {
-        dir('wtf-cypress') {
-          script {
-            def exitCode = sh(
-              script: """
-                npx cypress run \
-                  --browser chrome \
-                  --headless \
-                  --config baseUrl=${CYPRESS_BASE_URL},video=false \
-                  --spec "cypress/e2e/smoke/**/*.cy.js"
-              """,
-              returnStatus: true
-            )
-
-            if (exitCode != 0) {
-              echo "Cypress tests failed"
-              currentBuild.result = 'FAILURE'
-            } else {
-              echo "Cypress tests passed"
-            }
-          }
+        script {
+          sh """
+            docker run --rm \
+              -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
+              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
+              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
+              ${CYPRESS_IMAGE} \
+              npx cypress run \
+                --browser chromium \
+                --headless \
+                --reporter spec \
+                --config baseUrl=${CYPRESS_BASE_URL},video=false \
+                --spec "cypress/smoke/**/*.cy.js"
+          """
         }
       }
     }
@@ -52,7 +49,7 @@ pipeline {
     stage('Publish Allure Report') {
       steps {
         script {
-          def allureResultsPath = "${env.WORKSPACE}/wtf-cypress/allure-results"
+          def allureResultsPath = "${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results"
           def allureZipPath = "/tmp/allure-results.zip"
 
           sh """
@@ -94,7 +91,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'wtf-cypress/cypress/videos/**, wtf-cypress/cypress/screenshots/**', allowEmptyArchive: true
+      archiveArtifacts artifacts: "${CYPRESS_WORKDIR}/cypress/videos/**, ${CYPRESS_WORKDIR}/cypress/screenshots/**", allowEmptyArchive: true
     }
   }
 }

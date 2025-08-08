@@ -17,4 +17,4 @@ COPY . .
 
 RUN npx cypress verify
 
-CMD ["npx", "cypress", "run", "--browser", "chromium", "--e2e"]
+CMD ["npx", "cypress", "run", "--browser", "chromium", "--headless", "--spec", "cypress/smoke/**/*.cy.js"]
