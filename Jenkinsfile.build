@@ -1,71 +1,84 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
-        GITLAB_USER = "aaron09912"
+  environment {
+    REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
+    GITLAB_USER = "aaron09912"
+  }
+
+  stages {
+    stage('Git checkout and pull main') {
+      steps {
+        dir('/opt/wealth-tracking-framework') {
+          sh '''
+            echo "Checking out main branch..."
+            git checkout main
+            echo "Resetting any local changes..."
+            git reset --hard
+            echo "Pulling latest from origin/main..."
+            git pull origin main
+          '''
+        }
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/AaronMcKinley/wealth-tracking-framework.git'
-            }
+    stage('Verify Files and Paths') {
+      steps {
+        dir('/opt/wealth-tracking-framework') {
+          sh '''
+            echo "Current working directory: $(pwd)"
+            ls -al
+            ls -al ./wtf-react
+            ls -al ./wtf-node
+            ls -al ./wtf-jenkins
+            ls -al ./wtf-coingecko
+            ls -al ./wtf-finnhub
+          '''
         }
-
-        stage('Verify Files and Paths') {
-            steps {
-                script {
-                    sh 'echo "Current working directory: $(pwd)"'
-                    sh 'ls -al'
-                    sh 'ls -al ./wtf-react'
-                    sh 'ls -al ./wtf-node'
-                    sh 'ls -al ./wtf-jenkins'
-                    sh 'ls -al ./wtf-coingecko'
-                    sh 'ls -al ./wtf-finnhub'
-                }
-            }
-        }
-
-        stage('Login to GitLab Registry') {
-            steps {
-                withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-                    sh '''
-                        echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
-                    '''
-                }
-            }
-        }
-
-        stage('Build & Push Images') {
-            steps {
-                script {
-                    def images = [
-                        'wtf-node',
-                        'wtf-react',
-                        'wtf-jenkins',
-                        'wtf-coingecko',
-                        'wtf-finnhub'
-                    ]
-                    images.each { img ->
-                        sh """
-                            echo "Building $img..."
-                            docker build -t $REGISTRY/${img}:latest ./${img}
-                            docker push $REGISTRY/${img}:latest
-                        """
-                    }
-                }
-            }
-        }
+      }
     }
 
-    post {
-        success {
-            echo 'Build and push completed successfully. Starting Deploy'
-            build job: 'wtf-deploy', wait: false
+    stage('Login to GitLab Registry') {
+      steps {
+        withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
+          sh '''
+            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
+          '''
         }
-        failure {
-            echo 'Build failed. Check the logs above for more details.'
-        }
+      }
     }
+
+    stage('Build & Push Images') {
+      steps {
+        dir('/opt/wealth-tracking-framework') {
+          script {
+            def images = [
+              'wtf-node',
+              'wtf-react',
+              'wtf-jenkins',
+              'wtf-coingecko',
+              'wtf-finnhub'
+            ]
+            images.each { img ->
+              sh """
+                echo "Building $img..."
+                docker build -t $REGISTRY/${img}:latest ./${img}
+                docker push $REGISTRY/${img}:latest
+              """
+            }
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'Build and push completed successfully. Starting Deploy'
+      build job: 'wtf-deploy', wait: false
+    }
+    failure {
+      echo 'Build failed. Check the logs above for more details.'
+    }
+  }
 }
