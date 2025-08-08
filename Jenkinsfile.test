@@ -16,16 +16,16 @@ pipeline {
     }
 
     stage('Install Dependencies') {
-      dir('wtf-cypress') {
-        steps {
+      steps {
+        dir('wtf-cypress') {
           sh 'npm ci'
         }
       }
     }
 
     stage('Run Cypress E2E Tests') {
-      dir('wtf-cypress') {
-        steps {
+      steps {
+        dir('wtf-cypress') {
           script {
             def exitCode = sh(
               script: """
