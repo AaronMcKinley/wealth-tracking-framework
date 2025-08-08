@@ -43,4 +43,9 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
 
+# Install Google Chrome
+RUN curl -sSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o chrome.deb && \
+    apt-get install -y ./chrome.deb && \
+    rm chrome.deb
+
 USER jenkins
