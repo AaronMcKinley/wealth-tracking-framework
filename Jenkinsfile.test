@@ -36,7 +36,7 @@ pipeline {
                   -u \$(id -u):\$(id -g) \
                   -e FORCE_COLOR=1 \
                   -e CYPRESS_allure=true \
-                  -e CYPRESS_allureResultsPath=/app/allure-results \
+                  -e CYPRESS_allureResultsPath=/allure-results \
                   -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
