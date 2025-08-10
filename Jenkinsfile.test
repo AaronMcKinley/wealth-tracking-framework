@@ -1,6 +1,5 @@
 pipeline {
   agent any
-
   environment {
     CYPRESS_BASE_URL = "https://wealth-tracking-framework.com"
     REPORT_NAME      = "Smoke Tests"
@@ -10,9 +9,7 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build Cypress Docker Image') {
@@ -59,7 +56,6 @@ pipeline {
     }
 
     stage('Allure Report') {
-      when { always() }
       steps {
         dir("${CYPRESS_WORKDIR}") {
           sh """
@@ -74,7 +70,7 @@ pipeline {
           keepAll: true,
           reportDir: "${CYPRESS_WORKDIR}/allure-report",
           reportFiles: "index.html",
-          reportName: "Allure Report"
+          reportName: "${REPORT_NAME}"
         ])
       }
     }
