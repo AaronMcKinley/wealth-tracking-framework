@@ -2,16 +2,12 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 interface LoginResponse {
   message: string;
   token: string;
-  user: {
-    id: number;
-    email: string;
-    name: string;
-  };
+  user: { id: number; email: string; name: string };
 }
 
 const Login: React.FC = () => {
@@ -38,22 +34,18 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleCancel = () => {
-    navigate('/');
-  };
+  const handleCancel = () => navigate('/');
 
   return (
-    <>
-      <Header />
-      <div className="card max-w-md mx-auto mt-20 text-textLight">
+    <Layout>
+      <div className="card max-w-md mx-auto mt-20 text-textLight pb-8">
         <h2 className="text-3xl font-bold mb-6 text-center">
           Wealth Tracking Framework – Login
         </h2>
+
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
-            <label htmlFor="email" className="block mb-2 font-semibold">
-              Email
-            </label>
+            <label htmlFor="email" className="block mb-2 font-semibold">Email</label>
             <input
               id="email"
               type="email"
@@ -64,10 +56,9 @@ const Login: React.FC = () => {
               className="input"
             />
           </div>
+
           <div>
-            <label htmlFor="password" className="block mb-2 font-semibold">
-              Password
-            </label>
+            <label htmlFor="password" className="block mb-2 font-semibold">Password</label>
             <input
               id="password"
               type="password"
@@ -78,37 +69,26 @@ const Login: React.FC = () => {
               className="input"
             />
           </div>
+
           <div className="flex flex-col gap-4">
-            <button type="submit" className="btn btn-primary w-full">
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="btn btn-negative w-full"
-            >
-              Cancel
-            </button>
+            <button type="submit" className="btn btn-primary w-full">Login</button>
+            <button type="button" onClick={handleCancel} className="btn btn-negative w-full">Cancel</button>
           </div>
+
           <div className="flex justify-center mt-4">
             <Link to="/signup" className="w-1/2">
-              <button type="button" className="btn btn-primary w-full">
-                Sign Up
-              </button>
+              <button type="button" className="btn btn-primary w-full">Sign Up</button>
             </Link>
           </div>
         </form>
+
         {message && (
-          <p
-            className="mt-4 text-center text-red-500 font-semibold"
-            role="alert"
-            aria-live="polite"
-          >
+          <p className="mt-4 text-center text-red-500 font-semibold" role="alert" aria-live="polite">
             {message}
           </p>
         )}
       </div>
-    </>
+    </Layout>
   );
 };
 
