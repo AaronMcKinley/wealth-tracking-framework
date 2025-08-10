@@ -85,6 +85,26 @@
         mode: '0755'
         recurse: yes
 
+    - name: Wait for website to be available before triggering tests
+      uri:
+        url: "https://wealth-tracking-framework.com"
+        method: GET
+        status_code: 200
+      register: site_check
+      retries: 10
+      delay: 15
+      until: site_check.status == 200
+
+    - name: Trigger Cypress test pipeline in Jenkins
+      uri:
+        url: "https://jenkins.wealth-tracking-framework.com/job/wtf-test/build"
+        method: POST
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        status_code: 201
+
+
     - name: Confirm deployment success message
       debug:
-        msg: "WTF project deployed successfully on {{ inventory_hostname }}"
+        msg: "WTF project deployed successfully on {{ inventory_hostname }} and Cypress tests started"
