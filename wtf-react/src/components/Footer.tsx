@@ -2,17 +2,14 @@ import React from 'react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="w-full bg-gray-900 text-white py-4 fixed bottom-0 left-0 text-center">
-      <p>
-        Contact us:{" "}
-        <a
-          href="mailto:wtf@wealth-tracking-framework.com"
-          className="text-primaryGreen hover:underline"
-        >
-          wtf@wealth-tracking-framework.com
-        </a>
-      </p>
-    </footer>
+    <div className="fixed bottom-4 right-4 z-50">
+      <a
+        href="mailto:wtf@wealth-tracking-framework.com"
+        className="bg-cardBg text-primaryGreen border border-borderGreen rounded-md shadow-lg px-3 py-2 text-sm hover:bg-primaryGreen/20 transition-colors"
+      >
+        Contact: <span className="underline">wtf@wealth-tracking-framework.com</span>
+      </a>
+    </div>
   );
 };
 
