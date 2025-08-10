@@ -28,20 +28,20 @@ pipeline {
     stage('Run Cypress Smoke Tests') {
       steps {
         script {
-          sh """
-            docker run --rm \
-              -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
-              ${CYPRESS_IMAGE} \
-              npx cypress run \
-                --browser chromium \
-                --headless \
-                --reporter spec \
-                --config baseUrl=${CYPRESS_BASE_URL},video=false \
-                --spec "smoke/**/*.cy.js"
-          """
+        sh """
+          docker run --rm \
+            -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+            -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
+            -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
+            -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
+            ${CYPRESS_IMAGE} \
+            /bin/bash -c "npx cypress run \
+              --browser chromium \
+              --headless \
+              --reporter spec \
+              --config baseUrl=${CYPRESS_BASE_URL},video=false \
+              --spec 'smoke/**/*.cy.js'"
+        """
         }
       }
     }
