@@ -2,8 +2,6 @@ const { defineConfig } = require('cypress');
 const allureWriter = require('@shelex/cypress-allure-plugin/writer');
 
 module.exports = defineConfig({
-  reporter: 'allure-mocha',
-  reporterOptions: { resultsDir: 'allure-results' },
   e2e: {
     baseUrl: process.env.CYPRESS_BASE_URL || 'https://wealth-tracking-framework.com',
     specPattern: 'smoke/**/*.cy.js',

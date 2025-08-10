@@ -15,10 +15,11 @@ pipeline {
     stage('Build Cypress Docker Image') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
-          sh "docker build -t ${CYPRESS_IMAGE} ."
+          sh "docker build --no-cache -t ${CYPRESS_IMAGE} ."
         }
       }
     }
+
 
     stage('Run Cypress Smoke Tests') {
       steps {
@@ -45,11 +46,10 @@ pipeline {
                       --e2e \
                       --browser chrome \
                       --headless \
-                      --reporter allure-mocha \
-                      --reporter-options resultsDir=/app/allure-results \
                       --spec 'smoke/**/*.cy.js'
               """
             }
+            sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
           }
         }
       }
