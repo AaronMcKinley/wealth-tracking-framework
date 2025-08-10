@@ -13,6 +13,6 @@ module.exports = defineConfig({
   },
   env: {
     allure: true,
-    allureResultsPath: '/app/allure-results'
+    allureResultsPath: '/allure-results'
   }
 });

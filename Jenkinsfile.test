@@ -3,11 +3,9 @@ pipeline {
 
   environment {
     CYPRESS_BASE_URL = "https://wealth-tracking-framework.com"
-    ALLURE_DOCKER_SERVICE_URL = "http://localhost:5050"
-    ALLURE_PROJECT_ID = "wtf"
-    REPORT_NAME = "E2E Tests"
-    CYPRESS_WORKDIR = "wtf-cypress"
-    CYPRESS_IMAGE = "custom-cypress:13.11"
+    REPORT_NAME      = "Smoke Tests"
+    CYPRESS_WORKDIR  = "wtf-cypress"
+    CYPRESS_IMAGE    = "custom-cypress:13.11"
   }
 
   stages {
@@ -60,46 +58,25 @@ pipeline {
       }
     }
 
-    stage('Publish Allure Report') {
-     steps {
-       script {
-         def allureResultsPath = "${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results"
-         def allureZipPath = "/tmp/allure-results.zip"
-
-         sh """
-           if [ -d "${allureResultsPath}" ] && [ "\$(ls -A ${allureResultsPath})" ]; then
-             zip -j ${allureZipPath} ${allureResultsPath}/*
-           else
-             touch /tmp/dummy_empty_file
-             zip -j ${allureZipPath} /tmp/dummy_empty_file
-             rm /tmp/dummy_empty_file
-           fi
-         """
-
-         sh """
-           curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
-             -H 'Content-Type: application/json' \
-             -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} E2E"}' || true
-         """
-
-         sh """
-           curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
-             -F "results=@${allureZipPath}" || true
-         """
-
-         sh """
-           curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
-             -H 'Content-Type: application/json' \
-             -d '{
-               "reportName": "${REPORT_NAME}",
-               "buildName": "Build #${BUILD_NUMBER}",
-               "buildOrder": "${BUILD_NUMBER}"
-             }' || true
-         """
-
-         echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
-       }
-     }
+    stage('Allure Report') {
+      when { always() }
+      steps {
+        dir("${CYPRESS_WORKDIR}") {
+          sh """
+            npm ci
+            npx allure generate --clean allure-results -o allure-report || true
+          """
+        }
+        archiveArtifacts artifacts: "${CYPRESS_WORKDIR}/allure-results/**", allowEmptyArchive: true
+        publishHTML(target: [
+          allowMissing: true,
+          alwaysLinkToLastBuild: true,
+          keepAll: true,
+          reportDir: "${CYPRESS_WORKDIR}/allure-report",
+          reportFiles: "index.html",
+          reportName: "Allure Report"
+        ])
+      }
     }
   }
 
