@@ -27,24 +27,34 @@ pipeline {
 
     stage('Run Cypress Smoke Tests') {
       steps {
-        script {
-          catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        ansiColor('xterm') {
+          script {
             sh """
-              docker run --rm \
-                -e FORCE_COLOR=1 \
-                -e DEBUG=cypress:* \
-                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
-                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
-                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
-                ${CYPRESS_IMAGE} \
-                cypress run \
-                  --e2e \
-                  --browser chrome \
-                  --headless \
-                  --reporter spec \
-                  --spec 'smoke/**/*.cy.js' \
-                  --config video=false
+              mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
+                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
+                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
             """
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+              sh """
+                docker run --rm \
+                  -u $(id -u):$(id -g) \
+                  -e FORCE_COLOR=1 \
+                  -e CYPRESS_allure=true \
+                  -e CYPRESS_allureResultsPath=/app/allure-results \
+                  -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results" \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
+                  ${CYPRESS_IMAGE} \
+                    cypress run \
+                      --e2e \
+                      --browser chrome \
+                      --headless \
+                      --reporter spec \
+                      --spec 'smoke/**/*.cy.js' \
+                      --config "video=false"
+              """
+            }
           }
         }
       }
