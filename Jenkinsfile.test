@@ -26,66 +26,68 @@ pipeline {
     }
 
     stage('Run Cypress Smoke Tests') {
-      steps {
-        script {
-          sh """
-            docker run --rm \
-              -e FORCE_COLOR=1 \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
-              -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
-              ${CYPRESS_IMAGE} \
-              cypress run \
-                --e2e \
-                --browser chrome \
-                --headless \
-                --spec 'smoke/**/*.cy.js' \
-                --config video=false
-          """
-        }
-      }
+     steps {
+       script {
+         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+           sh """
+             docker run --rm \
+               -e FORCE_COLOR=1 \
+               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
+               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
+               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
+               ${CYPRESS_IMAGE} \
+               cypress run \
+                 --e2e \
+                 --browser chrome \
+                 --headless \
+                 --spec 'smoke/**/*.cy.js' \
+                 --config video=false
+           """
+         }
+       }
+     }
     }
 
     stage('Publish Allure Report') {
-      steps {
-        script {
-          def allureResultsPath = "${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results"
-          def allureZipPath = "/tmp/allure-results.zip"
+     steps {
+       script {
+         def allureResultsPath = "${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results"
+         def allureZipPath = "/tmp/allure-results.zip"
 
-          sh """
-            if [ -d "${allureResultsPath}" ] && [ "\$(ls -A ${allureResultsPath})" ]; then
-              zip -j ${allureZipPath} ${allureResultsPath}/*
-            else
-              touch /tmp/dummy_empty_file
-              zip -j ${allureZipPath} /tmp/dummy_empty_file
-              rm /tmp/dummy_empty_file
-            fi
-          """
+         sh """
+           if [ -d "${allureResultsPath}" ] && [ "\$(ls -A ${allureResultsPath})" ]; then
+             zip -j ${allureZipPath} ${allureResultsPath}/*
+           else
+             touch /tmp/dummy_empty_file
+             zip -j ${allureZipPath} /tmp/dummy_empty_file
+             rm /tmp/dummy_empty_file
+           fi
+         """
 
-          sh """
-            curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
-              -H 'Content-Type: application/json' \
-              -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} E2E"}' || true
-          """
+         sh """
+           curl -sf -X POST ${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/projects \
+             -H 'Content-Type: application/json' \
+             -d '{"id": "${ALLURE_PROJECT_ID}", "name": "${ALLURE_PROJECT_ID} E2E"}' || true
+         """
 
-          sh """
-            curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
-              -F "results=@${allureZipPath}" || true
-          """
+         sh """
+           curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/send-results?project_id=${ALLURE_PROJECT_ID}" \
+             -F "results=@${allureZipPath}" || true
+         """
 
-          sh """
-            curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
-              -H 'Content-Type: application/json' \
-              -d '{
-                "reportName": "${REPORT_NAME}",
-                "buildName": "Build #${BUILD_NUMBER}",
-                "buildOrder": "${BUILD_NUMBER}"
-              }' || true
-          """
+         sh """
+           curl -sf -X POST "${ALLURE_DOCKER_SERVICE_URL}/allure-docker-service/generate-report?project_id=${ALLURE_PROJECT_ID}" \
+             -H 'Content-Type: application/json' \
+             -d '{
+               "reportName": "${REPORT_NAME}",
+               "buildName": "Build #${BUILD_NUMBER}",
+               "buildOrder": "${BUILD_NUMBER}"
+             }' || true
+         """
 
-          echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
-        }
-      }
+         echo "Allure Report: ${ALLURE_DOCKER_SERVICE_URL}/projects/${ALLURE_PROJECT_ID}/reports/latest/index.html"
+       }
+     }
     }
   }
 
