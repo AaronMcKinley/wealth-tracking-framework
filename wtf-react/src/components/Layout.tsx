@@ -1,8 +1,7 @@
-// src/components/Layout.tsx
-
 import React from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +19,7 @@ const Layout: React.FC<LayoutProps> = ({
         <Sidebar menuItems={menuItems} />
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
+      <Footer />
     </div>
   );
 };

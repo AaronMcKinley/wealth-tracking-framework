@@ -1,14 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import logo from '../assets/logo.png';
 
 export default function Homepage() {
   return (
-    <div className="min-h-screen flex flex-col bg-darkBg text-textLight">
-      <Header />
-
-      <main className="flex-grow flex flex-col items-center justify-center px-4">
+    <Layout menuItems={[]}>
+      <div className="flex flex-col items-center justify-center px-4 py-12">
         <img
           src={logo}
           alt="Wealth Tracking Framework Logo"
@@ -37,7 +35,7 @@ export default function Homepage() {
             </Link>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }
