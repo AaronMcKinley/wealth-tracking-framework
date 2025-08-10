@@ -46,7 +46,7 @@ pipeline {
                       --browser chrome \
                       --headless \
                       --reporter spec \
-                      --spec 'smoke/**/*.cy.js' \
+                      --spec 'smoke/**/*.cy.js'
               """
             }
           }
@@ -72,7 +72,7 @@ pipeline {
         echo "Allure report: ${env.BUILD_URL}Allure_20Smoke/"
       }
     }
-
+  }
 
   post {
     always {
