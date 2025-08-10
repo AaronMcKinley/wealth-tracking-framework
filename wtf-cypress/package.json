@@ -8,12 +8,9 @@
     "allure:generate": "allure generate allure-results --clean -o allure-report",
     "allure:open": "allure open allure-report"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@shelex/cypress-allure-plugin": "^2.41.2",
+    "allure-commandline": "2.29.0",
     "cypress": "^13.11.0",
     "cypress-multi-reporters": "^2.0.5",
     "wait-on": "^8.0.3"
