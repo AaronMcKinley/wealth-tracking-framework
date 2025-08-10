@@ -39,7 +39,8 @@ pipeline {
                 --e2e \
                 --browser chrome \
                 --headless \
-                --spec 'smoke/**/*.cy.js'
+                --spec 'smoke/**/*.cy.js' \
+                --config video=false
           """
         }
       }
