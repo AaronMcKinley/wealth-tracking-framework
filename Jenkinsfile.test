@@ -26,26 +26,28 @@ pipeline {
     }
 
     stage('Run Cypress Smoke Tests') {
-     steps {
-       script {
-         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-           sh """
-             docker run --rm \
-               -e FORCE_COLOR=1 \
-               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
-               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
-               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
-               ${CYPRESS_IMAGE} \
-               cypress run \
-                 --e2e \
-                 --browser chrome \
-                 --headless \
-                 --spec 'smoke/**/*.cy.js' \
-                 --config video=false
-           """
-         }
-       }
-     }
+      steps {
+        script {
+          catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            sh """
+              docker run --rm \
+                -e FORCE_COLOR=1 \
+                -e DEBUG=cypress:* \
+                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
+                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
+                -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
+                ${CYPRESS_IMAGE} \
+                cypress run \
+                  --e2e \
+                  --browser chrome \
+                  --headless \
+                  --reporter spec \
+                  --spec 'smoke/**/*.cy.js' \
+                  --config video=false
+            """
+          }
+        }
+      }
     }
 
     stage('Publish Allure Report') {
