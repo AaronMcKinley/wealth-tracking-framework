@@ -55,24 +55,12 @@ pipeline {
     }
 
     stage('Allure Report') {
-      steps {
-        dir("${CYPRESS_WORKDIR}") {
-          sh 'test -d .allure-history && cp -r .allure-history history || true'
-          sh 'npx -p allure-commandline@2.29.0 allure generate --clean allure-results -o allure-report || true'
-          sh 'rm -rf .allure-history && mkdir -p .allure-history && cp -r allure-report/history .allure-history || true'
+        steps {
+            allure([
+                results: [[path: "${CYPRESS_WORKDIR}/allure-results"]]
+            ])
         }
-        publishHTML(target: [
-          allowMissing: true,
-          alwaysLinkToLastBuild: true,
-          keepAll: true,
-          reportDir: "${CYPRESS_WORKDIR}/allure-report",
-          reportFiles: "index.html",
-          reportName: "Allure Smoke"
-        ])
-        echo "Allure report: ${env.BUILD_URL}Allure_20Smoke/"
-      }
     }
-  }
 
   post {
     always {
