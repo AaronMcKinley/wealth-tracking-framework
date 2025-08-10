@@ -30,16 +30,15 @@ pipeline {
         script {
           sh """
             docker run --rm \
-              -e CYPRESS_baseUrl=${CYPRESS_BASE_URL} \
-              -e CYPRESS_video=false \
+              -e FORCE_COLOR=1 \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
               ${CYPRESS_IMAGE} \
               cypress run \
-                --browser chromium \
+                --e2e \
+                --browser chrome \
                 --headless \
-                --reporter spec \
                 --spec 'smoke/**/*.cy.js'
           """
         }
