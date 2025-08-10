@@ -45,7 +45,8 @@ pipeline {
                       --e2e \
                       --browser chrome \
                       --headless \
-                      --reporter spec \
+                      --reporter allure-mocha \
+                      --reporter-options resultsDir=/app/allure-results \
                       --spec 'smoke/**/*.cy.js'
               """
             }
@@ -55,11 +56,11 @@ pipeline {
     }
 
     stage('Allure Report') {
-        steps {
-            allure([
-                results: [[path: "${CYPRESS_WORKDIR}/allure-results"]]
-            ])
-        }
+      steps {
+        allure([
+          results: [[path: "${CYPRESS_WORKDIR}/allure-results"]]
+        ])
+      }
     }
   }
 
