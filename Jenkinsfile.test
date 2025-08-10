@@ -36,11 +36,11 @@ pipeline {
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
               ${CYPRESS_IMAGE} \
-              /bin/bash -lc "npx cypress run \
+              cypress run \
                 --browser chromium \
                 --headless \
                 --reporter spec \
-                --spec 'smoke/**/*.cy.js'"
+                --spec 'smoke/**/*.cy.js'
           """
         }
       }
