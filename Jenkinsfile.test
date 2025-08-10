@@ -31,6 +31,8 @@ pipeline {
           sh """
             docker run --rm \
               -e FORCE_COLOR=1 \
+              -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+              -e CYPRESS_video=false \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/app/allure-results \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots \
               -v ${env.WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos \
