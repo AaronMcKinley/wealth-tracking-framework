@@ -2,18 +2,23 @@ import React from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 interface LayoutProps {
   children: React.ReactNode;
   menuItems?: string[];
-  showSidebar?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
   children,
   menuItems = ['Dashboard', 'Add Investment', 'Add Savings', 'Settings', 'Logout'],
-  showSidebar = true,
 }) => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  const showSidebar = isAuthenticated && location.pathname !== '/';
+
   return (
     <div className="flex flex-col min-h-screen bg-darkBg text-textLight">
       <Header />
