@@ -18,8 +18,8 @@ error() {
 
 log "Starting deploy container..."
 
-echo "[DEPLOY] Delaying for 60 seconds before starting deployment..."
-python3 -c "import time; print('[DEPLOY] Waiting 60 seconds...'); time.sleep(60)"
+echo "[DEPLOY] Delaying for 30 seconds before starting deployment..."
+python3 -c "import time; print('[DEPLOY] Waiting 30 seconds...'); time.sleep(30)"
 
 log "Starting deployment..."
 

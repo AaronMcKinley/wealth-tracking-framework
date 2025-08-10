@@ -37,7 +37,7 @@ pipeline {
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               sh """
                 docker run --rm \
-                  -u $(id -u):$(id -g) \
+                  -u \$(id -u):\$(id -g) \
                   -e FORCE_COLOR=1 \
                   -e CYPRESS_allure=true \
                   -e CYPRESS_allureResultsPath=/app/allure-results \
