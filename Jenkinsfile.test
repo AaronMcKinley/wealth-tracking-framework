@@ -38,6 +38,7 @@ pipeline {
                   -e CYPRESS_allure=true \
                   -e CYPRESS_allureResultsPath=/allure-results \
                   -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
+                  -e CYPRESS_config='{"video":true}' \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
