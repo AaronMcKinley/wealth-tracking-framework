@@ -31,7 +31,8 @@ pipeline {
             """
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               sh """
-                docker run --rm \
+                docker rm -f cypress_dbg || true
+                docker run --name cypress_dbg \
                   -u \$(id -u):\$(id -g) \
                   -e FORCE_COLOR=1 \
                   -e CYPRESS_allure=true \
