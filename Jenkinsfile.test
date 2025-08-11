@@ -9,7 +9,9 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build Cypress Docker Image') {
@@ -56,9 +58,11 @@ pipeline {
 
     stage('Allure Report') {
       steps {
-        allure([
-          results: [[path: "${CYPRESS_WORKDIR}/allure-results"]]
-        ])
+        dir("${CYPRESS_WORKDIR}") {
+          allure([
+            results: [[path: "allure-results"]]
+          ])
+        }
       }
     }
   }
