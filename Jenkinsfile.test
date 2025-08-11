@@ -42,7 +42,7 @@ pipeline {
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
                   ${CYPRESS_IMAGE} \
-                  sh -c "cypress run --e2e --browser chrome --headless --spec \\"smoke/**/*.cy.js\\""
+                  sh -c "unset CYPRESS_config && cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'"
               """
             }
             sh """
