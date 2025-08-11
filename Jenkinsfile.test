@@ -27,14 +27,13 @@ pipeline {
             sh """
               rm -rf allure-results cypress/screenshots cypress/videos
               mkdir -p allure-results cypress/screenshots cypress/videos
-
               docker run --rm \
                 --shm-size=2g \
                 -u \$(id -u):\$(id -g) \
-                -e CI=1 \
+                --entrypoint bash \
                 ${CYPRESS_IMAGE} \
-                bash -lc 'echo "=== support/e2e.js ==="; sed -n "1,40p" /app/support/e2e.js || true; echo "=== plugin version ==="; node -p "require(\\"@shelex/cypress-allure-plugin/package.json\\").version"'
-
+                -lc 'echo "=== support/e2e.js ==="; sed -n "1,40p" /app/support/e2e.js || true; \
+                     echo "=== plugin version ==="; node -p "require(\\"@shelex/cypress-allure-plugin/package.json\\").version"'
               docker run --rm \
                 --shm-size=2g \
                 -u \$(id -u):\$(id -g) \
