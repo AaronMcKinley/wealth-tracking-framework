@@ -42,7 +42,7 @@ pipeline {
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
                   ${CYPRESS_IMAGE} \
-                  sh -c 'env -u CYPRESS_config cypress run --e2e --browser chrome --headless --spec "smoke/**/*.cy.js"; tail -f /dev/null'
+                  sh -c "cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'; tail -f /dev/null"
               """
             }
             sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
