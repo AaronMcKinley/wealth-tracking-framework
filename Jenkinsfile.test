@@ -60,9 +60,9 @@ pipeline {
     stage('Allure Report') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
-          sh 'allure generate --clean allure-results -o allure-report'
           allure([
-            results: [[path: "allure-results"]]
+            results: [[path: 'allure-results']],
+            reportBuildPolicy: 'ALWAYS'
           ])
         }
       }
