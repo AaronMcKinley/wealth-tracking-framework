@@ -26,32 +26,15 @@ pipeline {
       steps {
         ansiColor('xterm') {
           script {
-            sh """
-              mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
-                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
-                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
-            """
-
-            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-              sh """
-                docker run --rm \
-                  -u \$(id -u):\$(id -g) \
-                  -e FORCE_COLOR=1 \
-                  -e CYPRESS_allure=true \
-                  -e CYPRESS_allureResultsPath=/allure-results \
-                  -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
-                  ${CYPRESS_IMAGE} \
-                    cypress run \
-                      --e2e \
-                      --browser chrome \
-                      --headless \
-                      --spec 'smoke/**/*.cy.js'
-              """
+            def containerName = "cypress_runner_${BUILD_NUMBER}"
+            try {
+              sh "docker run -it -d --name ${containerName} ${CYPRESS_IMAGE} tail -f /dev/null"
+              sh "docker exec ${containerName} npx cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'"
+              sh "docker cp ${containerName}:/app/allure-results/. ${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results"
+            } finally {
+              sh "docker stop ${containerName}"
+              sh "docker rm ${containerName}"
             }
-            sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
           }
         }
       }
