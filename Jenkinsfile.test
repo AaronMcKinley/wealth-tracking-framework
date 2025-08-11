@@ -31,6 +31,7 @@ pipeline {
                        "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
                        "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
             """
+
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               sh """
                 docker run --rm \
@@ -59,6 +60,7 @@ pipeline {
     stage('Allure Report') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
+          sh 'allure generate --clean allure-results -o allure-report'
           allure([
             results: [[path: "allure-results"]]
           ])
@@ -69,7 +71,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: "${CYPRESS_WORKDIR}/cypress/videos/**,${CYPRESS_WORKDIR}/cypress/screenshots/**,allure-report/**", allowEmptyArchive: true
+      archiveArtifacts artifacts: "${CYPRESS_WORKDIR}/cypress/videos/**,${CYPRESS_WORKDIR}/cypress/screenshots/**,${CYPRESS_WORKDIR}/allure-report/**", allowEmptyArchive: true
     }
   }
 }
