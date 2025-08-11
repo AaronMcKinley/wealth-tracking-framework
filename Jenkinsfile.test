@@ -32,24 +32,43 @@ pipeline {
             """
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               sh """
-                docker run --rm \
+               docker rm -f cypress_dbg || true
+               docker run --name cypress_dbg \
                   -u \$(id -u):\$(id -g) \
                   -e FORCE_COLOR=1 \
                   -e CYPRESS_allure=true \
                   -e CYPRESS_allureResultsPath=/allure-results \
-                  -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
+                  -e CYPRESS_BASE_URL='${CYPRESS_BASE_URL}' \
+                  -e CYPRESS_config= \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
                   ${CYPRESS_IMAGE} \
-                    cypress run \
-                      --e2e \
-                      --browser chrome \
-                      --headless \
-                      --spec 'smoke/**/*.cy.js'
+                  sh -lc 'unset CYPRESS_config; cypress run --e2e --browser chrome --headless --spec "smoke/**/*.cy.js"'
               """
             }
-            sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
+
+            sh """
+              echo "=== Copy Allure results out of container (several likely paths) ==="
+              rm -rf "${CYPRESS_WORKDIR}/_container_allure_results"
+              mkdir -p "${CYPRESS_WORKDIR}/_container_allure_results"
+              for d in /allure-results /app/allure-results /app/cypress/allure-results /app/cypress/reports/allure-results; do
+                echo "Trying: \$d"
+                docker exec cypress_dbg sh -lc '[ -d "'"\$d"'" ]' && \
+                docker cp cypress_dbg:\$d "${WORKSPACE}/${CYPRESS_WORKDIR}/_container_allure_results\${d}" || true
+              done
+              echo "=== Host-mounted results (bind mount) ==="
+              ls -lah "${CYPRESS_WORKDIR}/allure-results" || true
+
+              echo "=== Copied results from inside container ==="
+              ls -lahR "${CYPRESS_WORKDIR}/_container_allure_results" || true
+
+              # cleanup the named container now that we've copied
+              docker rm -f cypress_dbg || true
+
+              COUNT=\$(ls -1 "${CYPRESS_WORKDIR}/allure-results" 2>/dev/null | wc -l || echo 0)
+              echo "Allure results count (host mount): \$COUNT"
+            """
           }
         }
       }
