@@ -31,17 +31,21 @@ pipeline {
             """
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               sh """
-                docker rm -f cypress_dbg || true
-                docker run --name cypress_dbg \
+                docker run --rm \
                   -u \$(id -u):\$(id -g) \
                   -e FORCE_COLOR=1 \
                   -e CYPRESS_allure=true \
                   -e CYPRESS_allureResultsPath=/allure-results \
+                  -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
                   ${CYPRESS_IMAGE} \
-                  sh -c "cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js' --config '{\\"baseUrl\\": \\"${CYPRESS_BASE_URL}\\"}'; tail -f /dev/null"
+                    cypress run \
+                      --e2e \
+                      --browser chrome \
+                      --headless \
+                      --spec 'smoke/**/*.cy.js'
               """
             }
             sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
