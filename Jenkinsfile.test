@@ -25,22 +25,19 @@ pipeline {
         ansiColor('xterm') {
           dir("${CYPRESS_WORKDIR}") {
             sh '''
-              set -euxo pipefail
+              rm -rf allure-results cypress/screenshots cypress/videos
               mkdir -p allure-results cypress/screenshots cypress/videos
               docker run --rm \
                 --shm-size=2g \
                 -u $(id -u):$(id -g) \
                 -e FORCE_COLOR=1 \
                 -e CI=1 \
-                -e CYPRESS_baseUrl="'${CYPRESS_BASE_URL}'" \
-                -v "$PWD":/e2e \
-                -w /e2e \
+                -e CYPRESS_BASE_URL='"'"'${CYPRESS_BASE_URL}'"'"' \
+                -v "$PWD/allure-results":/app/allure-results \
+                -v "$PWD/cypress/screenshots":/app/cypress/screenshots \
+                -v "$PWD/cypress/videos":/app/cypress/videos \
                 ${CYPRESS_IMAGE} \
-                bash -lc "
-                  npm ci
-                  npx cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'
-                "
-
+                npx cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'
               echo "Allure results count:"
               ls -1 allure-results | wc -l || true
             '''
@@ -52,10 +49,7 @@ pipeline {
     stage('Allure Report') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
-          allure(
-            results: [[path: 'allure-results']],
-            reportBuildPolicy: 'ALWAYS'
-          )
+          allure(results: [[path: 'allure-results']], reportBuildPolicy: 'ALWAYS')
         }
       }
     }
