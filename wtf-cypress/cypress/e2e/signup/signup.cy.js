@@ -61,7 +61,8 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     Sidebar.waitForSidebar();
     Sidebar.goToSettings();
     Sidebar.assertSettingsActive();
-    cy.contains(NAME).should('be.visible');
+    cy.get(SL.settingsNameInput, { timeout: 10000 }).should('have.value', NAME);
+    cy.get(SL.settingsEmailInput).should('have.value', email);
     cy.get(Signup.settingsEmailInput).should('have.value', email);
     cy.get(Signup.settingsDeleteBtn).click();
     cy.get(Signup.deleteConfirmModal, { timeout: 10000 }).should('be.visible');
