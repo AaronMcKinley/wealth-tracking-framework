@@ -13,7 +13,7 @@ describe('Authentication & Session', { tags: ['@regression', '@auth', '@smoke'] 
 
   it('logs in successfully', { tags: ['@critical'] }, () => {
     cy.session('validUser', () => {
-      Login.loginSuccessfully(users.validUser.email, users.validUser.password);
+      Login.loginForSession(users.validUser.email, users.validUser.password);
     });
     cy.visit('/dashboard');
     cy.location('pathname').should('match', /(\/dashboard|\/)$/);
@@ -25,7 +25,7 @@ describe('Authentication & Session', { tags: ['@regression', '@auth', '@smoke'] 
 
   it('accesses protected route when authenticated', () => {
     cy.session('validUser', () => {
-      Login.loginSuccessfully(users.validUser.email, users.validUser.password);
+      Login.loginForSession(users.validUser.email, users.validUser.password);
     });
     cy.visit('/dashboard');
     cy.location('pathname').should('include', '/dashboard');
@@ -33,7 +33,7 @@ describe('Authentication & Session', { tags: ['@regression', '@auth', '@smoke'] 
 
   it('shows 404 for an invalid route when authenticated', () => {
     cy.session('validUser', () => {
-      Login.loginSuccessfully(users.validUser.email, users.validUser.password);
+      Login.loginForSession(users.validUser.email, users.validUser.password);
     });
     cy.visit('/def-not-a-real-route', { failOnStatusCode: false });
     cy.contains(/(404|page not found)/i).should('be.visible');

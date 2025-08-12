@@ -7,27 +7,27 @@ const Sidebar = {
   clickLogo: () => H.clickLogo(),
 
   goToDashboard: () => {
-    cy.contains('button', 'Dashboard').click();
+    cy.contains('button', /dashboard/i).click();
     H.pathHas('/dashboard');
   },
 
   goToInvestments: () => {
-    cy.contains('button', 'Add Investment').click();
+    cy.contains('button', /add investment/i).click();
     H.pathHas('/add-investment');
   },
 
   goToSavings: () => {
-    cy.contains('button', 'Add Savings').click();
+    cy.contains('button', /add savings/i).click();
     H.pathHas('/savings');
   },
 
   goToSettings: () => {
-    cy.contains('button', 'Settings').click();
+    cy.contains('button', /settings/i).click();
     H.pathHas('/settings');
   },
 
   clickLogout: () => {
-    cy.contains('button', 'Logout').click();
+    cy.contains('button', /logout/i).click();
     H.pathEq('/');
   },
 

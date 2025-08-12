@@ -6,7 +6,7 @@ import Sidebar from '../../support/sidebar/actions';
 describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@ui', '@smoke'] }, () => {
   beforeEach(() => {
     cy.session('validUser', () => {
-      Login.loginSuccessfully(users.validUser.email, users.validUser.password);
+      Login.loginForSession(users.validUser.email, users.validUser.password);
     });
   });
 
