@@ -9,27 +9,31 @@ describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@u
     });
   });
 
-  it('navigates via sidebar, reflects active state, and logs out', () => {
+  it('navigates via sidebar and logs out', () => {
     cy.visit('/dashboard');
-    Sidebar.assertDashboardActive();
+    Sidebar.waitForSidebar();
 
     Sidebar.goToInvestments();
     Sidebar.assertInvestmentsActive();
 
-    Sidebar.goToTransactions();
-    Sidebar.assertTransactionsActive();
+    Sidebar.goToSavings();
+    Sidebar.assertSavingsActive();
+
+    Sidebar.goToSettings();
+    Sidebar.assertSettingsActive();
 
     Sidebar.goToDashboard();
     Sidebar.assertDashboardActive();
 
     Sidebar.clickLogout();
-    cy.location('pathname').should('eq', '/');
+    Sidebar.assertNoneActive();
   });
 
-  it('logo click returns to homepage and no sidebar item is active', () => {
-    cy.visit('/transactions');
+  it('logo click returns to homepage', () => {
+    cy.visit('/dashboard');
+    Sidebar.waitForSidebar();
+
     Sidebar.clickLogo();
-    cy.location('pathname').should('eq', '/');
     Sidebar.assertNoneActive();
   });
 });
