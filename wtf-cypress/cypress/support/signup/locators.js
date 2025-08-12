@@ -10,4 +10,4 @@ export const SignupLocators = {
   deleteConfirmInput: '[data-testid="confirm-delete-input"]',
   deleteConfirmBtn:   '[data-testid="confirm-delete"]',
 };
-export default SignupLocators;
+export default Signup;
