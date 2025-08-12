@@ -2,32 +2,28 @@ import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 import Sidebar from '../../support/sidebar/actions';
 
-describe('Routing & Layout — Sidebar navigation', { tags: ['@regression', '@routing', '@ui', '@smoke'] }, () => {
-  before(() => {
+describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@ui', '@smoke'] }, () => {
+  beforeEach(() => {
     cy.session('validUser', () => {
       Login.loginSuccessfully(users.validUser.email, users.validUser.password);
     });
   });
 
-  beforeEach(() => {
-    cy.session('validUser');
-  });
-
-  it('activates Dashboard on /dashboard', () => {
+  it('navigates via sidebar, reflects active state, and logs out', () => {
     cy.visit('/dashboard');
     Sidebar.assertDashboardActive();
-  });
 
-  it('navigates to Investments and reflects active state', () => {
-    cy.visit('/dashboard');
     Sidebar.goToInvestments();
     Sidebar.assertInvestmentsActive();
-  });
 
-  it('navigates to Transactions and reflects active state', () => {
-    cy.visit('/dashboard');
     Sidebar.goToTransactions();
     Sidebar.assertTransactionsActive();
+
+    Sidebar.goToDashboard();
+    Sidebar.assertDashboardActive();
+
+    Sidebar.clickLogout();
+    cy.location('pathname').should('eq', '/');
   });
 
   it('logo click returns to homepage and no sidebar item is active', () => {

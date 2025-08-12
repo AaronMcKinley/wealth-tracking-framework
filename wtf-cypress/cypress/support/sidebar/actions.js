@@ -2,6 +2,7 @@ import { SidebarLocators as SEL } from './locators';
 
 const Sidebar = {
   clickLogo: () => cy.get(SEL.logo).click(),
+  clickLogout: () => cy.get(SEL.logout).click(),
 
   goToDashboard: () => {
     cy.get(SEL.dashboard).click();
