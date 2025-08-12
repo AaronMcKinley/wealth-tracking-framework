@@ -1,5 +1,6 @@
 import H from '../../support/helpers/actions';
 import Signup from '../../support/signup/actions';
+import SignupLocators from '../../support/signup/locators';
 import Login from '../../support/login/actions';
 import Sidebar from '../../support/sidebar/actions';
 
@@ -61,13 +62,12 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     Sidebar.waitForSidebar();
     Sidebar.goToSettings();
     Sidebar.assertSettingsActive();
-    cy.get(Signup.settingsNameInput, { timeout: 10000 }).should('have.value', NAME);
-    cy.get(Signup.settingsEmailInput).should('have.value', email);
-    cy.get(Signup.settingsEmailInput).should('have.value', email);
-    cy.get(Signup.settingsDeleteBtn).click();
-    cy.get(Signup.deleteConfirmModal, { timeout: 10000 }).should('be.visible');
-    cy.get(Signup.deleteConfirmInput).clear().type(email);
-    cy.get(Signup.deleteConfirmBtn).should('not.be.disabled').click();
+    cy.get(SignupLocators.settingsNameInput, { timeout: 10000 }).should('have.value', NAME);
+    cy.get(SignupLocators.settingsEmailInput).should('have.value', email);
+    cy.get(SignupLocators.settingsDeleteBtn).click();
+    cy.get(SignupLocators.deleteConfirmModal, { timeout: 10000 }).should('be.visible');
+    cy.get(SignupLocators.deleteConfirmInput).clear().type(email);
+    cy.get(SignupLocators.deleteConfirmBtn).should('not.be.disabled').click();
 
     H.pathEq('/');
     Login.loginWithInvalidCredentials(email, PW_GOOD);
