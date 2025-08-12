@@ -4,8 +4,8 @@ const allureWriter = require('@shelex/cypress-allure-plugin/writer');
 module.exports = defineConfig({
   e2e: {
     baseUrl: process.env.CYPRESS_BASE_URL || 'https://wealth-tracking-framework.com',
-    specPattern: 'smoke/**/*.cy.js',
-    supportFile: 'support/e2e.js',
+    specPattern: 'cypress/e2e/**/*.cy.js',
+    supportFile: 'cypress/support/e2e.js',
     setupNodeEvents(on, config) {
       allureWriter(on, config);
       return config;
@@ -13,6 +13,6 @@ module.exports = defineConfig({
   },
   env: {
     allure: true,
-    allureResultsPath: 'allure-results'
+    allureResultsPath: './allure-results'
   }
 });

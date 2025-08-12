@@ -1,8 +1,0 @@
-{
-  "reporterEnabled": "cypress-allure-plugin",
-  "cypress-allure-plugin": {
-    "resultsDir": "allure-results",
-    "disableWebdriverStepsReporting": true,
-    "disableWebdriverScreenshotsReporting": false
-  }
-}

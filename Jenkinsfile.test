@@ -20,20 +20,14 @@ pipeline {
       }
     }
 
-    stage('Run Cypress Smoke Tests') {
+    stage('Run Cypress E2E Tests') {
       steps {
         ansiColor('xterm') {
           dir("${CYPRESS_WORKDIR}") {
             sh """
               rm -rf allure-results cypress/screenshots cypress/videos
               mkdir -p allure-results cypress/screenshots cypress/videos
-              docker run --rm \
-                --shm-size=2g \
-                -u \$(id -u):\$(id -g) \
-                --entrypoint bash \
-                ${CYPRESS_IMAGE} \
-                -lc 'echo "=== support/e2e.js ==="; sed -n "1,40p" /app/support/e2e.js || true; \
-                     echo "=== plugin version ==="; node -p "require(\\"@shelex/cypress-allure-plugin/package.json\\").version"'
+
               docker run --rm \
                 --shm-size=2g \
                 -u \$(id -u):\$(id -g) \
@@ -46,7 +40,7 @@ pipeline {
                 -v "\$PWD/cypress/screenshots":/app/cypress/screenshots \
                 -v "\$PWD/cypress/videos":/app/cypress/videos \
                 ${CYPRESS_IMAGE} \
-                npx cypress run --e2e --browser chrome --headless --spec 'smoke/**/*.cy.js'
+                npx cypress run --e2e --browser chrome --headless
 
               echo "Allure results count:"
               count=\$(ls -1 allure-results 2>/dev/null | wc -l || true)

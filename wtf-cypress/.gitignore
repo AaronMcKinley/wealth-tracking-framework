@@ -4,8 +4,8 @@
 /node_modules
 /.pnp
 .pnp.js
-/allure-report
-/allure-results
+/cypress/allure-report
+/cypress/allure-results
 
 # testing
 /coverage
