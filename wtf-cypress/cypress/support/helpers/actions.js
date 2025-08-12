@@ -1,15 +1,41 @@
 import { HelperLocators as HL } from './locators';
+const TOKEN_KEY = Cypress.env('TOKEN_KEY') || 'token';
 
 const H = {
-  resetState: () => { cy.clearCookies(); cy.clearLocalStorage(); },
+  resetState: () => {
+    cy.clearCookies();
+    cy.window({ log: false }).then((w) => {
+      try { w.localStorage.clear(); } catch {}
+      try { w.sessionStorage.clear(); } catch {}
+    });
+  },
+
   visit: (path = '/') => cy.visit(path),
   pathEq: (p) => cy.location('pathname').should('eq', p),
   pathHas: (frag) => cy.location('pathname').should('include', frag),
   clickLogo: () => cy.get(HL.logoLink).should('be.visible').click(),
-  clickHomeSignUp: () => cy.contains('a,button', /sign up/i).first().click(),
-  clickHomeLogin:  () => cy.contains('a,button', /(login|sign in)/i).first().click(),
-  clickSignInLink: () => cy.contains('a,button', /(sign in|login)/i).first().click(),
-  cancel:          () => cy.contains('a,button', /cancel/i).first().click(),
+
+  goHome: () => {
+    cy.get('body').then(($b) => {
+      const hasLogo = $b.find(HL.logoLink).length > 0;
+      if (hasLogo) cy.get(HL.logoLink).first().click();
+      else cy.visit('/');
+    });
+  },
+  ensureLoggedOut: () => {
+    cy.clearCookies();
+    cy.window({ log: false }).then((w) => {
+      try { w.localStorage.removeItem(TOKEN_KEY); } catch {}
+      try { w.sessionStorage.clear(); } catch {}
+    });
+    H.goHome();
+    cy.window().should((w) => {
+      expect(w.localStorage.getItem(TOKEN_KEY)).to.be.null;
+    });
+  },
+  assertLoggedOut: () => {
+    cy.contains('a,button', /(login|sign in)/i).should('be.visible');
+  },
   typeName: (v) => cy.get(HL.nameInput).first().clear().type(v),
   typeEmail: (v) => cy.get(HL.emailInput).first().clear().type(v),
   typePassword: (idx, v) => cy.get(HL.passInputs).eq(idx).clear().type(v, { log: false }),

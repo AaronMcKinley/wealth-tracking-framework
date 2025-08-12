@@ -10,7 +10,9 @@ const PW_BAD_SYM = 'Password1';
 const PW_GOOD = 'Password1!';
 
 describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
-  beforeEach(() => H.resetState());
+  beforeEach(() => {
+    H.ensureLoggedOut();
+  });
 
   it('homepage → signup → cancel → signup', () => {
     H.visit('/');
@@ -24,13 +26,24 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     H.pathHas('/signup');
   });
 
-  it('rejects misformatted passwords', () => {
+  it('rejects misformatted passwords and duplicate email', () => {
     H.visit('/signup');
     Signup.fill({ name: NAME, email: EMAIL_NEG, password: PW_BAD_NUM });
-    H.submit(); H.pathHas('/signup'); H.expectFormError();
+    H.submit();
+    H.pathHas('/signup');
+    H.expectFormError();
 
     Signup.fill({ name: NAME, email: EMAIL_NEG, password: PW_BAD_SYM });
-    H.submit(); H.pathHas('/signup'); H.expectFormError();
+    H.submit();
+    H.pathHas('/signup');
+    H.expectFormError();
+
+    cy.intercept('POST', '/api/signup').as('apiSignup');
+    Signup.fill({ name: NAME, email: 'test@email.com', password: PW_GOOD });
+    H.submit();
+    cy.wait('@apiSignup').its('response.statusCode').should('be.oneOf', [409, 400]);
+    H.pathHas('/signup');
+    cy.contains(/email.*in use/i).should('exist');
   });
 
   it('creates an account, shows the name in Settings, then deletes the account', () => {
@@ -39,7 +52,7 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     Signup.fill({ name: NAME, email, password: PW_GOOD });
     H.submit();
     cy.location('pathname', { timeout: 10000 }).then((p) => {
-      if (p.includes('/login')) {
+      if (!/^\/dashboard\/?$/.test(p)) {
         Login.loginSuccessfully(email, PW_GOOD);
       }
     });
@@ -49,11 +62,11 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     Sidebar.goToSettings();
     Sidebar.assertSettingsActive();
     cy.contains(NAME).should('be.visible');
-    cy.get('[data-testid="settings-email"]').should('have.value', email);
-    cy.get('[data-testid="settings-delete"]').click();
-    cy.get('[role="dialog"][aria-modal="true"]', { timeout: 10000 }).should('be.visible');
-    cy.get('[data-testid="confirm-delete-input"]').clear().type(email);
-    cy.get('[data-testid="confirm-delete"]').should('not.be.disabled').click();
+    cy.get(Signup.settingsEmailInput).should('have.value', email);
+    cy.get(Signup.settingsDeleteBtn).click();
+    cy.get(Signup.deleteConfirmModal, { timeout: 10000 }).should('be.visible');
+    cy.get(Signup.deleteConfirmInput).clear().type(email);
+    cy.get(Signup.deleteConfirmBtn).should('not.be.disabled').click();
 
     H.pathEq('/');
     Login.loginWithInvalidCredentials(email, PW_GOOD);
