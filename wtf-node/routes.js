@@ -458,4 +458,51 @@ router.post('/savings', authenticateToken, async (req, res) => {
   }
 });
 
+ router.get('/user', authenticateToken, async (req, res) => {
+   try {
+     const { rows } = await pool.query(
+       'SELECT id, name, email, created_at FROM users WHERE id = $1',
+       [req.user.userId]
+     );
+     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+     return res.status(200).json(rows[0]);
+   } catch (err) {
+     return handleError(res, 'Failed to fetch user', 500, err);
+   }
+ });
+
+ router.put('/user', authenticateToken, async (req, res) => {
+   const { name, email } = req.body || {};
+
+   if (!name || !email) {
+     return handleError(res, 'name and email are required', 400);
+   }
+   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+   if (!isEmail) return handleError(res, 'invalid email format', 400);
+
+   try {
+     const { rows, rowCount } = await pool.query(
+       'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email',
+       [name, email, req.user.userId]
+     );
+     if (!rowCount) return res.status(404).json({ message: 'User not found' });
+     return res.status(200).json({ message: 'Profile updated', user: rows[0] });
+   } catch (err) {
+     if (err && err.code === '23505') {
+       return handleError(res, 'Email already in use', 409, err);
+     }
+     return handleError(res, 'Failed to update user', 500, err);
+   }
+ });
+
+ router.delete('/user', authenticateToken, async (req, res) => {
+   try {
+     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.user.userId]);
+     if (!rowCount) return res.status(404).json({ message: 'User not found' });
+     return res.sendStatus(204);
+   } catch (err) {
+     return handleError(res, 'Failed to delete user', 500, err);
+   }
+ });
+
 module.exports = router;
