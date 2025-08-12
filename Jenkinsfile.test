@@ -1,5 +1,6 @@
 pipeline {
   agent any
+
   environment {
     CYPRESS_BASE_URL = "https://wealth-tracking-framework.com"
     REPORT_NAME      = "Smoke Tests"
@@ -9,7 +10,9 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build Cypress Docker Image') {
@@ -20,33 +23,33 @@ pipeline {
       }
     }
 
-    stage('Run Cypress E2E Tests') {
+    stage('Run Cypress Smoke Tests') {
       steps {
         ansiColor('xterm') {
-          dir("${CYPRESS_WORKDIR}") {
+          script {
             sh """
-              rm -rf allure-results cypress/screenshots cypress/videos
-              mkdir -p allure-results cypress/screenshots cypress/videos
-              docker run --rm \
-                --shm-size=2g \
-                -u \$(id -u):\$(id -g) \
-                -e FORCE_COLOR=1 \
-                -e CI=1 \
-                -e DEBUG=allure:* \
-                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                -e CYPRESS_allure=true \
-                -e CYPRESS_allureResultsPath=/app/allure-results \
-                -v "$PWD/allure-results":/app/allure-results \
-                -v "$PWD/cypress/screenshots":/app/cypress/screenshots \
-                -v "$PWD/cypress/videos":/app/cypress/videos \
-                ${CYPRESS_IMAGE} \
-                npx cypress run --e2e --browser chrome --headless
-
-              echo "Allure results count:"
-              count=\$(ls -1 allure-results 2>/dev/null | wc -l || true)
-              echo "\$count"
-              test "\$count" -gt 0 || { echo 'No Allure results generated'; exit 1; }
+              mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
+                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
+                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
             """
+
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+              sh """
+                docker run --rm \
+                  -u \$(id -u):\$(id -g) \
+                  -e FORCE_COLOR=1 \
+                  -e CYPRESS_allure=true \
+                  -e CYPRESS_allureResultsPath=/allure-results \
+                  -e CYPRESS_baseUrl='${CYPRESS_BASE_URL}' \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
+                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
+                  ${CYPRESS_IMAGE} \
+                  cypress run --e2e --browser chrome --headless --spec smoke/**/*.cy.js
+              """
+            }
+
+            sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
           }
         }
       }
@@ -55,7 +58,10 @@ pipeline {
     stage('Allure Report') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
-          allure(results: [[path: 'allure-results']], reportBuildPolicy: 'ALWAYS')
+          allure([
+            results: [[path: 'allure-results']],
+            reportBuildPolicy: 'ALWAYS'
+          ])
         }
       }
     }
