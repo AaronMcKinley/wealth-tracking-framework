@@ -18,7 +18,7 @@ const Login = {
   },
 
   verifySuccessfulLogin() {
-    cy.window().then((w) => {
+    cy.window().should((w) => {
       const token = w.localStorage.getItem(TOKEN_KEY);
       expect(token).to.be.a('string').and.match(/^ey/);
     });
@@ -45,9 +45,11 @@ const Login = {
 
   loginForSession(email, password) {
     this.visitLoginPage();
+    cy.intercept('POST', '/api/login').as('apiLogin');
     this.fillCredentials(email, password);
     this.submitLogin();
-    cy.window().then((w) => {
+    cy.wait('@apiLogin').its('response.statusCode').should('be.oneOf', [200, 201]);
+    cy.window().should((w) => {
       const token = w.localStorage.getItem(TOKEN_KEY);
       expect(token, `localStorage "${TOKEN_KEY}" set`).to.be.a('string').and.match(/^ey/);
     });
