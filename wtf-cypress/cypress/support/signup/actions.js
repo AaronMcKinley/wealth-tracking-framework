@@ -1,7 +1,8 @@
 import H from '../helpers/actions';
+import SL from './locators';
 
 const Signup = {
-  openFromHome: () => H.clickHomeSignUp(),
+  openFromHome: () => cy.get(SL.homeSignUpLink).first().click(),
   visit: () => H.visit('/signup'),
   fill: ({ name, email, password, confirm }) => {
     if (name != null) H.typeName(name);
@@ -13,8 +14,8 @@ const Signup = {
   },
 
   submit: () => H.submit(),
-  cancel: () => H.cancel(),
-  clickSignIn: () => H.clickSignInLink(),
+  cancel: () => cy.get(SL.cancelButton).first().click(),
+  clickSignIn: () => cy.get(SL.signInLink).first().click(),
   expectOnSignup: () => H.pathHas('/signup'),
   expectOnLogin:  () => H.pathHas('/login'),
   expectOnHome:   () => H.pathEq('/'),

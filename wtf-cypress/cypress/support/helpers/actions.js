@@ -6,16 +6,34 @@ const H = {
   pathEq: (p) => cy.location('pathname').should('eq', p),
   pathHas: (frag) => cy.location('pathname').should('include', frag),
   clickLogo: () => cy.get(HL.logoLink).should('be.visible').click(),
-  clickHomeSignUp: () => cy.get(HL.homeSignUpLink).first().click(),
-  clickHomeLogin:  () => cy.get(HL.homeLoginLink).first().click(),
-  clickSignInLink: () => cy.get(HL.signInLink).first().click(),
-  cancel:          () => cy.get(HL.cancelBtn).first().click(),
+  clickHomeSignUp: () => cy.contains('a,button', /sign up/i).first().click(),
+  clickHomeLogin:  () => cy.contains('a,button', /(login|sign in)/i).first().click(),
+  clickSignInLink: () => cy.contains('a,button', /(sign in|login)/i).first().click(),
+  cancel:          () => cy.contains('a,button', /cancel/i).first().click(),
   typeName: (v) => cy.get(HL.nameInput).first().clear().type(v),
   typeEmail: (v) => cy.get(HL.emailInput).first().clear().type(v),
   typePassword: (idx, v) => cy.get(HL.passInputs).eq(idx).clear().type(v, { log: false }),
   submit: () => cy.get(HL.submitBtn).first().click(),
-  expectFormError: () => cy.get(HL.errorMsg).should('exist'),
 
+  expectFormError: () =>
+    cy.get('body').then(($b) => {
+      const hasExplicit = $b.find(HL.errorMsg).length > 0;
+      if (hasExplicit) cy.get(HL.errorMsg).should('be.visible');
+      else cy.contains(/(invalid|required|error)/i).should('be.visible');
+    }),
+
+  expectSuccess: () =>
+    cy.get('body').then(($b) => {
+      const hasExplicit = $b.find(HL.successMsg).length > 0;
+      if (hasExplicit) cy.get(HL.successMsg).should('be.visible');
+      else cy.contains(/(saved|updated|success)/i).should('be.visible');
+    }),
+  waitForDialog: () => cy.get(HL.dialog, { timeout: 10000 }).should('be.visible'),
+  dialogConfirmWith: (text) => {
+    if (text != null) cy.get(HL.dialogInput).clear().type(text);
+    cy.get(HL.dialogConfirmBtn).should('not.be.disabled').click();
+  },
+  dialogCancel: () => cy.get(HL.dialogCancelBtn).click(),
   genEmail: (prefix = 'e2e') => `${prefix}+${Date.now()}@example.com`,
 };
 
