@@ -27,18 +27,18 @@ pipeline {
             sh """
               rm -rf allure-results cypress/screenshots cypress/videos
               mkdir -p allure-results cypress/screenshots cypress/videos
-
               docker run --rm \
                 --shm-size=2g \
                 -u \$(id -u):\$(id -g) \
                 -e FORCE_COLOR=1 \
                 -e CI=1 \
+                -e DEBUG=allure:* \
                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
                 -e CYPRESS_allure=true \
-                -e CYPRESS_allureResultsPath=allure-results \
-                -v "\$PWD/allure-results":/app/allure-results \
-                -v "\$PWD/cypress/screenshots":/app/cypress/screenshots \
-                -v "\$PWD/cypress/videos":/app/cypress/videos \
+                -e CYPRESS_allureResultsPath=/app/allure-results \
+                -v "$PWD/allure-results":/app/allure-results \
+                -v "$PWD/cypress/screenshots":/app/cypress/screenshots \
+                -v "$PWD/cypress/videos":/app/cypress/videos \
                 ${CYPRESS_IMAGE} \
                 npx cypress run --e2e --browser chrome --headless
 
