@@ -1,59 +1,47 @@
 import L from './locators';
 
-const addinvestmentactions = {
-  setAuthBeforeLoad(win) {
-    win.localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@wtf.app' }));
-    win.localStorage.setItem('token', 'test-token');
+const AddInvestments = {
+  startAddFromDashboard() {
+    cy.contains(L.dashboard.addBtn, /^Add Investment$/i).should('be.visible').click();
   },
 
-  visitDashboard() {
-    cy.visit('/dashboard', { onBeforeLoad: (w) => this.setAuthBeforeLoad(w) });
+  startSellFromDashboard() {
+    cy.contains(L.dashboard.sellBtn, /^Sell Investment$/i).should('be.visible').click();
   },
 
-  visitAddInvestment() {
-    cy.visit('/add-investment', { onBeforeLoad: (w) => this.setAuthBeforeLoad(w) });
+  search(query) {
+    cy.get(L.form.searchInput).should('be.visible').clear().type(query);
   },
 
-  clickDashboardAdd() {
-    cy.contains(L.dashAddBtn, /^Add Investment$/i).click();
-  },
-
-  clickDashboardSell() {
-    cy.contains(L.dashSellBtn, /^Sell Investment$/i).click();
-  },
-
-  typeSearch(q) {
-    cy.get(L.searchInput).clear().type(q);
-  },
-
-  pickSuggestionByTicker(ticker) {
-    cy.get(L.suggestionList).should('be.visible');
-    cy.contains(L.suggestionItems, `(${ticker})`).click();
-  },
-
-  typeAmount(v) {
-    cy.get(L.amount).clear().type(String(v));
-  },
-
-  typeTotalSpend(v) {
-    cy.get(L.totalSpend).clear().type(String(v));
-  },
-
-  openConfirm() {
-    cy.get(L.submitBtn).click();
-    cy.get(L.modal).should('be.visible');
-  },
-
-  confirm() {
-    cy.get(L.modalConfirmBtn).click();
+  pickSuggestionTicker(ticker) {
+    cy.get(L.form.suggestionList).should('be.visible');
+    cy.contains(L.form.suggestionItems, `(${ticker})`).click();
   },
 
   selectSellTicker(ticker) {
-    cy.get(L.sellSelect).select(ticker);
+    cy.get(L.sell.select).filter(':visible').first().should('be.enabled').select(ticker);
+  },
+
+  typeAmount(value) {
+    cy.get(L.form.amount).clear().type(String(value));
+  },
+
+  typeTotalSpend(value) {
+    cy.get(L.form.totalSpend).clear().type(String(value));
+  },
+
+  openConfirm() {
+    cy.get(L.form.submitBtn).should('be.enabled').click();
+    cy.get(L.modal.root).should('be.visible');
+  },
+
+  confirm() {
+    cy.get(L.modal.confirmBtn).should('be.visible').click();
   },
 
   cancelForm() {
-    cy.get(L.cancelBtn).click();
-  }
+    cy.get(L.form.cancelBtn).should('be.visible').click();
+  },
 };
-export default addinvestmentactions;
+
+export default AddInvestments;
