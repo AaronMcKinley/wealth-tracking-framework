@@ -1,6 +1,6 @@
 const addinvestmentlocators = {
-  dashAddBtn: 'button:contains("Add Investment")',
-  dashSellBtn: 'button:contains("Sell Investment")',
+  dashAddBtn: 'button',
+  dashSellBtn: 'button',
   searchInput: '#searchInput',
   suggestionList: '#asset-suggestion-list',
   suggestionItems: '#asset-suggestion-list li',
