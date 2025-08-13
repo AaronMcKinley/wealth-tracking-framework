@@ -1,7 +1,5 @@
-/// <reference types="cypress" />
-
-import addinvestmentlocators from '../../support/addinvestment/addinvestmentlocators';
-import addinvestmentactions from '../../support/addinvestment/addinvestmentactions';
+import addinvestmentlocators from '../../support/addinvestment/locators.js';
+import addinvestmentactions from '../../support/addinvestment/actions.js';
 
 describe('Investments', function () {
   before(function () {
