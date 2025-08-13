@@ -1,4 +1,4 @@
-import L from './addinvestmentlocators';
+import L from './locators';
 
 const addinvestmentactions = {
   setAuthBeforeLoad(win) {
