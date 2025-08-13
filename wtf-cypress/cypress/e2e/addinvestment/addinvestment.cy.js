@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 import addinvestmentlocators from '../../support/addinvestment/addinvestmentlocators';
 import addinvestmentactions from '../../support/addinvestment/addinvestmentactions';
 
@@ -9,11 +11,12 @@ describe('Investments', function () {
 
   beforeEach(function () {
     cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [] }).as('getInv');
+    cy.intercept('GET', '**/api/savings*', { statusCode: 200, body: [] }).as('getSav');
   });
 
   it('Dashboard → Add Investment → Cancel returns to Dashboard', function () {
     this.action.addinvestment.visitDashboard();
-    cy.wait('@getInv');
+    cy.wait(['@getInv','@getSav']);
     this.action.addinvestment.clickDashboardAdd();
     cy.location('pathname').should('eq', '/add-investment');
     this.action.addinvestment.cancelForm();
@@ -69,4 +72,65 @@ describe('Investments', function () {
     this.action.addinvestment.confirm();
     cy.wait('@postBTC');
     cy.location('pathname').should('eq', '/dashboard');
-  }
+  });
+
+  it('Sell blocks oversell', function () {
+    cy.intercept('GET', '**/api/investments*', {
+      statusCode: 200,
+      body: [{ asset_ticker: 'AAPL', asset_name: 'Apple Inc.', type: 'stock', total_quantity: 2 }]
+    }).as('holdings');
+    cy.intercept('GET', '**/api/assets/AAPL', { statusCode: 200, body: { current_price: 100 } }).as('priceSell');
+    this.action.addinvestment.visitDashboard();
+    cy.wait(['@holdings','@getSav']);
+    this.action.addinvestment.clickDashboardSell();
+    cy.location('pathname').should('eq', '/add-investment');
+    cy.wait('@holdings');
+    this.action.addinvestment.selectSellTicker('AAPL');
+    cy.wait('@priceSell');
+    cy.get(this.locator.addinvestment.unitPrice).should('have.value', '€100.00');
+    this.action.addinvestment.typeAmount(3);
+    this.action.addinvestment.typeTotalSpend(300);
+    cy.get(this.locator.addinvestment.submitBtn).click();
+    cy.get(this.locator.addinvestment.errorMsg).should('contain', 'You can only sell up to 2 units of AAPL.');
+  });
+
+  it('Sell valid amount and dashboard shows 1 left', function () {
+    cy.intercept('GET', '**/api/investments*', {
+      statusCode: 200,
+      body: [{ asset_ticker: 'AAPL', asset_name: 'Apple Inc.', type: 'stock', total_quantity: 2 }]
+    }).as('holdings2');
+    cy.intercept('GET', '**/api/assets/AAPL', { statusCode: 200, body: { current_price: 100 } }).as('priceSell2');
+    this.action.addinvestment.visitDashboard();
+    cy.wait(['@holdings2','@getSav']);
+    this.action.addinvestment.clickDashboardSell();
+    cy.location('pathname').should('eq', '/add-investment');
+    cy.wait('@holdings2');
+    this.action.addinvestment.selectSellTicker('AAPL');
+    cy.wait('@priceSell2');
+    this.action.addinvestment.typeAmount(1);
+    this.action.addinvestment.typeTotalSpend(100);
+    cy.intercept('POST', '**/api/investments', (req) => {
+      const b = req.body;
+      expect(b).to.deep.include({ name: 'AAPL', total_value: 100, type: 'stock' });
+      expect(b.amount).to.eq(-1);
+      req.reply({ statusCode: 200, body: { ok: true } });
+    }).as('postSell1');
+    cy.intercept('GET', '**/api/investments*', {
+      statusCode: 200,
+      body: [{
+        id: 1, asset_name: 'Apple Inc.', asset_ticker: 'AAPL', type: 'stock',
+        total_quantity: 1, average_buy_price: 100, current_price: 100,
+        current_value: 100, profit_loss: 0, percent_change_24h: 0, total_profit_loss: 0
+      }]
+    }).as('invAfterSell');
+    this.action.addinvestment.openConfirm();
+    this.action.addinvestment.confirm();
+    cy.wait('@postSell1');
+    cy.wait('@invAfterSell');
+    cy.location('pathname').should('eq', '/dashboard');
+    cy.contains('td', 'AAPL').parent('tr').within(() => {
+      cy.get('td').eq(3).should('contain', '1');
+      cy.get('td').eq(8).should('contain', '€100.00');
+    });
+  });
+});
