@@ -1,4 +1,4 @@
-import H from '../../support/helpers/actions';
+import Helpers from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 import Sidebar from '../../support/sidebar/actions';
@@ -11,7 +11,7 @@ describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@u
   });
 
   it('navigates via sidebar and logs out', () => {
-    H.visit('/dashboard');
+    Helpers.visit('/dashboard');
     Sidebar.waitForSidebar();
 
     Sidebar.goToInvestments();
@@ -27,16 +27,16 @@ describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@u
     Sidebar.assertDashboardActive();
 
     Sidebar.clickLogout();
-    H.pathEq('/');
+    Helpers.pathEq('/');
     Sidebar.assertNoneActive();
   });
 
   it('logo click returns to homepage', () => {
-    H.visit('/dashboard');
+    Helpers.visit('/dashboard');
     Sidebar.waitForSidebar();
 
     Sidebar.clickLogo();
-    H.pathEq('/');
+    Helpers.pathEq('/');
     Sidebar.assertNoneActive();
   });
 });

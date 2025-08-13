@@ -1,4 +1,4 @@
-import H from '../../support/helpers/actions';
+import Helpers from '../../support/helpers/actions';
 import Signup from '../../support/signup/actions';
 import SignupLocators from '../../support/signup/locators';
 import Login from '../../support/login/actions';
@@ -12,53 +12,53 @@ const PW_GOOD = 'Password1!';
 
 describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
   beforeEach(() => {
-    H.ensureLoggedOut();
+    Helpers.ensureLoggedOut();
   });
 
   it('homepage → signup → cancel → signup', () => {
-    H.visit('/');
+    Helpers.visit('/');
     Signup.openFromHome();
-    H.pathHas('/signup');
+    Helpers.pathHas('/signup');
 
     Signup.cancel();
-    H.pathEq('/');
+    Helpers.pathEq('/');
 
     Signup.openFromHome();
-    H.pathHas('/signup');
+    Helpers.pathHas('/signup');
   });
 
   it('rejects misformatted passwords and duplicate email', () => {
-    H.visit('/signup');
+    Helpers.visit('/signup');
     Signup.fill({ name: NAME, email: EMAIL_NEG, password: PW_BAD_NUM });
-    H.submit();
-    H.pathHas('/signup');
-    H.expectFormError();
+    Helpers.submit();
+    Helpers.pathHas('/signup');
+    Helpers.expectFormError();
 
     Signup.fill({ name: NAME, email: EMAIL_NEG, password: PW_BAD_SYM });
-    H.submit();
-    H.pathHas('/signup');
-    H.expectFormError();
+    Helpers.submit();
+    Helpers.pathHas('/signup');
+    Helpers.expectFormError();
 
     cy.intercept('POST', '/api/signup').as('apiSignup');
     Signup.fill({ name: NAME, email: 'test@email.com', password: PW_GOOD });
-    H.submit();
+    Helpers.submit();
     cy.wait('@apiSignup').its('response.statusCode').should('be.oneOf', [409, 400]);
-    H.pathHas('/signup');
+    Helpers.pathHas('/signup');
     cy.contains(/email.*in use/i).should('exist');
   });
 
   it('creates an account, shows the name in Settings, then deletes the account', () => {
-    const email = H.genEmail('signup');
-    H.visit('/signup');
+    const email = Helpers.genEmail('signup');
+    Helpers.visit('/signup');
     Signup.fill({ name: NAME, email, password: PW_GOOD });
-    H.submit();
+    Helpers.submit();
     cy.location('pathname', { timeout: 10000 }).then((p) => {
       if (!/^\/dashboard\/?$/.test(p)) {
         Login.loginSuccessfully(email, PW_GOOD);
       }
     });
 
-    H.visit('/dashboard');
+    Helpers.visit('/dashboard');
     Sidebar.waitForSidebar();
     Sidebar.goToSettings();
     Sidebar.assertSettingsActive();
@@ -69,7 +69,7 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     cy.get(SignupLocators.deleteConfirmInput).clear().type(email);
     cy.get(SignupLocators.deleteConfirmBtn).should('not.be.disabled').click();
 
-    H.pathEq('/');
+    Helpers.pathEq('/');
     Login.loginWithInvalidCredentials(email, PW_GOOD);
   });
 });
