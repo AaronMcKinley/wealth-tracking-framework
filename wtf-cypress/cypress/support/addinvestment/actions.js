@@ -1,45 +1,47 @@
-import { addInv } from './locators';
+import L from './addinvestmentlocators';
 
-export const addInvestmentActions = {
-  setAuth() {
-    window.localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@wtf.app' }));
-    window.localStorage.setItem('token', 'test-token');
+const addinvestmentactions = {
+  setAuthBeforeLoad(win) {
+    win.localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@wtf.app' }));
+    win.localStorage.setItem('token', 'test-token');
   },
-
-  visitBuy() {
-    cy.visit('/add-investment');
+  visitDashboard() {
+    cy.visit('/dashboard', { onBeforeLoad: (w) => this.setAuthBeforeLoad(w) });
   },
-
-  visitSell() {
-    cy.visit('/add-investment', {
-      onBeforeLoad(win) {
-        win.history.replaceState({ usr: { mode: 'sell' } }, '', '/add-investment');
-      }
-    });
+  visitAddInvestment() {
+    cy.visit('/add-investment', { onBeforeLoad: (w) => this.setAuthBeforeLoad(w) });
   },
-
+  clickDashboardAdd() {
+    cy.contains(L.dashAddBtn, 'Add Investment').click();
+  },
+  clickDashboardSell() {
+    cy.contains(L.dashSellBtn, 'Sell Investment').click();
+  },
   typeSearch(q) {
-    cy.get(addInv.searchInput).clear().type(q);
+    cy.get(L.searchInput).clear().type(q);
   },
-
-  pickFirstSuggestion() {
-    cy.get(addInv.suggestionItems).first().click();
+  pickSuggestionByTicker(ticker) {
+    cy.get(L.suggestionList).should('be.visible');
+    cy.contains(L.suggestionItems, `(${ticker})`).click();
   },
-
   typeAmount(v) {
-    cy.get(addInv.amount).clear().type(String(v));
+    cy.get(L.amount).clear().type(String(v));
   },
-
   typeTotalSpend(v) {
-    cy.get(addInv.totalSpend).clear().type(String(v));
+    cy.get(L.totalSpend).clear().type(String(v));
   },
-
   openConfirm() {
-    cy.get(addInv.submitBtn).click();
-    cy.get(addInv.modal).should('be.visible');
+    cy.get(L.submitBtn).click();
+    cy.get(L.modal).should('be.visible');
   },
-
   confirm() {
-    cy.get(addInv.modalConfirmBtn).click();
+    cy.get(L.modalConfirmBtn).click();
   },
+  selectSellTicker(ticker) {
+    cy.get(L.sellSelect).select(ticker);
+  },
+  cancelForm() {
+    cy.get(L.cancelBtn).click();
+  }
 };
+export default addinvestmentactions;
