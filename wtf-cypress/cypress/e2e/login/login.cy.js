@@ -1,4 +1,4 @@
-import Helpers from '../../support/helpers/actions';
+import Helper from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 
@@ -6,16 +6,16 @@ const TOKEN_KEY = Cypress.env('TOKEN_KEY') || 'token';
 
 describe('Authentication & Session', { tags: ['@regression', '@auth', '@smoke'] }, () => {
   it('redirects unauthenticated users to /login', { tags: ['@critical'] }, () => {
-    Helpers.resetState();
-    Helpers.visit('/dashboard');
-    Helpers.pathEq('/login');
+    Helper.resetState();
+    Helper.visit('/dashboard');
+    Helper.pathEq('/login');
   });
 
   it('logs in successfully', { tags: ['@critical'] }, () => {
     cy.session('validUser', () => {
       Login.loginForSession(users.validUser.email, users.validUser.password);
     });
-    Helpers.visit('/dashboard');
+    Helper.visit('/dashboard');
     cy.location('pathname').should('match', /(\/dashboard|\/)$/);
     cy.window().then((w) => {
       const token = w.localStorage.getItem(TOKEN_KEY);
@@ -27,15 +27,15 @@ describe('Authentication & Session', { tags: ['@regression', '@auth', '@smoke'] 
     cy.session('validUser', () => {
       Login.loginForSession(users.validUser.email, users.validUser.password);
     });
-    Helpers.visit('/dashboard');
-    Helpers.pathHas('/dashboard');
+    Helper.visit('/dashboard');
+    Helper.pathHas('/dashboard');
   });
 
   it('shows 404 for an invalid route when authenticated', () => {
     cy.session('validUser', () => {
       Login.loginForSession(users.validUser.email, users.validUser.password);
     });
-    Helpers.visit('/def-not-a-real-route', { failOnStatusCode: false });
+    Helper.visit('/def-not-a-real-route', { failOnStatusCode: false });
     cy.contains(/(404|page not found)/i).should('be.visible');
     cy.window().then((w) => {
       expect(w.localStorage.getItem(TOKEN_KEY)).to.exist;

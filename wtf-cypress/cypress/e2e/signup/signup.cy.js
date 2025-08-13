@@ -1,4 +1,4 @@
-import Helpers from '../../support/helpers/actions';
+import Helper from '../../support/helpers/actions';
 import Signup from '../../support/signup/actions';
 import SignupLocators from '../../support/signup/locators';
 import Login from '../../support/login/actions';

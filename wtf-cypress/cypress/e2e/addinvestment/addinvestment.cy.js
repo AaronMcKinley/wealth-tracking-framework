@@ -1,4 +1,4 @@
-import Helpers from '../../support/helpers/actions';
+import Helper from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 import AddInvestments from '../../support/addinvestment/actions';

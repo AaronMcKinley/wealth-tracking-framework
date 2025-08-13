@@ -1,7 +1,8 @@
-import HelperLocators from './locators';
+import L from './locators';
+
 const TOKEN_KEY = Cypress.env('TOKEN_KEY') || 'token';
 
-const Helpers = {
+const Helper = {
   resetState: () => {
     cy.clearCookies();
     cy.window({ log: false }).then((w) => {
@@ -13,12 +14,13 @@ const Helpers = {
   visit: (path = '/') => cy.visit(path),
   pathEq: (p) => cy.location('pathname').should('eq', p),
   pathHas: (frag) => cy.location('pathname').should('include', frag),
-  clickLogo: () => cy.get(HelperLocators.logoLink).should('be.visible').click(),
+
+  clickLogo: () => cy.get(L.logoLink).should('be.visible').first().click(),
 
   goHome: () => {
     cy.get('body').then(($b) => {
-      const hasLogo = $b.find(HelperLocators.logoLink).length > 0;
-      if (hasLogo) cy.get(HelperLocators.logoLink).first().click();
+      const hasLogo = $b.find(L.logoLink).length > 0;
+      if (hasLogo) cy.get(L.logoLink).first().click();
       else cy.visit('/');
     });
   },
@@ -29,7 +31,7 @@ const Helpers = {
       try { w.localStorage.removeItem(TOKEN_KEY); } catch {}
       try { w.sessionStorage.clear(); } catch {}
     });
-    Helpers.goHome();
+    Helper.goHome();
     cy.window().should((w) => {
       expect(w.localStorage.getItem(TOKEN_KEY)).to.be.null;
     });
@@ -39,33 +41,33 @@ const Helpers = {
     cy.contains('a,button', /(login|sign in)/i).should('be.visible');
   },
 
-  typeName: (v) => cy.get(HelperLocators.nameInput).first().clear().type(v),
-  typeEmail: (v) => cy.get(HelperLocators.emailInput).first().clear().type(v),
-  typePassword: (idx, v) => cy.get(HelperLocators.passInputs).eq(idx).clear().type(v, { log: false }),
-  submit: () => cy.get(HelperLocators.submitBtn).first().click(),
+  typeName: (v) => cy.get(L.nameInput).first().clear().type(v),
+  typeEmail: (v) => cy.get(L.emailInput).first().clear().type(v),
+  typePassword: (idx, v) => cy.get(L.passInputs).eq(idx).clear().type(v, { log: false }),
+  submit: () => cy.get(L.submitBtn).first().click(),
 
   expectFormError: () =>
     cy.get('body').then(($b) => {
-      const hasExplicit = $b.find(HelperLocators.errorMsg).length > 0;
-      if (hasExplicit) cy.get(HelperLocators.errorMsg).should('be.visible');
+      const hasExplicit = $b.find(L.errorMsg).length > 0;
+      if (hasExplicit) cy.get(L.errorMsg).should('be.visible');
       else cy.contains(/(invalid|required|error)/i).should('be.visible');
     }),
 
   expectSuccess: () =>
     cy.get('body').then(($b) => {
-      const hasExplicit = $b.find(HelperLocators.successMsg).length > 0;
-      if (hasExplicit) cy.get(HelperLocators.successMsg).should('be.visible');
+      const hasExplicit = $b.find(L.successMsg).length > 0;
+      if (hasExplicit) cy.get(L.successMsg).should('be.visible');
       else cy.contains(/(saved|updated|success)/i).should('be.visible');
     }),
 
-  waitForDialog: () => cy.get(HelperLocators.dialog, { timeout: 10000 }).should('be.visible'),
+  waitForDialog: () => cy.get(L.dialog, { timeout: 10000 }).should('be.visible'),
   dialogConfirmWith: (text) => {
-    if (text != null) cy.get(HelperLocators.dialogInput).clear().type(text);
-    cy.get(HelperLocators.dialogConfirmBtn).should('not.be.disabled').click();
+    if (text != null) cy.get(L.dialogInput).clear().type(text);
+    cy.get(L.dialogConfirmBtn).should('not.be.disabled').click();
   },
-  dialogCancel: () => cy.get(HelperLocators.dialogCancelBtn).click(),
+  dialogCancel: () => cy.get(L.dialogCancelBtn).click(),
 
   genEmail: (prefix = 'e2e') => `${prefix}+${Date.now()}@example.com`,
 };
 
-export default Helpers;
+export default Helper;
