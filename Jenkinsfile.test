@@ -45,11 +45,43 @@ pipeline {
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
                   -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
                   ${CYPRESS_IMAGE} \
-                  cypress run --e2e --browser chrome --headless --spec "cypress/e2e/**/*.cy.{js,ts,jsx,tsx}"
+                  /bin/bash -lc '
+                    set -e
+
+                    echo "[1/4] Signup spec"
+                    cypress run --e2e --browser chrome --headless --spec cypress/e2e/signup/signup.cy.js
+
+                    echo "[2/4] Login spec"
+                    cypress run --e2e --browser chrome --headless --spec cypress/e2e/login/login.cy.js
+
+                    echo "[3/4] Rest of specs (excluding signup/, login/, and delete-account)"
+                    REST_SPECS=\$(find cypress/e2e \\
+                      \\( -name "*.cy.js" -o -name "*.cy.ts" -o -name "*.cy.jsx" -o -name "*.cy.tsx" \\) \\
+                      ! -path "cypress/e2e/signup/*" \\
+                      ! -path "cypress/e2e/login/*" \\
+                      ! -path "cypress/e2e/signup/delete-account.cy.*" \\
+                      -print | sort | paste -sd, -)
+
+                    if [ -n "\$REST_SPECS" ]; then
+                      cypress run --e2e --browser chrome --headless --spec "\$REST_SPECS"
+                    else
+                      echo "No remaining specs to run."
+                    fi
+
+                    echo "[4/4] Delete-account spec"
+                    if [ -f cypress/e2e/signup/delete-account.cy.js ]; then
+                      cypress run --e2e --browser chrome --headless --spec cypress/e2e/signup/delete-account.cy.js
+                    else
+                      echo "Delete-account spec not found, skipping."
+                    fi
+                  '
               """
             }
 
-            sh 'echo "Allure results count:" && ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true'
+            sh """
+              echo "Allure results count:"
+              ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true
+            """
           }
         }
       }
