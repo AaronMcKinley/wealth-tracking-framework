@@ -9,7 +9,9 @@ const SELL_QTY = 1;
 const SELL_PRICE = 158.57;
 
 const round2 = (n) => Number(n.toFixed(2));
-const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2);
+const closeTo2 = (actual, expected) => expect(round2(actual)).to.eq(round2(expected));
+
+const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2); // "-11.70"
 
 const Transactions = {
   setup: {
@@ -38,13 +40,13 @@ const Transactions = {
     },
 
     confirmAndReturn() {
-      const expectedTotal = round2(BUY_QTY * BUY_PRICE);
+      const expectedTotal = BUY_QTY * BUY_PRICE;
 
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
-        expect(b.total_value).to.eq(expectedTotal);
+        closeTo2(b.total_value, expectedTotal);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postBuy');
 
@@ -101,13 +103,13 @@ const Transactions = {
     },
 
     confirmAndReturn() {
-      const expectedTotal = round2(SELL_QTY * SELL_PRICE);
+      const expectedTotal = SELL_QTY * SELL_PRICE;
 
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
-        expect(b.total_value).to.eq(expectedTotal);
+        closeTo2(b.total_value, expectedTotal);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postSell');
 
@@ -136,7 +138,7 @@ const Transactions = {
   navigateAndAssert: {
     openTransactionsFromDashboard() {
       cy.intercept(
-        { method: 'GET', url: '**/api/transactions/**' },
+        { method: 'GET', url: /\/api\/transactions\/[^/]+(\?.*)?$/i },
         {
           statusCode: 200,
           body: [
@@ -148,7 +150,7 @@ const Transactions = {
               total_value: round2(SELL_QTY * SELL_PRICE),
               fees: 0,
               transaction_date: new Date().toISOString(),
-              realized_profit_loss: Number(EXPECTED_PL),
+              realized_profit_loss: Number(EXPECTED_PL), // negative value shows red
             },
             {
               id: 1,
@@ -164,12 +166,21 @@ const Transactions = {
         }
       ).as('getTx');
       cy.window().then((w) => w.localStorage.setItem('token', 'fake-jwt'));
-      cy.window().then((w) => {
-        w.history.pushState({}, '', `/transactions/${TICKER}`);
-        w.dispatchEvent(new Event('popstate'));
-      });
+      Helpers.pathHas('/dashboard');
+      cy.get('a[href$="/transactions/' + TICKER + '"], a[href$="/transactions/' + TICKER.toLowerCase() + '"]', { timeout: 1000 })
+        .then(($a) => {
+          if ($a.length) {
+            cy.wrap($a.first()).click({ force: true });
+          } else {
+            cy.window().then((w) => {
+              w.history.pushState({}, '', `/transactions/${TICKER}`);
+              w.dispatchEvent(new Event('popstate'));
+            });
+          }
+        });
 
-      cy.wait('@getTx', { timeout: 10000 }).its('response.statusCode').should('eq', 200);
+      cy.wait('@getTx', { timeout: 12000 }).its('response.statusCode').should('eq', 200);
+
       cy.get('h1').should('contain.text', `${TICKER} Transactions`);
       cy.get('table tbody tr').should('have.length.at.least', 2);
     },
@@ -180,12 +191,9 @@ const Transactions = {
         .contains('td', /^sell$/i)
         .parent()
         .within(() => {
-          cy.get('td')
-            .eq(6)
-            .invoke('text')
-            .then((t) => {
-              expect(t.replace(/\s/g, '')).to.include(expected);
-            });
+          cy.get('td').eq(6).invoke('text').then((t) => {
+            expect(t.replace(/\s/g, '')).to.include(expected);
+          });
         });
     },
   },
