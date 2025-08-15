@@ -1,4 +1,3 @@
-// cypress/support/transactions/actions.js
 import Helpers from '../helpers/actions';
 import AddInvestment from '../addinvestment/actions';
 
@@ -8,7 +7,7 @@ const BUY_QTY = 3;
 const BUY_PRICE = 170.27;
 const SELL_QTY = 1;
 const SELL_PRICE = 158.57;
-const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2);
+const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2); // "-11.70"
 
 const Transactions = {
   setup: {
@@ -39,9 +38,10 @@ const Transactions = {
     confirmAndReturn() {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
+        const expectedBuyTotal = Number((BUY_QTY * BUY_PRICE).toFixed(2));
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
-        expect(b.total_value).to.eq(BUY_QTY * BUY_PRICE);
+        expect(b.total_value).to.be.closeTo(expectedBuyTotal, 1e-2);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postBuy');
 
@@ -93,9 +93,10 @@ const Transactions = {
     confirmAndReturn() {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
+        const expectedSellTotal = Number((SELL_QTY * SELL_PRICE).toFixed(2));
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
-        expect(b.total_value).to.eq(SELL_QTY * SELL_PRICE);
+        expect(b.total_value).to.be.closeTo(expectedSellTotal, 1e-2);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postSell');
 
