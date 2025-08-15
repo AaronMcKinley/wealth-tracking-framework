@@ -1,7 +1,8 @@
-const TransactionLocators = {
+const TransactionsLocators = {
+  header: 'h1',
   table: 'table',
-  headerCells: 'table thead th',
-  rows: 'table tbody tr',
+  rows: 'tbody tr',
   cells: 'td',
 };
-export default TransactionLocators;
+
+export default TransactionsLocators;
