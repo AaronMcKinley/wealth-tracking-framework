@@ -18,9 +18,9 @@ const Transactions = {
 
   addInvestment: {
     openAndSelect() {
-      AddInvestment.interceptPrice(TICKER, BUY_PRICE, 'priceSOL');
+      const priceAlias = AddInvestment.interceptPrice(TICKER, BUY_PRICE, 'priceSOL');
       AddInvestment.startAddFromDashboard();
-      AddInvestment.selectFromTypeaheadExpectPrice(TICKER, 'priceSOL', BUY_PRICE);
+      AddInvestment.selectFromTypeaheadExpectPrice(TICKER, priceAlias, BUY_PRICE);
     },
     fillQtyAndWireNetwork() {
       AddInvestment.setAmountAndExpectTotal(2, BUY_PRICE * 2);
@@ -43,12 +43,12 @@ const Transactions = {
   sellInvestment: {
     openAndPrepare() {
       AddInvestment.interceptHoldings(TICKER, 2, 'holdingsSOL');
-      AddInvestment.interceptPrice(TICKER, SELL_PRICE, 'priceSOLSell');
+      const priceAlias = AddInvestment.interceptPrice(TICKER, SELL_PRICE, 'priceSOLSell');
       AddInvestment.startSellFromDashboard();
       Helpers.pathEq('/add-investment');
       cy.wait('@holdingsSOL');
       AddInvestment.selectSellTicker(TICKER);
-      cy.wait('@priceSOLSell');
+      cy.wait(priceAlias);
       cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${SELL_PRICE.toFixed(2)}`);
     },
     fillQtyAndWireNetwork() {
