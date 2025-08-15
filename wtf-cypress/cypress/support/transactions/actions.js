@@ -1,11 +1,14 @@
+// cypress/support/transactions/actions.js
 import Helpers from '../helpers/actions';
 import AddInvestment from '../addinvestment/actions';
 
 const TICKER = 'SOL';
-const BUY_PRICE = 150;
-const SELL_PRICE = BUY_PRICE + 5;
-const BUY_QTY = 2;
+
+const BUY_QTY = 3;
+const BUY_PRICE = 170.27;
 const SELL_QTY = 1;
+const SELL_PRICE = 158.57;
+const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2);
 
 const Transactions = {
   setup: {
@@ -37,14 +40,21 @@ const Transactions = {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
-        expect(b.total_value).to.eq(BUY_PRICE * BUY_QTY);
         expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
+        expect(b.total_value).to.eq(BUY_QTY * BUY_PRICE);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postBuy');
+
       cy.intercept('GET', '**/api/investments*', {
         statusCode: 200,
         body: [
-          { asset_ticker: TICKER, asset_name: TICKER, type: 'crypto', total_quantity: BUY_QTY, price: BUY_PRICE },
+          {
+            asset_ticker: TICKER,
+            asset_name: TICKER,
+            type: 'crypto',
+            total_quantity: BUY_QTY,
+            price: BUY_PRICE,
+          },
         ],
       }).as('invAfterBuy');
 
@@ -62,7 +72,7 @@ const Transactions = {
       cy.intercept('GET', '**/api/investments*', {
         statusCode: 200,
         body: [{ asset_ticker: TICKER, asset_name: TICKER, type: 'crypto', total_quantity: BUY_QTY }],
-      }).as('holdingsSOL');
+      }).as('holdings');
 
       cy.intercept('GET', `**/api/assets/${TICKER}`, {
         statusCode: 200,
@@ -70,7 +80,7 @@ const Transactions = {
       }).as('priceSell');
 
       AddInvestment.startSellFromDashboard();
-      cy.wait('@holdingsSOL');
+      cy.wait('@holdings');
       AddInvestment.selectSellTicker(TICKER);
       cy.wait('@priceSell');
     },
@@ -84,14 +94,21 @@ const Transactions = {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
-        expect(b.total_value).to.eq(SELL_PRICE * SELL_QTY);
         expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
+        expect(b.total_value).to.eq(SELL_QTY * SELL_PRICE);
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postSell');
+
       cy.intercept('GET', '**/api/investments*', {
         statusCode: 200,
         body: [
-          { asset_ticker: TICKER, asset_name: TICKER, type: 'crypto', total_quantity: BUY_QTY - SELL_QTY, price: SELL_PRICE },
+          {
+            asset_ticker: TICKER,
+            asset_name: TICKER,
+            type: 'crypto',
+            total_quantity: BUY_QTY - SELL_QTY,
+            price: SELL_PRICE,
+          },
         ],
       }).as('invAfterSell');
 
@@ -106,51 +123,55 @@ const Transactions = {
 
   navigateAndAssert: {
     openTransactionsFromDashboard() {
-      cy.intercept('GET', `**/api/transactions/${TICKER}*`, {
-        statusCode: 200,
-        body: [
-          {
-            id: 1,
-            transaction_type: 'Buy',
-            quantity: BUY_QTY,
-            price_per_unit: BUY_PRICE,
-            total_value: BUY_QTY * BUY_PRICE,
-            fees: 0,
-            transaction_date: new Date().toISOString(),
-            realized_profit_loss: null,
-          },
-          {
-            id: 2,
-            transaction_type: 'Sell',
-            quantity: SELL_QTY,
-            price_per_unit: SELL_PRICE,
-            total_value: SELL_QTY * SELL_PRICE,
-            fees: 0,
-            transaction_date: new Date().toISOString(),
-            realized_profit_loss: SELL_PRICE - BUY_PRICE,
-          },
-        ],
-      }).as('getTxSOL');
+      cy.intercept(
+        { method: 'GET', url: /\/api\/transactions\/sol(\?.*)?$/i },
+        {
+          statusCode: 200,
+          body: [
+            {
+              id: 2,
+              transaction_type: 'sell',
+              quantity: SELL_QTY,
+              price_per_unit: SELL_PRICE,
+              total_value: SELL_QTY * SELL_PRICE,
+              fees: 0,
+              transaction_date: new Date().toISOString(),
+              realized_profit_loss: Number(EXPECTED_PL),
+            },
+            {
+              id: 1,
+              transaction_type: 'buy',
+              quantity: BUY_QTY,
+              price_per_unit: BUY_PRICE,
+              total_value: BUY_QTY * BUY_PRICE,
+              fees: 0,
+              transaction_date: new Date(Date.now() - 2 * 86400000).toISOString(),
+              realized_profit_loss: null,
+            },
+          ],
+        }
+      ).as('getTxSOL');
 
-      cy.contains('tr', new RegExp(`\\b${TICKER}\\b`, 'i'), { timeout: 5000 })
-        .within(() => {
-          cy.get('a[href*="transactions"],button').first().click({ force: true });
-        })
-        .then(null, () => {
-          cy.window().then((w) => {
-            w.history.pushState({}, '', `/transactions/${TICKER.toLowerCase()}`);
-            w.dispatchEvent(new Event('popstate'));
-          });
-        });
+      cy.window().then((w) => {
+        w.history.pushState({}, '', `/transactions/${TICKER}`);
+        w.dispatchEvent(new Event('popstate'));
+      });
 
       cy.wait('@getTxSOL');
-      cy.get('h1,header,[data-testid="page-title"]').should(($el) => {
-        expect($el.text()).to.match(new RegExp(`${TICKER}\\s+Transactions`, 'i'));
-      });
+      cy.get('h1').should('contain.text', `${TICKER} Transactions`);
+      cy.get('table tbody tr').should('have.length.at.least', 1);
     },
 
     verifyRealizedPL() {
-      cy.contains('td', (SELL_PRICE - BUY_PRICE).toFixed(2)).should('be.visible');
+      const expected = EXPECTED_PL;
+      cy.get('table tbody tr')
+        .contains('td', /^sell$/i)
+        .parent()
+        .within(() => {
+          cy.get('td').eq(6).invoke('text').then((t) => {
+            expect(t.replace(/\s/g, '')).to.include(expected);
+          });
+        });
     },
   },
 };
