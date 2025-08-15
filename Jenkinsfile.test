@@ -26,42 +26,23 @@ pipeline {
     stage('Run Cypress E2E Tests') {
       steps {
         ansiColor('xterm') {
-          script {
-            sh """
-              mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
-                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
-                       "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
-            """
+          sh """
+            mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
+                     "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
+                     "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
 
-            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-              sh """
-                docker run --rm \
-                  -u \$(id -u):\$(id -g) \
-                  -e FORCE_COLOR=1 \
-                  -e CYPRESS_allure=true \
-                  -e CYPRESS_allureResultsPath=/allure-results \
-                  -e CYPRESS_baseUrl=${CYPRESS_BASE_URL} \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
-                  -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
-                  ${CYPRESS_IMAGE} bash -s <<'EOS'
-              set -e
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/signup/signup.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/login/login.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/addinvestment/addinvestment.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/sidebar/sidebar.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/transactions/transactions.sol.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/sample.cy.js
-              cypress run --e2e --browser chrome --headless --spec cypress/e2e/signup/delete-account.cy.js
-              EOS
-              """
-            }
-
-            sh """
-              echo "Allure results count:"
-              ls -1 "${CYPRESS_WORKDIR}/allure-results" | wc -l || true
-            """
-          }
+            docker run --rm \
+              -u \$(id -u):\$(id -g) \
+              -e FORCE_COLOR=1 \
+              -e CYPRESS_allure=true \
+              -e CYPRESS_allureResultsPath=/allure-results \
+              -e CYPRESS_baseUrl=${CYPRESS_BASE_URL} \
+              -v "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results:/allure-results" \
+              -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots:/app/cypress/screenshots" \
+              -v "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos:/app/cypress/videos" \
+              ${CYPRESS_IMAGE} \
+              cypress run --e2e --browser chrome --headless --spec "cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/transactions/transactions.sol.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
+          """
         }
       }
     }
