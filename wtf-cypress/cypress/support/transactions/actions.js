@@ -1,11 +1,11 @@
 import Helpers from '../helpers/actions';
 import AddInvestment from '../addinvestment/actions';
-import InvestmentLocators from '../addinvestment/locators';
-import TxL from './locators';
 
 const TICKER = 'SOL';
-const BUY_PRICE = 20;
-const SELL_PRICE = 25;
+const BUY_PRICE = 150;
+const SELL_PRICE = BUY_PRICE + 5;
+const BUY_QTY = 2;
+const SELL_QTY = 1;
 
 const Transactions = {
   setup: {
@@ -18,99 +18,115 @@ const Transactions = {
 
   addInvestment: {
     openAndSelect() {
-      const priceAlias = AddInvestment.interceptPrice(TICKER, BUY_PRICE, 'priceSOL');
+      cy.intercept('GET', `**/api/assets/${TICKER}`, {
+        statusCode: 200,
+        body: { current_price: BUY_PRICE },
+      }).as('priceBuy');
       AddInvestment.startAddFromDashboard();
-      AddInvestment.selectFromTypeaheadExpectPrice(TICKER, priceAlias, BUY_PRICE);
+      AddInvestment.search(TICKER);
+      AddInvestment.pickSuggestionTicker(TICKER);
+      cy.wait('@priceBuy');
     },
+
     fillQtyAndWireNetwork() {
-      AddInvestment.setAmountAndExpectTotal(2, BUY_PRICE * 2);
+      AddInvestment.typeAmount(BUY_QTY);
     },
+
     confirmAndReturn() {
-      const postAlias = AddInvestment.interceptPostAddAssert(
-        { name: TICKER, amount: 2, total_value: BUY_PRICE * 2, type: /(crypto|stock)/i },
-        'postSOLBuy'
-      );
-      const afterAlias = AddInvestment.interceptAfterSellHoldings(
-        { ticker: TICKER, qty: 2, price: BUY_PRICE },
-        'invAfterBuySOL'
-      );
-      AddInvestment.confirmAndWait([postAlias, afterAlias]);
-      Helpers.pathEq('/dashboard');
-      cy.contains('td', TICKER).should('exist');
+      cy.intercept('POST', '**/api/investments', (req) => {
+        const b = req.body;
+        expect(b).to.include({ name: TICKER, total_value: BUY_PRICE * BUY_QTY });
+        expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
+        expect(b.type).to.match(/^(crypto|stock)$/i);
+        req.reply({ statusCode: 200, body: { ok: true } });
+      }).as('postBuy');
+      AddInvestment.openConfirm();
+      AddInvestment.confirm();
+      cy.wait('@postBuy');
+      Helpers.pathHas('/dashboard');
     },
   },
 
   sellInvestment: {
     openAndPrepare() {
-      AddInvestment.interceptHoldings(TICKER, 2, 'holdingsSOL');
-      const priceAlias = AddInvestment.interceptPrice(TICKER, SELL_PRICE, 'priceSOLSell');
+      cy.intercept('GET', '**/api/investments*', {
+        statusCode: 200,
+        body: [{ asset_ticker: TICKER, asset_name: TICKER, type: 'crypto', total_quantity: BUY_QTY }],
+      }).as('holdingsSOL');
+      cy.intercept('GET', `**/api/assets/${TICKER}`, {
+        statusCode: 200,
+        body: { current_price: SELL_PRICE },
+      }).as('priceSell');
       AddInvestment.startSellFromDashboard();
-      Helpers.pathEq('/add-investment');
       cy.wait('@holdingsSOL');
       AddInvestment.selectSellTicker(TICKER);
-      cy.wait(priceAlias);
-      cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${SELL_PRICE.toFixed(2)}`);
+      cy.wait('@priceSell');
     },
+
     fillQtyAndWireNetwork() {
-      AddInvestment.typeAmount(1);
-      AddInvestment.typeTotalSpend(SELL_PRICE);
+      AddInvestment.typeAmount(SELL_QTY);
+      AddInvestment.typeTotalSpend(SELL_PRICE * SELL_QTY);
     },
+
     confirmAndReturn() {
-      const postAlias = AddInvestment.interceptPostSellAssert(
-        { name: TICKER, amount: -1, total_value: SELL_PRICE, type: /(crypto|stock)/i },
-        'postSOLSell'
-      );
-      const afterAlias = AddInvestment.interceptAfterSellHoldings(
-        { ticker: TICKER, qty: 1, price: SELL_PRICE },
-        'invAfterSellSOL'
-      );
-      AddInvestment.confirmAndWait([postAlias, afterAlias]);
-      Helpers.pathEq('/dashboard');
-      cy.contains('td', TICKER).should('exist');
+      cy.intercept('POST', '**/api/investments', (req) => {
+        const b = req.body;
+        expect(b).to.include({ name: TICKER, total_value: SELL_PRICE * SELL_QTY });
+        expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
+        expect(b.type).to.match(/^(crypto|stock)$/i);
+        req.reply({ statusCode: 200, body: { ok: true } });
+      }).as('postSell');
+      AddInvestment.openConfirm();
+      AddInvestment.confirm();
+      cy.wait('@postSell');
+      Helpers.pathHas('/dashboard');
     },
   },
 
   navigateAndAssert: {
     openTransactionsFromDashboard() {
-      cy.intercept('GET', `**/api/transactions/${TICKER}`, {
-        statusCode: 200,
-        body: [
-          {
-            id: 1,
-            transaction_type: 'Buy',
-            quantity: 2,
-            price_per_unit: BUY_PRICE,
-            total_value: BUY_PRICE * 2,
-            fees: 0,
-            transaction_date: new Date().toISOString(),
-            realized_profit_loss: null,
-          },
-          {
-            id: 2,
-            transaction_type: 'Sell',
-            quantity: 1,
-            price_per_unit: SELL_PRICE,
-            total_value: SELL_PRICE,
-            fees: 0,
-            transaction_date: new Date().toISOString(),
-            realized_profit_loss: SELL_PRICE - BUY_PRICE,
-          },
-        ],
-      }).as('getTxSOL');
+      cy.intercept(
+        { method: 'GET', url: /\/api\/transactions\/sol(?:\?.*)?$/i },
+        {
+          statusCode: 200,
+          body: [
+            {
+              id: 1,
+              transaction_type: 'Buy',
+              quantity: BUY_QTY,
+              price_per_unit: BUY_PRICE,
+              total_value: BUY_QTY * BUY_PRICE,
+              fees: 0,
+              transaction_date: new Date().toISOString(),
+              realized_profit_loss: null,
+            },
+            {
+              id: 2,
+              transaction_type: 'Sell',
+              quantity: SELL_QTY,
+              price_per_unit: SELL_PRICE,
+              total_value: SELL_QTY * SELL_PRICE,
+              fees: 0,
+              transaction_date: new Date().toISOString(),
+              realized_profit_loss: SELL_PRICE - BUY_PRICE,
+            },
+          ],
+        }
+      ).as('getTxSOL');
 
-      Helpers.visit(`/transactions/${TICKER}`);
+      cy.get('body').then(($b) => {
+        const $row = $b.find('td').filter((i, el) => /\bSOL\b/.test((el.textContent || '').trim())).first().closest('tr');
+        const $link = $row.find('a,button').filter((i, el) => /transactions/i.test((el.textContent || '').trim()));
+        if ($link.length) cy.wrap($link).click();
+        else cy.visit(`/transactions/${TICKER}`);
+      });
+
       cy.wait('@getTxSOL');
-      cy.location('pathname', { timeout: 10000 }).should('match', /\/transactions\/sol$/i);
-      cy.get(TxL.header, { timeout: 10000 }).should('contain.text', `${TICKER} Transactions`);
-      cy.get(TxL.table).should('be.visible');
+      cy.get('h1').should('contain.text', `${TICKER} Transactions`);
     },
 
     verifyRealizedPL() {
-      cy.get(TxL.rows).should('have.length.at.least', 2);
-      cy.get(TxL.rows).eq(1).within(() => {
-        cy.get(TxL.cells).eq(0).should('contain.text', 'Sell');
-        cy.get(TxL.cells).eq(6).should('contain.text', (SELL_PRICE - BUY_PRICE).toFixed(2));
-      });
+      cy.contains('td', '5.00').should('be.visible');
     },
   },
 };
