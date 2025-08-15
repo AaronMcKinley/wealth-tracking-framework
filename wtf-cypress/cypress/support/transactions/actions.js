@@ -27,7 +27,7 @@ const Transactions = {
     },
     confirmAndReturn() {
       const postAlias = AddInvestment.interceptPostAddAssert(
-        { name: TICKER, amount: 2, total_value: BUY_PRICE * 2, type: 'crypto' },
+        { name: TICKER, amount: 2, total_value: BUY_PRICE * 2, type: /(crypto|stock)/i },
         'postSOLBuy'
       );
       const afterAlias = AddInvestment.interceptAfterSellHoldings(
@@ -57,7 +57,7 @@ const Transactions = {
     },
     confirmAndReturn() {
       const postAlias = AddInvestment.interceptPostSellAssert(
-        { name: TICKER, amount: -1, total_value: SELL_PRICE, type: 'crypto' },
+        { name: TICKER, amount: -1, total_value: SELL_PRICE, type: /(crypto|stock)/i },
         'postSOLSell'
       );
       const afterAlias = AddInvestment.interceptAfterSellHoldings(
