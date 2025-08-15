@@ -1,5 +1,4 @@
-// cypress/e2e/login/delete-account.cy.js
-import Helpers from '../../support/helpers/actions';
+import Helper from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
 import Sidebar from '../../support/sidebar/actions';
 import Signup from '../../support/signup/actions';
@@ -10,20 +9,18 @@ const PW = 'Password1!';
 
 describe('Account Deletion', { tags: ['@auth', '@account', '@regression'] }, () => {
   it('creates a fresh user then deletes it from Settings', () => {
-    const email = Helpers.genEmail('delete');
-
-    Helpers.ensureLoggedOut();
-    Helpers.visit('/signup');
+    const email = Helper.genEmail('delete');
+    Helper.ensureLoggedOut();
+    Helper.visit('/signup');
     Signup.fill({ name: NAME, email, password: PW });
-    Helpers.submit();
-
+    Helper.submit();
     cy.location('pathname', { timeout: 10000 }).then((p) => {
       if (!/^\/dashboard\/?$/.test(p)) {
         Login.loginSuccessfully(email, PW);
       }
     });
 
-    Helpers.visit('/dashboard');
+    Helper.visit('/dashboard');
     Sidebar.waitForSidebar();
     Sidebar.goToSettings();
     Sidebar.assertSettingsActive();
@@ -34,7 +31,7 @@ describe('Account Deletion', { tags: ['@auth', '@account', '@regression'] }, () 
     cy.get(SignupLocators.deleteConfirmInput).clear().type(email);
     cy.get(SignupLocators.deleteConfirmBtn).should('not.be.disabled').click();
 
-    Helpers.pathEq('/');
+    Helper.pathEq('/');
     Login.loginWithInvalidCredentials(email, PW);
   });
 });

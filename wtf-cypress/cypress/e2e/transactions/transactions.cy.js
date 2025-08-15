@@ -4,12 +4,10 @@ import Transactions from '../../support/transactions/actions';
 
 describe('Transactions — SOL buy→sell→P&L', { tags: ['@regression', '@transactions', '@investments'] }, () => {
   beforeEach(() => {
-    cy.session('validUser', () => {
-      Login.loginForSession(users.validUser.email, users.validUser.password);
-    });
+    Login.ensureSession(users.validUser.email, users.validUser.password, 'validUser:transactions');
   });
 
-  it('Create an investment sell part and then verifies realized P/L on the transactions page', () => {
+  it('Create an investment, sell part, then verify realized P/L on the transactions page', () => {
     Transactions.setup.dashboardEmpty();
     Transactions.addInvestment.openAndSelect();
     Transactions.addInvestment.fillQtyAndWireNetwork();

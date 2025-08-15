@@ -64,7 +64,6 @@ describe('Signup', { tags: ['@auth', '@signup', '@regression'] }, () => {
     cy.contains('a,button', /settings/i).click();
     cy.get(SignupLocators.settingsNameInput, { timeout: 10000 }).should('have.value', NAME);
     cy.get(SignupLocators.settingsEmailInput).should('have.value', email);
-
     Sidebar.waitForSidebar();
     Sidebar.clickLogout();
     Helpers.pathEq('/');

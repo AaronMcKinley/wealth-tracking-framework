@@ -3,11 +3,16 @@ import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 import Sidebar from '../../support/sidebar/actions';
 
+const email = Cypress.env('signupEmail') || users.validUser.email;
+const password = Cypress.env('signupPassword') || users.validUser.password || 'Password1!';
+
 describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@ui', '@smoke'] }, () => {
+  before(() => {
+    Login.ensureSession(email, password);
+  });
+
   beforeEach(() => {
-    cy.session('validUser', () => {
-      Login.loginForSession(users.validUser.email, users.validUser.password);
-    });
+    Login.restoreSession();
   });
 
   it('navigates via sidebar and logs out', () => {
