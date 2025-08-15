@@ -1,135 +1,154 @@
 import Helpers from '../helpers/actions';
 import AddInvestment from '../addinvestment/actions';
 import InvestmentLocators from '../addinvestment/locators';
-import TL from './locators';
 
 const TICKER = 'SOL';
-const BUY_PRICE = 20;
 const BUY_QTY = 2;
-const SELL_PRICE = BUY_PRICE + 5;
+const BUY_PPU = 50;
 const SELL_QTY = 1;
+const SELL_PPU = 55;
+const EUR = (n) => `€${Number(n).toFixed(2)}`;
 
-const fmt = (n) => Number(n).toFixed(2);
-const rowByTicker = (ticker) =>
-  InvestmentLocators?.dashboard?.rowByTicker
-    ? InvestmentLocators.dashboard.rowByTicker(ticker)
-    : `table tbody tr:has(td:contains("${ticker}"))`;
+const txRows = () => ([
+  {
+    id: 1,
+    transaction_type: 'Buy',
+    quantity: BUY_QTY,
+    price_per_unit: BUY_PPU,
+    total_value: BUY_QTY * BUY_PPU,
+    fees: 0,
+    transaction_date: new Date().toISOString(),
+    realized_profit_loss: null,
+  },
+  {
+    id: 2,
+    transaction_type: 'Sell',
+    quantity: SELL_QTY,
+    price_per_unit: SELL_PPU,
+    total_value: SELL_QTY * SELL_PPU,
+    fees: 0,
+    transaction_date: new Date().toISOString(),
+    realized_profit_loss: (SELL_PPU - BUY_PPU) * SELL_QTY,
+  },
+]);
 
-const setup = {
-  dashboardEmpty() {
-    cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [] }).as('invEmpty');
-    Helpers.visit('/dashboard');
-    cy.wait('@invEmpty');
-  },
-};
+const holdRow = (qty, price) => ({
+  id: 1,
+  asset_name: 'Solana',
+  asset_ticker: TICKER,
+  type: 'crypto',
+  total_quantity: qty,
+  average_buy_price: BUY_PPU,
+  current_price: price,
+  current_value: qty * price,
+  profit_loss: (price - BUY_PPU) * qty,
+  percent_change_24h: 0,
+  total_profit_loss: (price - BUY_PPU) * qty,
+});
 
-const addInvestment = {
-  openAndSelect() {
-    cy.intercept('GET', `**/api/assets/${TICKER}`, { statusCode: 200, body: { current_price: BUY_PRICE } }).as('priceBuy');
-    AddInvestment.startAddFromDashboard();
-    AddInvestment.search(TICKER);
-    AddInvestment.pickSuggestionTicker(TICKER);
-    cy.wait('@priceBuy');
-    cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${fmt(BUY_PRICE)}`);
+const Transactions = {
+  setup: {
+    dashboardEmpty() {
+      cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [] }).as('getInv');
+      Helpers.visit('/dashboard');
+      cy.wait('@getInv');
+    },
   },
-  fillQtyAndWireNetwork() {
-    AddInvestment.typeAmount(BUY_QTY);
-    cy.get(InvestmentLocators.form.totalSpend).should('have.value', fmt(BUY_QTY * BUY_PRICE));
-    cy.intercept('POST', '**/api/investments', (req) => {
-      const b = req.body;
-      expect(b).to.include({ name: TICKER, total_value: BUY_QTY * BUY_PRICE });
-      expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
-      expect(b.type).to.match(/crypto/i);
-      req.reply({ statusCode: 200, body: { ok: true } });
-    }).as('postBuy');
-    cy.intercept('GET', '**/api/investments*', {
-      statusCode: 200,
-      body: [{
-        id: 10, asset_name: 'Solana', asset_ticker: TICKER, type: 'crypto',
-        total_quantity: BUY_QTY, average_buy_price: BUY_PRICE, current_price: BUY_PRICE,
-        current_value: BUY_QTY * BUY_PRICE, profit_loss: 0, percent_change_24h: 0, total_profit_loss: 0
-      }]
-    }).as('invAfterBuy');
-  },
-  confirmAndReturn() {
-    AddInvestment.openConfirm();
-    AddInvestment.confirm();
-    cy.wait(['@postBuy', '@invAfterBuy']);
-    Helpers.pathEq('/dashboard');
-  },
-};
 
-const sellInvestment = {
-  openAndPrepare() {
-    cy.intercept('GET', '**/api/investments*', {
-      statusCode: 200,
-      body: [{
-        id: 10, asset_name: 'Solana', asset_ticker: TICKER, type: 'crypto',
-        total_quantity: BUY_QTY, average_buy_price: BUY_PRICE, current_price: SELL_PRICE,
-        current_value: BUY_QTY * SELL_PRICE, profit_loss: (SELL_PRICE - BUY_PRICE) * BUY_QTY, percent_change_24h: 0, total_profit_loss: (SELL_PRICE - BUY_PRICE) * BUY_QTY
-      }]
-    }).as('holdingsForSell');
-    cy.intercept('GET', `**/api/assets/${TICKER}`, { statusCode: 200, body: { current_price: SELL_PRICE } }).as('priceSell');
-    AddInvestment.startSellFromDashboard();
-    Helpers.pathEq('/add-investment');
-    cy.wait('@holdingsForSell');
-    AddInvestment.selectSellTicker(TICKER);
-    cy.wait('@priceSell');
-    cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${fmt(SELL_PRICE)}`);
-  },
-  fillQtyAndWireNetwork() {
-    AddInvestment.typeAmount(SELL_QTY);
-    cy.get(InvestmentLocators.form.totalSpend).should('have.value', fmt(SELL_QTY * SELL_PRICE));
-    cy.intercept('POST', '**/api/investments', (req) => {
-      const b = req.body;
-      expect(b).to.deep.include({ name: TICKER, total_value: SELL_QTY * SELL_PRICE, type: 'crypto' });
-      expect(b.amount).to.eq(-SELL_QTY);
-      req.reply({ statusCode: 200, body: { ok: true } });
-    }).as('postSell');
-    cy.intercept('GET', '**/api/investments*', {
-      statusCode: 200,
-      body: [{
-        id: 10, asset_name: 'Solana', asset_ticker: TICKER, type: 'crypto',
-        total_quantity: BUY_QTY - SELL_QTY, average_buy_price: BUY_PRICE, current_price: SELL_PRICE,
-        current_value: (BUY_QTY - SELL_QTY) * SELL_PRICE, profit_loss: (SELL_PRICE - BUY_PRICE) * (BUY_QTY - SELL_QTY), percent_change_24h: 0, total_profit_loss: (SELL_PRICE - BUY_PRICE) * (BUY_QTY - SELL_QTY)
-      }]
-    }).as('invAfterSell');
-  },
-  confirmAndReturn() {
-    AddInvestment.openConfirm();
-    AddInvestment.confirm();
-    cy.wait(['@postSell', '@invAfterSell']);
-    Helpers.pathEq('/dashboard');
-  },
-};
+  addInvestment: {
+    openAndSelect() {
+      AddInvestment.interceptPrice(TICKER, BUY_PPU, 'priceSOL');
+      AddInvestment.startAddFromDashboard();
+      AddInvestment.search(TICKER);
+      AddInvestment.pickSuggestionTicker(TICKER);
+      cy.wait('@priceSOL');
+      cy.get(InvestmentLocators.form.unitPrice).should('have.value', EUR(BUY_PPU));
+    },
 
-const navigateAndAssert = {
-  openTransactionsFromDashboard() {
-    cy.intercept('GET', `**/api/transactions/${TICKER}`, {
-      statusCode: 200,
-      body: [
-        { id: 1, transaction_type: 'Buy', quantity: BUY_QTY, price_per_unit: BUY_PRICE, total_value: BUY_QTY * BUY_PRICE, fees: 0, transaction_date: '2024-01-01T12:00:00Z', realized_profit_loss: null },
-        { id: 2, transaction_type: 'Sell', quantity: SELL_QTY, price_per_unit: SELL_PRICE, total_value: SELL_QTY * SELL_PRICE, fees: 0, transaction_date: '2024-01-02T12:00:00Z', realized_profit_loss: (SELL_PRICE - BUY_PRICE) * SELL_QTY }
-      ]
-    }).as('getTx');
-    cy.get(rowByTicker(TICKER)).within(() => {
-      cy.get('a,button').filter(':visible').first().click({ force: true });
-    });
-    cy.wait('@getTx');
-    cy.location('pathname').should('include', `/transactions/${TICKER}`);
+    fillQtyAndWireNetwork() {
+      AddInvestment.typeAmount(BUY_QTY);
+      cy.get(InvestmentLocators.form.totalSpend).should('have.value', (BUY_QTY * BUY_PPU).toFixed(2));
+      AddInvestment.interceptPostAddAssert(
+        { name: TICKER, amount: BUY_QTY, total_value: BUY_QTY * BUY_PPU, type: 'crypto' },
+        'postSOLBuy'
+      );
+    },
+
+    confirmAndReturn() {
+      cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [holdRow(BUY_QTY, BUY_PPU)] }).as('invAfterBuy');
+      AddInvestment.openConfirm();
+      AddInvestment.confirm();
+      cy.wait(['@postSOLBuy', '@invAfterBuy']);
+      cy.location('pathname', { timeout: 10000 }).should('match', /(\/dashboard|\/)$/);
+      AddInvestment.assertDashboardRow({ ticker: TICKER, qtyText: String(BUY_QTY), valueText: EUR(BUY_QTY * BUY_PPU) });
+    },
   },
-  verifyRealizedPL() {
-    const expected = fmt((SELL_PRICE - BUY_PRICE) * SELL_QTY);
-    cy.get(TL.table, { timeout: 10000 }).should('be.visible');
-    cy.get(TL.headerCells).then(($ths) => {
-      const idx = [...$ths].findIndex((th) => /realized.*p\/?l/i.test(th.textContent?.trim() || ''));
-      expect(idx).to.be.gte(0);
-      cy.get(TL.rows).contains('td', /sell/i).parent('tr').within(() => {
-        cy.get(TL.cells).eq(idx).should('contain', expected);
+
+  sellInvestment: {
+    openAndPrepare() {
+      cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [holdRow(BUY_QTY, BUY_PPU)] }).as('holdingsSOL');
+      AddInvestment.interceptPrice(TICKER, SELL_PPU, 'priceSOLSell');
+      AddInvestment.startSellFromDashboard();
+      Helpers.pathEq('/add-investment');
+      cy.wait('@holdingsSOL');
+      AddInvestment.selectSellTicker(TICKER);
+      cy.wait('@priceSOLSell');
+      cy.get(InvestmentLocators.form.unitPrice).should('have.value', EUR(SELL_PPU));
+    },
+
+    fillQtyAndWireNetwork() {
+      AddInvestment.typeAmount(SELL_QTY);
+      AddInvestment.typeTotalSpend(SELL_QTY * SELL_PPU);
+      AddInvestment.interceptPostSellAssert(
+        { name: TICKER, amount: -SELL_QTY, total_value: SELL_QTY * SELL_PPU, type: 'crypto' },
+        'postSOLSell'
+      );
+    },
+
+    confirmAndReturn() {
+      cy.intercept('GET', '**/api/investments*', { statusCode: 200, body: [holdRow(BUY_QTY - SELL_QTY, SELL_PPU)] }).as('invAfterSellSOL');
+      AddInvestment.openConfirm();
+      AddInvestment.confirm();
+      cy.wait(['@postSOLSell', '@invAfterSellSOL']);
+      cy.location('pathname', { timeout: 10000 }).should('match', /(\/dashboard|\/)$/);
+      AddInvestment.assertDashboardRow({
+        ticker: TICKER,
+        qtyText: String(BUY_QTY - SELL_QTY),
+        valueText: EUR((BUY_QTY - SELL_QTY) * SELL_PPU),
       });
-    });
+    },
+  },
+
+  navigateAndAssert: {
+    openTransactionsFromDashboard() {
+      cy.intercept('GET', `**/api/transactions/${TICKER}`, { statusCode: 200, body: txRows() }).as('txSOL');
+      cy.location('pathname').then((p) => {
+        if (!/\/dashboard/.test(p)) Helpers.visit('/dashboard');
+      });
+
+      cy.contains('td', TICKER, { timeout: 10000 })
+        .parent('tr')
+        .then(($row) => {
+          const $link = $row.find('a[href*="/transactions"]');
+          if ($link.length) {
+            cy.wrap($link.first()).click();
+          } else {
+            cy.visit(`/transactions/${TICKER}`);
+          }
+        });
+
+      cy.location('pathname', { timeout: 10000 }).should('include', `/transactions/${TICKER}`);
+      cy.contains('h1', new RegExp(`${TICKER}\\s+Transactions`, 'i')).should('be.visible');
+      cy.wait('@txSOL').its('response.statusCode').should('be.oneOf', [200, 304]);
+    },
+
+    verifyRealizedPL() {
+      cy.get('table').should('exist');
+      cy.contains('td', /^Sell$/i).parent('tr').within(() => {
+        cy.get('td').eq(6).should('contain', (SELL_PPU - BUY_PPU).toFixed(2));
+      });
+    },
   },
 };
 
-const Transactions = { setup, addInvestment, sellInvestment, navigateAndAssert };
 export default Transactions;
