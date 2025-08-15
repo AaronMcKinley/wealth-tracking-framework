@@ -1,7 +1,5 @@
 import InvestmentLocators from './locators';
 
-const euro = (n) => `€${Number(n).toFixed(2)}`;
-
 const AddInvestment = {
   startAddFromDashboard() {
     cy.contains(InvestmentLocators.dashboard.addBtn, /^Add Investment$/i).should('be.visible').click();
@@ -45,24 +43,16 @@ const AddInvestment = {
     cy.get(InvestmentLocators.form.cancelBtn).should('be.visible').click();
   },
 
-  interceptPrice(ticker, price, alias = `price_${ticker}`) {
+  interceptPrice(ticker, price, alias) {
     cy.intercept('GET', `**/api/assets/${ticker}`, { statusCode: 200, body: { current_price: price } }).as(alias);
     return `@${alias}`;
   },
 
-  interceptHoldings(ticker, qty, alias = `holdings_${ticker}`) {
-    cy.intercept('GET', '**/api/investments*', {
-      statusCode: 200,
-      body: [{ asset_ticker: ticker, asset_name: ticker, type: /[A-Z]+/.test(ticker) ? 'stock' : 'crypto', total_quantity: qty }],
-    }).as(alias);
-    return `@${alias}`;
-  },
-
-  selectFromTypeaheadExpectPrice(ticker, priceAlias, price) {
+  selectFromTypeaheadExpectPrice(ticker, priceAlias, expectedPrice) {
     this.search(ticker);
     this.pickSuggestionTicker(ticker);
     cy.wait(priceAlias);
-    cy.get(InvestmentLocators.form.unitPrice).should('have.value', euro(price));
+    cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${Number(expectedPrice).toFixed(2)}`);
   },
 
   setAmountAndExpectTotal(amount, total) {
@@ -70,34 +60,66 @@ const AddInvestment = {
     cy.get(InvestmentLocators.form.totalSpend).should('have.value', Number(total).toFixed(2));
   },
 
-  interceptPostAddAssert(expected, alias = 'postAdd') {
+  interceptPostAddAssert(expected, alias) {
     cy.intercept('POST', '**/api/investments', (req) => {
       const b = req.body;
-      expect(b.name).to.eq(expected.name);
-      if (Number.isFinite(expected.amount)) {
-        if (Math.abs(expected.amount % 1) > 0) expect(b.amount).to.be.closeTo(expected.amount, 1e-9);
-        else expect(b.amount).to.eq(expected.amount);
+      if (typeof expected.amount !== 'undefined') {
+        expect(b.amount).to.be.closeTo(expected.amount, 1e-9);
       }
-      expect(b.total_value).to.eq(expected.total_value);
-      if (expected.type) expect(b.type).to.match(new RegExp(expected.type, 'i'));
+      if (typeof expected.name !== 'undefined') {
+        expect(b.name).to.eq(expected.name);
+      }
+      if (typeof expected.total_value !== 'undefined') {
+        expect(b.total_value).to.eq(expected.total_value);
+      }
+      if (expected.type instanceof RegExp) {
+        expect(b.type).to.match(expected.type);
+      } else if (typeof expected.type === 'string') {
+        expect(b.type).to.match(new RegExp(expected.type, 'i'));
+      }
       req.reply({ statusCode: 200, body: { ok: true } });
     }).as(alias);
     return `@${alias}`;
   },
 
-  interceptPostSellAssert(expected, alias = 'postSell') {
+  interceptHoldings(ticker, qty, alias) {
+    cy.intercept('GET', '**/api/investments*', {
+      statusCode: 200,
+      body: [{ asset_ticker: ticker, asset_name: ticker, type: 'stock', total_quantity: qty }],
+    }).as(alias);
+    return `@${alias}`;
+  },
+
+  oversellAndExpectError({ amount, total, maxAllowed, ticker }) {
+    this.typeAmount(amount);
+    this.typeTotalSpend(total);
+    cy.get(InvestmentLocators.form.submitBtn).click();
+    cy.get(InvestmentLocators.form.errorMsg).should('contain', `You can only sell up to ${maxAllowed} units of ${ticker}.`);
+  },
+
+  interceptPostSellAssert(expected, alias) {
     cy.intercept('POST', '**/api/investments', (req) => {
       const b = req.body;
-      expect(b.name).to.eq(expected.name);
-      expect(b.amount).to.eq(expected.amount);
-      expect(b.total_value).to.eq(expected.total_value);
-      if (expected.type) expect(b.type).to.match(new RegExp(expected.type, 'i'));
+      if (typeof expected.amount !== 'undefined') {
+        expect(b.amount).to.eq(expected.amount);
+      }
+      if (typeof expected.name !== 'undefined') {
+        expect(b.name).to.eq(expected.name);
+      }
+      if (typeof expected.total_value !== 'undefined') {
+        expect(b.total_value).to.eq(expected.total_value);
+      }
+      if (expected.type instanceof RegExp) {
+        expect(b.type).to.match(expected.type);
+      } else if (typeof expected.type === 'string') {
+        expect(b.type).to.match(new RegExp(expected.type, 'i'));
+      }
       req.reply({ statusCode: 200, body: { ok: true } });
     }).as(alias);
     return `@${alias}`;
   },
 
-  interceptAfterSellHoldings({ ticker, qty, price }, alias = 'invAfterSell') {
+  interceptAfterSellHoldings({ ticker, qty, price }, alias) {
     cy.intercept('GET', '**/api/investments*', {
       statusCode: 200,
       body: [{
@@ -109,27 +131,17 @@ const AddInvestment = {
     return `@${alias}`;
   },
 
-  confirmAndWait(aliases) {
+  confirmAndWait(waitForAliases) {
+    const toWait = Array.isArray(waitForAliases) ? waitForAliases : [waitForAliases];
     this.openConfirm();
     this.confirm();
-    const arr = Array.isArray(aliases) ? aliases : [aliases];
-    cy.wait(arr);
-  },
-
-  oversellAndExpectError({ amount, total, maxAllowed, ticker }) {
-    this.typeAmount(amount);
-    this.typeTotalSpend(total);
-    cy.get(InvestmentLocators.form.submitBtn).click();
-    cy.get(InvestmentLocators.form.errorMsg)
-      .should('contain', 'only sell up to')
-      .and('contain', String(maxAllowed))
-      .and('contain', ticker);
+    cy.wait(toWait);
   },
 
   assertDashboardRow({ ticker, qtyText, valueText }) {
     cy.contains('td', ticker).parent('tr').within(() => {
-      cy.get('td').eq(3).should('contain', qtyText);
-      cy.get('td').eq(8).should('contain', valueText);
+      if (qtyText) cy.get('td').eq(3).should('contain', qtyText);
+      if (valueText) cy.get('td').eq(8).should('contain', valueText);
     });
   },
 };
