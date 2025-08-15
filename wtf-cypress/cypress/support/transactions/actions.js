@@ -8,6 +8,7 @@ const BUY_PRICE = 170.27;
 const SELL_QTY = 1;
 const SELL_PRICE = 158.57;
 const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2); // "-11.70"
+const EPSILON = 1e-6;
 
 const Transactions = {
   setup: {
@@ -38,10 +39,9 @@ const Transactions = {
     confirmAndReturn() {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
-        const expectedBuyTotal = Number((BUY_QTY * BUY_PRICE).toFixed(2));
         expect(b.name).to.eq(TICKER);
-        expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
-        expect(b.total_value).to.be.closeTo(expectedBuyTotal, 1e-2);
+        expect(b.amount).to.be.closeTo(BUY_QTY, EPSILON);
+        expect(b.total_value).to.be.closeTo(BUY_QTY * BUY_PRICE, EPSILON); // float-safe
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postBuy');
 
@@ -93,10 +93,9 @@ const Transactions = {
     confirmAndReturn() {
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
-        const expectedSellTotal = Number((SELL_QTY * SELL_PRICE).toFixed(2));
         expect(b.name).to.eq(TICKER);
-        expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
-        expect(b.total_value).to.be.closeTo(expectedSellTotal, 1e-2);
+        expect(b.amount).to.be.closeTo(-SELL_QTY, EPSILON);
+        expect(b.total_value).to.be.closeTo(SELL_QTY * SELL_PRICE, EPSILON); // float-safe
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postSell');
 
@@ -125,7 +124,7 @@ const Transactions = {
   navigateAndAssert: {
     openTransactionsFromDashboard() {
       cy.intercept(
-        { method: 'GET', url: /\/api\/transactions\/sol(\?.*)?$/i },
+        { method: 'GET', url: /\/api\/transactions\/[^/?#]+(?:[/?].*)?$/i },
         {
           statusCode: 200,
           body: [
@@ -134,44 +133,48 @@ const Transactions = {
               transaction_type: 'sell',
               quantity: SELL_QTY,
               price_per_unit: SELL_PRICE,
-              total_value: SELL_QTY * SELL_PRICE,
+              total_value: Number((SELL_QTY * SELL_PRICE).toFixed(2)),
               fees: 0,
               transaction_date: new Date().toISOString(),
-              realized_profit_loss: Number(EXPECTED_PL),
+              realized_profit_loss: Number(EXPECTED_PL), // -11.70
             },
             {
               id: 1,
               transaction_type: 'buy',
               quantity: BUY_QTY,
               price_per_unit: BUY_PRICE,
-              total_value: BUY_QTY * BUY_PRICE,
+              total_value: Number((BUY_QTY * BUY_PRICE).toFixed(2)),
               fees: 0,
               transaction_date: new Date(Date.now() - 2 * 86400000).toISOString(),
               realized_profit_loss: null,
             },
           ],
         }
-      ).as('getTxSOL');
+      ).as('getTx');
+
 
       cy.window().then((w) => {
         w.history.pushState({}, '', `/transactions/${TICKER}`);
         w.dispatchEvent(new Event('popstate'));
       });
 
-      cy.wait('@getTxSOL');
+      cy.wait('@getTx', { timeout: 10000 }).its('response.statusCode').should('eq', 200);
       cy.get('h1').should('contain.text', `${TICKER} Transactions`);
       cy.get('table tbody tr').should('have.length.at.least', 1);
     },
 
     verifyRealizedPL() {
-      const expected = EXPECTED_PL;
+      const expected = EXPECTED_PL; // "-11.70"
       cy.get('table tbody tr')
         .contains('td', /^sell$/i)
         .parent()
         .within(() => {
-          cy.get('td').eq(6).invoke('text').then((t) => {
-            expect(t.replace(/\s/g, '')).to.include(expected);
-          });
+          cy.get('td')
+            .eq(6)
+            .invoke('text')
+            .then((t) => {
+              expect(t.replace(/\s/g, '')).to.include(expected);
+            });
         });
     },
   },
