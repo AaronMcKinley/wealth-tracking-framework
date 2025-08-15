@@ -1,6 +1,6 @@
 import InvestmentLocators from './locators';
 
-const AddInvestments = {
+const AddInvestment = {
   startAddFromDashboard() {
     cy.contains(InvestmentLocators.dashboard.addBtn, /^Add Investment$/i)
       .should('be.visible')
@@ -14,10 +14,7 @@ const AddInvestments = {
   },
 
   search(query) {
-    cy.get(InvestmentLocators.form.searchInput)
-      .should('be.visible')
-      .clear()
-      .type(query);
+    cy.get(InvestmentLocators.form.searchInput).should('be.visible').clear().type(query);
   },
 
   pickSuggestionTicker(ticker) {
@@ -26,11 +23,7 @@ const AddInvestments = {
   },
 
   selectSellTicker(ticker) {
-    cy.get(InvestmentLocators.sell.select)
-      .filter(':visible')
-      .first()
-      .should('be.enabled')
-      .select(ticker);
+    cy.get(InvestmentLocators.sell.select).filter(':visible').first().should('be.enabled').select(ticker);
   },
 
   typeAmount(value) {
@@ -55,4 +48,4 @@ const AddInvestments = {
   },
 };
 
-export default AddInvestments;
+export default AddInvestment;

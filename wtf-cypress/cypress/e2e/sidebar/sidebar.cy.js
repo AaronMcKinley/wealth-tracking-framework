@@ -11,7 +11,7 @@ describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@u
   });
 
   it('navigates via sidebar and logs out', () => {
-    Helpers.visit('/dashboard');
+    Helper.visit('/dashboard');
     Sidebar.waitForSidebar();
 
     Sidebar.goToInvestments();
@@ -27,16 +27,16 @@ describe('Routing & Layout — Sidebar', { tags: ['@regression', '@routing', '@u
     Sidebar.assertDashboardActive();
 
     Sidebar.clickLogout();
-    Helpers.pathEq('/');
+    Helper.pathEq('/');
     Sidebar.assertNoneActive();
   });
 
   it('logo click returns to homepage', () => {
-    Helpers.visit('/dashboard');
+    Helper.visit('/dashboard');
     Sidebar.waitForSidebar();
 
     Sidebar.clickLogo();
-    Helpers.pathEq('/');
+    Helper.pathEq('/');
     Sidebar.assertNoneActive();
   });
 });
