@@ -10,7 +10,6 @@ const SELL_PRICE = 158.57;
 
 const round2 = (n) => Number(n.toFixed(2));
 const closeTo2 = (actual, expected) => expect(round2(actual)).to.eq(round2(expected));
-
 const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2); // "-11.70"
 
 const Transactions = {
@@ -150,7 +149,7 @@ const Transactions = {
               total_value: round2(SELL_QTY * SELL_PRICE),
               fees: 0,
               transaction_date: new Date().toISOString(),
-              realized_profit_loss: Number(EXPECTED_PL), // negative value shows red
+              realized_profit_loss: Number(EXPECTED_PL), // negative
             },
             {
               id: 1,
@@ -167,17 +166,18 @@ const Transactions = {
       ).as('getTx');
       cy.window().then((w) => w.localStorage.setItem('token', 'fake-jwt'));
       Helpers.pathHas('/dashboard');
-      cy.get('a[href$="/transactions/' + TICKER + '"], a[href$="/transactions/' + TICKER.toLowerCase() + '"]', { timeout: 1000 })
-        .then(($a) => {
-          if ($a.length) {
-            cy.wrap($a.first()).click({ force: true });
-          } else {
-            cy.window().then((w) => {
-              w.history.pushState({}, '', `/transactions/${TICKER}`);
-              w.dispatchEvent(new Event('popstate'));
-            });
-          }
-        });
+      const selector = `a[href$="/transactions/${TICKER}"], a[href$="/transactions/${TICKER.toLowerCase()}"]`;
+      cy.get('body').then(($body) => {
+        const $link = $body.find(selector);
+        if ($link.length) {
+          cy.wrap($link.first()).click({ force: true });
+        } else {
+          cy.window().then((w) => {
+            w.history.pushState({}, '', `/transactions/${TICKER}`);
+            w.dispatchEvent(new Event('popstate'));
+          });
+        }
+      });
 
       cy.wait('@getTx', { timeout: 12000 }).its('response.statusCode').should('eq', 200);
 
