@@ -11,7 +11,7 @@ describe('Transactions — navigate to SOL by clicking in Dashboard table', { ta
     Transactions.openDashboard();
     Transactions.waitForHoldingsTable();
     Transactions.focusAssetRow('SOL');
-    Transactions.clickAssetTransactionsLinkOrRow();
+    Transactions.clickAssetRow();
     Transactions.assertUrlForAsset('SOL');
     Transactions.assertTransactionsPageLoaded('SOL');
   });
