@@ -1,3 +1,4 @@
+// cypress/e2e/transactions/transactions.cy.js
 import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
 import Transactions from '../../support/transactions/actions';
@@ -9,20 +10,16 @@ const SELL_QTY = 1;
 const SELL_PRICE = 175.0;
 const EXPECTED_PL = Number(((SELL_PRICE - BUY_PRICE) * SELL_QTY).toFixed(2));
 
-describe(
-  'Transactions — SOL buy→sell half→profit in table',
-  { tags: ['@regression', '@transactions', '@investments'] },
-  () => {
-    beforeEach(() => {
-      Login.ensureSession(users.validUser.email, users.validUser.password, 'validUser:transactions');
-    });
+describe('Transactions — SOL buy→sell half→profit in table', { tags: ['@regression', '@transactions', '@investments'] }, () => {
+  beforeEach(() => {
+    Login.ensureSession(users.validUser.email, users.validUser.password, 'validUser:transactions');
+  });
 
-    it('adds SOL, sells half for a profit, then verifies realized P/L appears', () => {
-      Transactions.dashboardEmpty();
-      Transactions.buyUI(TICKER, BUY_QTY, BUY_PRICE);
-      Transactions.sellUI(TICKER, SELL_QTY, SELL_PRICE);
-      Transactions.openTransactionsByClick(TICKER, BUY_QTY, BUY_PRICE, SELL_QTY, SELL_PRICE);
-      Transactions.assertProfitForSellRow(EXPECTED_PL);
-    });
-  }
-);
+  it('clicks SOL on dashboard to open its transactions and verifies realized P/L', () => {
+    Transactions.stubDashboardHolding(TICKER, BUY_QTY, BUY_PRICE);
+    Transactions.stubTransactions(TICKER, BUY_QTY, BUY_PRICE, SELL_QTY, SELL_PRICE);
+    Transactions.openDashboardAndClickAsset(TICKER);
+    cy.wait('@getTx');
+    Transactions.assertProfitForSellRow(EXPECTED_PL);
+  });
+});
