@@ -56,8 +56,36 @@ const Transactions = {
   },
 
   openTransactions(ticker) {
-    cy.visit(`/transactions/${ticker}`);
-    cy.get('h1').should('contain.text', `${ticker} Transactions`);
+    const upper = ticker.toUpperCase();
+    const lower = ticker.toLowerCase();
+
+    const selector = [
+      `a[href^="/transactions/"][href$="/${upper}"]`,
+      `a[href*="/transactions/"][href$="/${upper}"]`,
+      `a[href^="/transactions/"][href$="/${lower}"]`,
+      `a[href*="/transactions/"][href$="/${lower}"]`,
+      `a[href^="https://"][href*="/transactions/"][href$="/${upper}"]`,
+      `a[href^="https://"][href*="/transactions/"][href$="/${lower}"]`,
+    ].join(', ');
+
+    cy.location('pathname').then((p) => {
+      if (!/\/dashboard\/?$/.test(p)) cy.visit('/dashboard');
+    });
+
+    cy.get('body', { timeout: 15000 }).then(($body) => {
+      const $link = $body.find(selector);
+      if ($link.length) {
+        cy.wrap($link.first()).click({ force: true });
+      } else {
+        throw new Error(`No link to /transactions/:userId/${upper} found on the Dashboard`);
+      }
+    });
+
+    cy.location('pathname', { timeout: 15000 }).should((path) => {
+      expect(path).to.match(new RegExp(`/transactions/.+/${upper}`, 'i'));
+    });
+
+    cy.get('h1').should('contain.text', `${upper} Transactions`);
     cy.get('table tbody tr').should('have.length.at.least', 2);
   },
 
