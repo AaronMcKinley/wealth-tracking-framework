@@ -1,23 +1,57 @@
 const round2 = (n) => Number(n.toFixed(2));
 
+const getTokenFromWindow = () =>
+  cy.window({ log: false }).then((w) => w.localStorage.getItem('token') || null);
+
+const ensureToken = () =>
+  getTokenFromWindow().then((t) => {
+    if (t) return t;
+    return cy.visit('/dashboard').then(() =>
+      getTokenFromWindow().then((t2) => {
+        if (!t2) throw new Error('No auth token in localStorage; ensure Login.ensureSession sets it.');
+        return t2;
+      })
+    );
+  });
+
+const authRequest = (options) =>
+  ensureToken().then((token) =>
+    cy.request({
+      ...options,
+      headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` },
+    })
+  );
+
 const Transactions = {
   deleteTicker(ticker) {
-    cy.request({ method: 'DELETE', url: `/api/transactions/${ticker}`, failOnStatusCode: false });
+    return authRequest({
+      method: 'DELETE',
+      url: `/api/transactions/${ticker}`,
+      failOnStatusCode: false,
+    });
   },
 
   buy(ticker, qty, price) {
-    cy.request('POST', '/api/investments', {
-      name: ticker,
-      amount: qty,
-      total_value: round2(qty * price),
+    return authRequest({
+      method: 'POST',
+      url: '/api/investments',
+      body: {
+        name: ticker,
+        amount: qty,
+        total_value: round2(qty * price),
+      },
     });
   },
 
   sell(ticker, qty, price) {
-    cy.request('POST', '/api/investments', {
-      name: ticker,
-      amount: -qty,
-      total_value: round2(qty * price),
+    return authRequest({
+      method: 'POST',
+      url: '/api/investments',
+      body: {
+        name: ticker,
+        amount: -qty,
+        total_value: round2(qty * price),
+      },
     });
   },
 
