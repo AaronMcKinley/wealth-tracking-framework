@@ -18,10 +18,10 @@ describe(
     });
 
     it('adds SOL, sells half for a profit, then verifies realized P/L appears', () => {
-      Transactions.deleteTicker(TICKER);
-      Transactions.buy(TICKER, BUY_QTY, BUY_PRICE);
-      Transactions.sell(TICKER, SELL_QTY, SELL_PRICE);
-      Transactions.openTransactions(TICKER);
+      Transactions.dashboardEmpty();
+      Transactions.buyUI(TICKER, BUY_QTY, BUY_PRICE);
+      Transactions.sellUI(TICKER, SELL_QTY, SELL_PRICE);
+      Transactions.openTransactionsByClick(TICKER, BUY_QTY, BUY_PRICE, SELL_QTY, SELL_PRICE);
       Transactions.assertProfitForSellRow(EXPECTED_PL);
     });
   }
