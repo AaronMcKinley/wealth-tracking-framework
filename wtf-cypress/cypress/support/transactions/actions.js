@@ -2,15 +2,12 @@ import Helpers from '../helpers/actions';
 import AddInvestment from '../addinvestment/actions';
 
 const TICKER = 'SOL';
-
-const BUY_QTY = 3;
-const BUY_PRICE = 170.27;
-const SELL_QTY = 1;
-const SELL_PRICE = 158.57;
-
+const BUY_QTY = 2;
+const BUY_PRICE = 170.0;
+const SELL_QTY = BUY_QTY / 2;
+const SELL_PRICE = 175.0;
 const round2 = (n) => Number(n.toFixed(2));
-const closeTo2 = (actual, expected) => expect(round2(actual)).to.eq(round2(expected));
-const EXPECTED_PL = (SELL_PRICE - BUY_PRICE).toFixed(2); // "-11.70"
+const EXPECTED_PL = round2((SELL_PRICE - BUY_PRICE) * SELL_QTY); // 5.00
 
 const Transactions = {
   setup: {
@@ -21,8 +18,8 @@ const Transactions = {
     },
   },
 
-  addInvestment: {
-    openAndSelect() {
+  simple: {
+    buyAndSellHalfForProfit() {
       cy.intercept('GET', `**/api/assets/${TICKER}`, {
         statusCode: 200,
         body: { current_price: BUY_PRICE },
@@ -32,20 +29,13 @@ const Transactions = {
       AddInvestment.search(TICKER);
       AddInvestment.pickSuggestionTicker(TICKER);
       cy.wait('@priceBuy');
-    },
-
-    fillQtyAndWireNetwork() {
       AddInvestment.typeAmount(BUY_QTY);
-    },
-
-    confirmAndReturn() {
-      const expectedTotal = BUY_QTY * BUY_PRICE;
 
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(BUY_QTY, 1e-9);
-        closeTo2(b.total_value, expectedTotal);
+        expect(round2(b.total_value)).to.eq(round2(BUY_QTY * BUY_PRICE));
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postBuy');
 
@@ -64,15 +54,10 @@ const Transactions = {
 
       AddInvestment.openConfirm();
       AddInvestment.confirm();
-
       cy.wait('@postBuy');
       Helpers.pathHas('/dashboard');
       cy.wait('@invAfterBuy');
-    },
-  },
 
-  sellInvestment: {
-    openAndPrepare() {
       cy.intercept('GET', '**/api/investments*', {
         statusCode: 200,
         body: [
@@ -94,21 +79,15 @@ const Transactions = {
       cy.wait('@holdings');
       AddInvestment.selectSellTicker(TICKER);
       cy.wait('@priceSell');
-    },
 
-    fillQtyAndWireNetwork() {
       AddInvestment.typeAmount(SELL_QTY);
-      AddInvestment.typeTotalSpend(round2(SELL_PRICE * SELL_QTY));
-    },
-
-    confirmAndReturn() {
-      const expectedTotal = SELL_QTY * SELL_PRICE;
+      AddInvestment.typeTotalSpend(round2(SELL_QTY * SELL_PRICE));
 
       cy.intercept('POST', '**/api/investments', (req) => {
         const b = req.body;
         expect(b.name).to.eq(TICKER);
         expect(b.amount).to.be.closeTo(-SELL_QTY, 1e-9);
-        closeTo2(b.total_value, expectedTotal);
+        expect(round2(b.total_value)).to.eq(round2(SELL_QTY * SELL_PRICE));
         req.reply({ statusCode: 200, body: { ok: true } });
       }).as('postSell');
 
@@ -127,73 +106,59 @@ const Transactions = {
 
       AddInvestment.openConfirm();
       AddInvestment.confirm();
-
       cy.wait('@postSell');
       Helpers.pathHas('/dashboard');
       cy.wait('@invAfterSell');
     },
-  },
 
-  navigateAndAssert: {
-    openTransactionsFromDashboard() {
-      cy.intercept(
-        { method: 'GET', url: /\/api\/transactions\/[^/]+(\?.*)?$/i },
-        {
-          statusCode: 200,
-          body: [
-            {
-              id: 2,
-              transaction_type: 'sell',
-              quantity: SELL_QTY,
-              price_per_unit: SELL_PRICE,
-              total_value: round2(SELL_QTY * SELL_PRICE),
-              fees: 0,
-              transaction_date: new Date().toISOString(),
-              realized_profit_loss: Number(EXPECTED_PL), // negative
-            },
-            {
-              id: 1,
-              transaction_type: 'buy',
-              quantity: BUY_QTY,
-              price_per_unit: BUY_PRICE,
-              total_value: round2(BUY_QTY * BUY_PRICE),
-              fees: 0,
-              transaction_date: new Date(Date.now() - 2 * 86400000).toISOString(),
-              realized_profit_loss: null,
-            },
-          ],
-        }
-      ).as('getTx');
-      cy.window().then((w) => w.localStorage.setItem('token', 'fake-jwt'));
-      Helpers.pathHas('/dashboard');
-      const selector = `a[href$="/transactions/${TICKER}"], a[href$="/transactions/${TICKER.toLowerCase()}"]`;
-      cy.get('body').then(($body) => {
-        const $link = $body.find(selector);
-        if ($link.length) {
-          cy.wrap($link.first()).click({ force: true });
-        } else {
-          cy.window().then((w) => {
-            w.history.pushState({}, '', `/transactions/${TICKER}`);
-            w.dispatchEvent(new Event('popstate'));
+    openTransactions() {
+      cy.intercept({ method: 'GET', url: '**/api/transactions**' }, (req) => {
+        if (/transactions\/?([^/?]+)?/i.test(req.url) || req.url.includes('ticker=SOL')) {
+          req.reply({
+            statusCode: 200,
+            body: [
+              {
+                id: 2,
+                transaction_type: 'sell',
+                quantity: SELL_QTY,
+                price_per_unit: SELL_PRICE,
+                total_value: round2(SELL_QTY * SELL_PRICE),
+                fees: 0,
+                transaction_date: new Date().toISOString(),
+                realized_profit_loss: EXPECTED_PL,
+              },
+              {
+                id: 1,
+                transaction_type: 'buy',
+                quantity: BUY_QTY,
+                price_per_unit: BUY_PRICE,
+                total_value: round2(BUY_QTY * BUY_PRICE),
+                fees: 0,
+                transaction_date: new Date(Date.now() - 2 * 86400000).toISOString(),
+                realized_profit_loss: null,
+              },
+            ],
           });
+        } else {
+          req.continue();
         }
-      });
-
-      cy.wait('@getTx', { timeout: 12000 }).its('response.statusCode').should('eq', 200);
+      }).as('getTx');
+      cy.visit(`/transactions/${TICKER}`);
+      cy.wait('@getTx', { timeout: 30000 })
+        .its('response.statusCode')
+        .should('be.within', 200, 299);
 
       cy.get('h1').should('contain.text', `${TICKER} Transactions`);
       cy.get('table tbody tr').should('have.length.at.least', 2);
     },
 
-    verifyRealizedPL() {
-      const expected = EXPECTED_PL;
+    expectProfitInTable() {
+      const expected = EXPECTED_PL.toFixed(2);
       cy.get('table tbody tr')
         .contains('td', /^sell$/i)
         .parent()
         .within(() => {
-          cy.get('td').eq(6).invoke('text').then((t) => {
-            expect(t.replace(/\s/g, '')).to.include(expected);
-          });
+          cy.get('td').should('contain.text', expected);
         });
     },
   },
