@@ -1,6 +1,5 @@
 pipeline {
   agent any
-
   options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
@@ -8,11 +7,11 @@ pipeline {
 
   environment {
     CYPRESS_BASE_URL = "https://www.wealth-tracking-framework.com"
-    REPORT_NAME      = "E2E Tests"
-    CYPRESS_WORKDIR  = "wtf-cypress"
-    CYPRESS_IMAGE    = "custom-cypress:13.11"
-    JUNIT_DIR        = "wtf-cypress/cypress/results/junit"
-    FAIL_DIR         = "wtf-cypress/cypress/results/failures"
+    REPORT_NAME = "E2E Tests"
+    CYPRESS_WORKDIR = "wtf-cypress"
+    CYPRESS_IMAGE = "custom-cypress:13.11"
+    JUNIT_DIR = "wtf-cypress/cypress/results/junit"
+    FAIL_DIR = "wtf-cypress/cypress/results/failures"
   }
 
   stages {
@@ -36,9 +35,9 @@ pipeline {
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
-                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
-                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
-                       "$WORKSPACE/$JUNIT_DIR"
+                      "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
+                      "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
+                      "$WORKSPACE/$JUNIT_DIR"
               rm -rf "$WORKSPACE/$FAIL_DIR"
               mkdir -p "$WORKSPACE/$FAIL_DIR"
 
@@ -69,101 +68,39 @@ pipeline {
     stage('Allure Report') {
       steps {
         dir("${CYPRESS_WORKDIR}") {
-          allure([
-            results: [[path: 'allure-results']],
-            reportBuildPolicy: 'ALWAYS'
-          ])
+          allure([results: [[path: 'allure-results']], reportBuildPolicy: 'ALWAYS'])
         }
       }
     }
 
-    stage('Create GitHub ticket from console logs') {
-      when {
-        expression { currentBuild.currentResult == 'UNSTABLE' }
-      }
+    stage('Create GitHub ticket (link only)') {
+      when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
-          catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-            sh '''
-              set -eu
-
-              OWNER="AaronMcKinley"
-              REPO="wealth-tracking-framework"
-
-              mkdir -p "$FAIL_DIR"
-
-              LOG_PATH="$FAIL_DIR/cypress-ansi.log"
-              ARTIFACT_REL_PATH="$LOG_PATH"
-              MAX_LINES="${MAX_LINES:-800}"
-
-              if curl -fsSL "${BUILD_URL}consoleText" -o "$FAIL_DIR/console.txt"; then :; else echo "WARN: could not fetch consoleText" >&2; fi
-
-              if [ -s "$FAIL_DIR/console.txt" ]; then
-                awk '
-                  BEGIN { inblk=0; have=0; buf="" }
-                  index($0,"(Run Starting)") { inblk=1 }
-                  { if (inblk) buf = buf $0 ORS }
-                  index($0,"(Run Finished)") && inblk { have=1; inblk=0; last=buf }
-                  END { if (have) printf "%s", last }
-                ' "$FAIL_DIR/console.txt" > "$LOG_PATH" || true
-              fi
-
-              if [ ! -s "$LOG_PATH" ]; then
-                if [ -s "$FAIL_DIR/console.txt" ]; then
-                  mv "$FAIL_DIR/console.txt" "$LOG_PATH"
-                else
-                  printf "No consoleText available at %sconsoleText\n" "$BUILD_URL" > "$LOG_PATH"
-                fi
-              fi
-
-              FAILED=0
-              if grep -Eq '(^|[[:space:]])Failing:[[:space:]]+[1-9]' "$LOG_PATH" || \
-                 grep -Eq '([1-9][0-9]*)[[:space:]]+of[[:space:]]+[0-9]+[[:space:]]+failed' "$LOG_PATH"; then
-                FAILED=1
-              fi
-
-              TITLE="Cypress result in build #${BUILD_NUMBER} $( [ "$FAILED" = "1" ] && echo FAILED || echo UNSTABLE )"
-              ARTIFACT_URL="${BUILD_URL}artifact/${ARTIFACT_REL_PATH}"
-              PREVIEW="$(tail -n "$MAX_LINES" "$LOG_PATH" || true)"
-
-              BODY=$(cat <<EOF
-Build: ${BUILD_URL}
-Log file (ANSI kept): ${ARTIFACT_URL}
-
-Preview (last ${MAX_LINES} lines):
-
-\`\`\`
-${PREVIEW}
-\`\`\`
-EOF
-)
-
-              TITLE_ESC="$(printf "%s" "$TITLE" | tr '\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
-              BODY_ESC="$(printf "%s" "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
-              JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
-
-              HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
-                -H "Authorization: token ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                --data-binary "$JSON_PAYLOAD" \
-                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
-
-              echo "GitHub API HTTP status: $HTTP"
-              if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
-                ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
-                echo "Created issue: ${ISSUE_URL:-<no url found>}"
-              else
-                echo "Create issue failed; response follows:"
-                sed -n '1,200p' resp.json || true
-                exit 1
-              fi
-            '''
-          }
-        }
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: "${FAIL_DIR}/cypress-ansi.log", allowEmptyArchive: true
+          sh '''
+            set -eu
+            OWNER="AaronMcKinley"
+            REPO="wealth-tracking-framework"
+            TITLE="E2E failure in build #${BUILD_NUMBER}"
+            BODY="Build: ${BUILD_URL}"
+            TITLE_ESC="$(printf "%s" "$TITLE" | tr '\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
+            BODY_ESC="$(printf "%s" "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
+            JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
+            HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              --data-binary "$JSON_PAYLOAD" \
+              "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
+            echo "GitHub API HTTP status: $HTTP"
+            if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
+              ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
+              echo "Created issue: ${ISSUE_URL:-<no url found>}"
+            else
+              echo "Create issue failed; response follows:"
+              sed -n '1,200p' resp.json || true
+              exit 1
+            fi
+          '''
         }
       }
     }
@@ -188,12 +125,8 @@ EOF
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
         ${CYPRESS_WORKDIR}/allure-report/**,
-        ${JUNIT_DIR}/**,
-        ${FAIL_DIR}/**
-      """,
-      excludes: '**/node_modules/**',
-      allowEmptyArchive: true
-
+        ${JUNIT_DIR}/** ${FAIL_DIR}/**
+      """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
     }
   }
