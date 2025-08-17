@@ -16,9 +16,7 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build Cypress Docker Image') {
@@ -87,15 +85,28 @@ pipeline {
               TEST_NAME="Unknown test"
               MSG="none"
 
-              SHOT="$(find "$CYPRESS_WORKDIR/cypress/screenshots" -type f -name "*failed*.png" | head -1 || true)"
+              # Prefer screenshot-based extraction (most reliable without config changes)
+              SHOT="$(ls -t "$CYPRESS_WORKDIR"/cypress/screenshots/*/*.png 2>/dev/null | head -1 || true)"
+              echo "Detected screenshot: ${SHOT:-<none>}"
+
               if [ -n "${SHOT:-}" ]; then
-                SPEC="$(printf "%s" "$SHOT" | sed -E 's#.*/cypress/screenshots/(.+\\.cy\\.js)/.*#\\1#' || true)"
+                # SPEC = folder under cypress/screenshots (e.g., sample.cy.js)
+                TMP="${SHOT#*/cypress/screenshots/}"
+                SPEC="${TMP%%/*}"
                 [ -n "$SPEC" ] || SPEC="unknown"
+
+                # TEST_NAME from file name, strip suffixes like ' (failed).png' or ' (attempt N).png'
                 BASE="$(basename "$SHOT")"
-                TEST_NAME="$(printf "%s" "$BASE" | sed -E 's/ \\((failed|attempt [0-9]+)\\)\\.png$//' )"
-                MSG="See failing screenshot: $SHOT"
+                NAME="${BASE%.png}"
+                NAME="${NAME% (failed)}"
+                NAME="${NAME% (attempt *)}"
+                TEST_NAME="$NAME"
+
+                MSG="Failing screenshot saved at: $SHOT"
               else
-                FAIL_XML="$(grep -Rsl "<failure" "$JUNIT_DIR" 2>/dev/null | head -1 || true)"
+                # Fallback to first JUnit file if any
+                FAIL_XML="$(ls -t "$JUNIT_DIR"/*.xml 2>/dev/null | head -1 || true)"
+                echo "Detected JUnit: ${FAIL_XML:-<none>}"
                 if [ -n "${FAIL_XML:-}" ]; then
                   ONE="$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')"
                   SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
@@ -114,9 +125,11 @@ pipeline {
               TITLE="E2E fail: ${SPEC} — ${TEST_NAME}"
               BODY="Build: ${BUILD_URL}\\nSpec: ${SPEC}\\nTest: ${TEST_NAME}\\n\\nFailure:\\n${MSG}"
 
+              echo "Issue title: $TITLE"
+              echo "Issue body (first line): $(printf "%s" "$BODY" | head -1)"
+
               TITLE_ESC="$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
               BODY_ESC="$(printf "%s" "$BODY" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
-
               JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
 
               echo "Posting issue to ${OWNER}/${REPO} …"
@@ -126,6 +139,7 @@ pipeline {
                 --data-binary "$JSON_PAYLOAD" \
                 "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
               echo "GitHub API HTTP status: $HTTP"
+
               if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
                 ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
                 echo "Created issue: ${ISSUE_URL:-<no url found>}"
