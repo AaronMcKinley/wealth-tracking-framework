@@ -78,21 +78,30 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
-            bash -lc '
-              OWNER="AaronMcKinley"
-              REPO="wealth-tracking-framework"
-              JUNIT_DIR="wtf-cypress/cypress/results/junit"
-              FAIL_DIR="wtf-cypress/cypress/results/failures"
-              FAIL_COUNT=$(grep -Eo '\''failures="([0-9]+)'\'' "$JUNIT_DIR"/*.xml 2>/dev/null | awk -F"\"" '\''{s+=$2} END{print s+0}'\'')
-              if [ "${FAIL_COUNT:-0}" -eq 0 ]; then exit 0; fi
-              BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)}"
-              SHA="$(git rev-parse --short=8 HEAD 2>/dev/null || echo unknown)"
-              TITLE="E2E failures: build #${BUILD_NUMBER} on ${BRANCH}"
-              BODY="Build #${BUILD_NUMBER} on ${BRANCH} has ${FAIL_COUNT} failing test(s).\\nCommit: ${SHA}\\nBuild: ${BUILD_URL}\\nScreenshots: ${BUILD_URL}artifact/wtf-cypress/cypress/screenshots/\\nJUnit: ${BUILD_URL}artifact/${JUNIT_DIR}/\\nLog: ${BUILD_URL}artifact/${FAIL_DIR}/cypress-run.log"
-              JSON="{\\"title\\":\\"$TITLE\\",\\"body\\":\\"$BODY\\"}"
-              curl -sSf -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${OWNER}/${REPO}/issues -d "$JSON" >/dev/null
-              echo "GitHub issue created"
-            '
+            bash <<BASH
+            set -euo pipefail
+            OWNER=${OWNER:-AaronMcKinley}
+            REPO=${REPO:-wealth-tracking-framework}
+            JUNIT_DIR=${JUNIT_DIR:-wtf-cypress/cypress/results/junit}
+            FAIL_DIR=${FAIL_DIR:-wtf-cypress/cypress/results/failures}
+            files=$(ls "$JUNIT_DIR"/*.xml 2>/dev/null || true)
+            [ -z "$files" ] && exit 0
+            FAIL_COUNT=$(grep -Eo 'failures="([0-9]+)"' $files | awk -F'"' '{s+=$2} END{print s+0}')
+            [ "${FAIL_COUNT:-0}" -eq 0 ] && exit 0
+            BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)}"
+            SHA="$(git rev-parse --short=8 HEAD 2>/dev/null || echo unknown)"
+            TITLE="E2E failures: build #${BUILD_NUMBER} on ${BRANCH}"
+            BODY="Build #${BUILD_NUMBER} on ${BRANCH} has ${FAIL_COUNT} failing test(s).
+    Commit: ${SHA}
+    Build: ${BUILD_URL}
+    Screenshots: ${BUILD_URL}artifact/wtf-cypress/cypress/screenshots/
+    JUnit: ${BUILD_URL}artifact/${JUNIT_DIR}/
+    Log: ${BUILD_URL}artifact/${FAIL_DIR}/cypress-run.log"
+            BODY_ESC=$(printf "%s" "$BODY" | sed ':a;N;$!ba;s/"/\\"/g;s/\n/\\n/g')
+            JSON="{\"title\":\"$TITLE\",\"body\":\"$BODY_ESC\"}"
+            curl -sSf -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${OWNER}/${REPO}/issues -d "$JSON" >/dev/null
+            echo "GitHub issue created"
+    BASH
           '''
         }
       }
