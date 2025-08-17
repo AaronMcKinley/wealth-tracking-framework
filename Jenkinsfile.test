@@ -41,7 +41,7 @@ pipeline {
               rm -rf "$WORKSPACE/$FAIL_DIR"
               mkdir -p "$WORKSPACE/$FAIL_DIR"
 
-              docker run --rm \
+              bash -o pipefail -c 'docker run --rm \
                 --shm-size=1g \
                 -e XDG_RUNTIME_DIR=/tmp \
                 -u $(id -u):$(id -g) \
@@ -58,7 +58,7 @@ pipeline {
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
                   --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
-                  --spec cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js
+                  --spec cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js 2>&1 | tee "$WORKSPACE/$FAIL_DIR/cypress-run.log"'
             '''
           }
         }
@@ -73,7 +73,7 @@ pipeline {
       }
     }
 
-    stage('Create GitHub ticket (link only)') {
+    stage('Create GitHub ticket') {
       when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
@@ -81,11 +81,31 @@ pipeline {
             set -eu
             OWNER="AaronMcKinley"
             REPO="wealth-tracking-framework"
-            TITLE="E2E failure in build #${BUILD_NUMBER}"
-            BODY="Build: ${BUILD_URL}"
+
+            BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)}"
+            SHORT_SHA="${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+
+            ALLURE_URL="${BUILD_URL}allure"
+            VIDEOS_URL="${BUILD_URL}artifact/${CYPRESS_WORKDIR}/cypress/videos/"
+            SCREENSHOTS_URL="${BUILD_URL}artifact/${CYPRESS_WORKDIR}/cypress/screenshots/"
+            JUNIT_URL="${BUILD_URL}artifact/${JUNIT_DIR}/"
+            LOG_URL="${BUILD_URL}artifact/${FAIL_DIR}/cypress-run.log"
+
+            FAIL_COUNT="$(grep -Rsl "<failure" "$JUNIT_DIR" 2>/dev/null | wc -l || true)"
+
+            SNIP=""
+            if [ -f "$FAIL_DIR/cypress-run.log" ]; then
+              SNIP="$(tail -n 200 "$FAIL_DIR/cypress-run.log" || true)"
+            fi
+
+            TITLE="E2E failure on ${BRANCH} (#${BUILD_NUMBER})"
+            BODY="Build: ${BUILD_URL}\nBranch: ${BRANCH}\nCommit: ${SHORT_SHA}\n\nAllure: ${ALLURE_URL}\nVideos: ${VIDEOS_URL}\nScreenshots: ${SCREENSHOTS_URL}\nJUnit: ${JUNIT_URL}\nLog: ${LOG_URL}\n\nFailed test files detected: ${FAIL_COUNT}\n\nCypress tail (last 200 lines):\n```\n${SNIP}\n```"
+            [ -n "${GH_MENTION:-}" ] && BODY="${BODY}\n\n/cc @${GH_MENTION}"
+
             TITLE_ESC="$(printf "%s" "$TITLE" | tr '\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
             BODY_ESC="$(printf "%s" "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
             JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
+
             HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
               -H "Authorization: token ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
