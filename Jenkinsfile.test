@@ -83,13 +83,25 @@ pipeline {
            def sha    = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
            def branch = env.BRANCH_NAME ?: 'detached'
            def title  = "E2E ${currentBuild.currentResult.toLowerCase()}: build #${env.BUILD_NUMBER} on ${branch}"
-           def body   = """Build result: ${currentBuild.currentResult}
+           def logPath = 'wtf-cypress/cypress/results/failures/cypress-run.log'
+           def haveLog = fileExists(logPath)
+           def logUrl  = haveLog ? "${env.BUILD_URL}artifact/${logPath}" : null
+           def logTail = ''
+           if (haveLog) {
+             archiveArtifacts artifacts: logPath, allowEmptyArchive: true
+             logTail = sh(
+               script: "tail -n 200 ${logPath} | sed -e 's/`/\\`/g'",
+               returnStdout: true
+             )
+           }
+
+           def body = """Build result: ${currentBuild.currentResult}
    Commit: ${sha}
    Build: ${env.BUILD_URL}
-   Screenshots: ${env.BUILD_URL}artifact/wtf-cypress/cypress/screenshots/
-   JUnit (if present): ${env.BUILD_URL}artifact/wtf-cypress/cypress/results/junit/
-   Log: ${env.BUILD_URL}artifact/wtf-cypress/cypress/results/failures/cypress-run.log
+   ${logUrl ? "Log: ${logUrl}\n" : ""}
+   ${logTail ? "Log tail (last 200 lines):\n```\n${logTail}\n```" : "Log file not found at ${logPath}."}
    """
+
            def payload = groovy.json.JsonOutput.toJson([title: title, body: body])
 
            httpRequest acceptType: 'APPLICATION_JSON',
@@ -97,6 +109,7 @@ pipeline {
                        httpMode: 'POST',
                        customHeaders: [
                          [name: 'Authorization', value: "token ${env.GH_TOKEN}"],
+                         [name: 'Accept',        value: 'application/vnd.github+json'],
                          [name: 'X-GitHub-Api-Version', value: '2022-11-28']
                        ],
                        url: "https://api.github.com/repos/${owner}/${repo}/issues",
