@@ -73,7 +73,7 @@ pipeline {
       }
     }
 
-   stage('Create ticket on failure') {
+    stage('Create ticket on failure') {
      when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
      steps {
        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
@@ -82,34 +82,67 @@ pipeline {
            def repo   = 'wealth-tracking-framework'
            def sha    = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
            def branch = env.BRANCH_NAME ?: 'detached'
-           def title  = "E2E ${currentBuild.currentResult.toLowerCase()}: build #${env.BUILD_NUMBER} on ${branch}"
-           def logPath = 'wtf-cypress/cypress/results/failures/cypress-run.log'
-           def haveLog = fileExists(logPath)
-           def logUrl  = haveLog ? "${env.BUILD_URL}artifact/${logPath}" : null
-           def logTail = ''
-           if (haveLog) {
-             archiveArtifacts artifacts: logPath, allowEmptyArchive: true
-             logTail = sh(
-               script: "tail -n 200 ${logPath} | sed -e 's/`/\\`/g'",
-               returnStdout: true
-             )
+           def build  = env.BUILD_URL
+
+           def rawLines = currentBuild.rawBuild.getLog(50000)
+           def rawText  = rawLines.join('\n')
+           def logText  = rawText.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
+
+           def failingSpecs = []
+           def specRe = /(?m)^[\s\|]*[✖xX]\s+([^\s]+?\.(?:cy|spec)\.(?:js|ts))/
+           def ms = (logText =~ specRe)
+           while (ms.find()) { failingSpecs << ms.group(1) }
+           failingSpecs = failingSpecs.unique()
+
+           def errMatch = (logText =~ /(?m)^(?:AssertionError|CypressError|Error|TypeError|ReferenceError).*$/)
+           def shortErr = errMatch.find() ? errMatch.group(0) : null
+
+           def overall = (logText =~ /(?m)\b(\d+ of \d+ failed.*)\b/)
+           def overallLine = overall.find() ? overall.group(1) : null
+
+           def title = "E2E ${currentBuild.currentResult.toLowerCase()}: ${branch} #${env.BUILD_NUMBER} (${sha})"
+
+           def bodyLines = []
+           bodyLines << "Build: ${build}"
+           bodyLines << "Branch: ${branch}"
+           bodyLines << "Commit: ${sha}"
+           if (overallLine) bodyLines << "\n${overallLine}"
+
+           if (failingSpecs && failingSpecs.size() > 0) {
+             bodyLines << "\nFailing spec file" + (failingSpecs.size()>1 ? "s:" : ":")
+             failingSpecs.each { bodyLines << "- `${it}`" }
+           } else {
+             bodyLines << "\nFailing spec files: (not detected)"
            }
 
-           def body = """Build result: ${currentBuild.currentResult}
-   Commit: ${sha}
-   Build: ${env.BUILD_URL}
-   ${logUrl ? "Log: ${logUrl}\n" : ""}
-   ${logTail ? "Log tail (last 200 lines):\n```\n${logTail}\n```" : "Log file not found at ${logPath}."}
-   """
+           if (shortErr) {
+             bodyLines << "\nError (first line):\n"
+             bodyLines << "    ${shortErr}\n"
+           }
 
-           def payload = groovy.json.JsonOutput.toJson([title: title, body: body])
+           bodyLines << "\nJenkins console: ${build}console"
+
+           def tail = currentBuild.rawBuild.getLog(300).join('\n').replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
+           def tailIndented = tail.replaceAll('(?m)^', '    ')
+           bodyLines << """
+    <details>
+    <summary>Console tail</summary>
+
+    ${tailIndented}
+    </details>
+    """
+
+           def payload = groovy.json.JsonOutput.toJson([
+             title: title,
+             body : bodyLines.join('\n')
+           ])
 
            httpRequest acceptType: 'APPLICATION_JSON',
                        contentType: 'APPLICATION_JSON',
                        httpMode: 'POST',
                        customHeaders: [
                          [name: 'Authorization', value: "token ${env.GH_TOKEN}"],
-                         [name: 'Accept',        value: 'application/vnd.github+json'],
+                         [name: 'Accept', value: 'application/vnd.github+json'],
                          [name: 'X-GitHub-Api-Version', value: '2022-11-28']
                        ],
                        url: "https://api.github.com/repos/${owner}/${repo}/issues",
@@ -118,7 +151,7 @@ pipeline {
          }
        }
      }
-   }
+    }
 
 
     stage('Docker Cleanup') {
