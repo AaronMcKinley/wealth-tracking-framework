@@ -73,46 +73,39 @@ pipeline {
       }
     }
 
-    stage('Create ticket on failure') {
-      when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
-      steps {
-        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
-          script {
-            def owner = 'AaronMcKinley'
-            def repo  = 'wealth-tracking-framework'
-            def junitDir = 'wtf-cypress/cypress/results/junit'
-            def list = sh(script: "ls ${junitDir}/*.xml 2>/dev/null || true", returnStdout: true).trim()
-            if (!list) { echo 'no junit -> no ticket'; return }
-            int fails = 0
-            list.split().each { p ->
-              def xml = new XmlSlurper().parseText(readFile(p))
-              def f = (xml.@failures?.text() ?: '0') as int
-              fails += f
-            }
-            if (fails == 0) { echo 'no failures -> no ticket'; return }
-            def sha = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
-            def branch = env.BRANCH_NAME ?: 'detached'
-            def title = "E2E failures: build #${env.BUILD_NUMBER} on ${branch}"
-            def body = """Build #${env.BUILD_NUMBER} on ${branch} has ${fails} failing test(s).
-    Commit: ${sha}
-    Build: ${env.BUILD_URL}
-    Screenshots: ${env.BUILD_URL}artifact/wtf-cypress/cypress/screenshots/
-    JUnit: ${env.BUILD_URL}artifact/${junitDir}/
-    Log: ${env.BUILD_URL}artifact/wtf-cypress/cypress/results/failures/cypress-run.log
-    """
-            def payload = groovy.json.JsonOutput.toJson([title: title, body: body])
-            httpRequest acceptType: 'APPLICATION_JSON',
-                        contentType: 'APPLICATION_JSON',
-                        httpMode: 'POST',
-                        customHeaders: [[name: 'Authorization', value: "token ${env.GH_TOKEN}"],
-                                        [name: 'X-GitHub-Api-Version', value: '2022-11-28']],
-                        url: "https://api.github.com/repos/${owner}/${repo}/issues",
-                        requestBody: payload,
-                        validResponseCodes: '201'
-          }
-        }
-      }
-    }
+   stage('Create ticket on failure') {
+     when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
+     steps {
+       withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
+         script {
+           def owner  = 'AaronMcKinley'
+           def repo   = 'wealth-tracking-framework'
+           def sha    = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
+           def branch = env.BRANCH_NAME ?: 'detached'
+           def title  = "E2E ${currentBuild.currentResult.toLowerCase()}: build #${env.BUILD_NUMBER} on ${branch}"
+           def body   = """Build result: ${currentBuild.currentResult}
+   Commit: ${sha}
+   Build: ${env.BUILD_URL}
+   Screenshots: ${env.BUILD_URL}artifact/wtf-cypress/cypress/screenshots/
+   JUnit (if present): ${env.BUILD_URL}artifact/wtf-cypress/cypress/results/junit/
+   Log: ${env.BUILD_URL}artifact/wtf-cypress/cypress/results/failures/cypress-run.log
+   """
+           def payload = groovy.json.JsonOutput.toJson([title: title, body: body])
+
+           httpRequest acceptType: 'APPLICATION_JSON',
+                       contentType: 'APPLICATION_JSON',
+                       httpMode: 'POST',
+                       customHeaders: [
+                         [name: 'Authorization', value: "token ${env.GH_TOKEN}"],
+                         [name: 'X-GitHub-Api-Version', value: '2022-11-28']
+                       ],
+                       url: "https://api.github.com/repos/${owner}/${repo}/issues",
+                       requestBody: payload,
+                       validResponseCodes: '201'
+         }
+       }
+     }
+   }
 
 
     stage('Docker Cleanup') {
