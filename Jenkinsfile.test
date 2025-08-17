@@ -84,9 +84,13 @@ pipeline {
            def branch = env.BRANCH_NAME ?: 'detached'
            def build  = env.BUILD_URL
 
-           def rawLines = currentBuild.rawBuild.getLog(50000)
-           def rawText  = rawLines.join('\n')
-           def logText  = rawText.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
+           def candidates = [
+             "${env.WORKSPACE}/cypress/results/failures/cypress-run.log",
+             "${env.WORKSPACE}/wtf-cypress/cypress/results/failures/cypress-run.log"
+           ]
+           def logPath = candidates.find { fileExists(it) }
+           def logText = logPath ? readFile(logPath) : ''
+           logText = logText.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
 
            def failingSpecs = []
            def specRe = /(?m)^[\s\|]*[✖xX]\s+([^\s]+?\.(?:cy|spec)\.(?:js|ts))/
@@ -122,7 +126,9 @@ pipeline {
 
            bodyLines << "\nJenkins console: ${build}console"
 
-           def tail = currentBuild.rawBuild.getLog(300).join('\n').replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
+           def lines = logText ? logText.readLines() : []
+           def startIdx = Math.max(0, lines.size() - 300)
+           def tail = lines ? lines[startIdx..<lines.size()].join('\n') : '(no log tail available)'
            def tailIndented = tail.replaceAll('(?m)^', '    ')
            bodyLines << """
     <details>
