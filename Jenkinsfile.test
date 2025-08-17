@@ -80,15 +80,38 @@ pipeline {
               set -eu
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
-              TITLE="E2E failures in build #${BUILD_NUMBER}"
-              BODY="Build URL: ${BUILD_URL}"
-              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE" "$BODY")
+
+              FAIL_XML=""
+              if ls "${JUNIT_DIR}"/*.xml >/dev/null 2>&1; then
+                FAIL_XML=$(grep -l 'failures="[1-9][0-9]*"' "${JUNIT_DIR}"/*.xml | head -1 || true)
+              fi
+
+              if [ -n "${FAIL_XML}" ] && [ -f "${FAIL_XML}" ]; then
+                SPEC=$(sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' "${FAIL_XML}" | head -1 || true)
+                TEST_NAME=$(sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*<failure.*/\\1/p' "${FAIL_XML}" | head -1 || true)
+                MSG=$(sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' "${FAIL_XML}" | head -1 || true)
+              else
+                SPEC=""
+                TEST_NAME=""
+                MSG=""
+              fi
+
+              SHORT_SPEC=$(basename "${SPEC:-unknown}" 2>/dev/null || echo "${SPEC:-unknown}")
+              TITLE_BASE="E2E fail: ${SHORT_SPEC:-unknown} — ${TEST_NAME:-Unknown test}"
+              TITLE_ONE=$(printf "%s" "$TITLE_BASE" | tr '\\n' ' ' | sed 's/[\\\\"]/\\\\&/g')
+
+              BODY="Build: ${BUILD_URL} | Spec: ${SPEC:-unknown} | Test: ${TEST_NAME:-unknown} | Message: ${MSG:-none}"
+              BODY_ONE=$(printf "%s" "$BODY" | tr '\\n' ' ' | sed 's/[\\\\"]/\\\\&/g')
+
+              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ONE" "$BODY_ONE")
+
               echo "Posting issue to ${OWNER}/${REPO} …"
               HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
                 -H "Authorization: token ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
                 --data-raw "$JSON_PAYLOAD" \
                 "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
+
               echo "GitHub API HTTP status: $HTTP"
               if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
                 ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
