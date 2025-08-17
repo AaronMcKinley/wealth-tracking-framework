@@ -1,6 +1,12 @@
 pipeline {
   agent any
 
+  options {
+    // keep only last 10 builds; no artifact retention
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
+    timestamps()
+  }
+
   environment {
     REGISTRY = "registry.gitlab.com/wealth-tracking-framework/wealth-tracking-framework"
     GITLAB_USER = "aaron09912"
@@ -41,9 +47,7 @@ pipeline {
     stage('Login to GitLab Registry') {
       steps {
         withCredentials([string(credentialsId: 'gitlab-registry-pat', variable: 'GITLAB_PAT')]) {
-          sh '''
-            echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin
-          '''
+          sh 'echo "$GITLAB_PAT" | docker login registry.gitlab.com -u aaron09912 --password-stdin'
         }
       }
     }
@@ -52,17 +56,11 @@ pipeline {
       steps {
         dir('/opt/wealth-tracking-framework') {
           script {
-            def images = [
-              'wtf-node',
-              'wtf-react',
-              'wtf-jenkins',
-              'wtf-coingecko',
-              'wtf-finnhub'
-            ]
+            def images = ['wtf-node','wtf-react','wtf-jenkins','wtf-coingecko','wtf-finnhub']
             images.each { img ->
               sh """
                 echo "Building $img..."
-                docker build -t $REGISTRY/${img}:latest ./${img}
+                docker build --pull --no-cache -t $REGISTRY/${img}:latest ./${img}
                 docker push $REGISTRY/${img}:latest
               """
             }
@@ -70,9 +68,25 @@ pipeline {
         }
       }
     }
+
+    stage('Docker Cleanup') {
+      steps {
+        sh '''
+          echo "Pruning Docker build cache and dangling artifacts..."
+          docker builder prune -af --filter "until=24h" || true
+          docker image prune   -af --filter "until=24h" || true
+          docker container prune -f --filter "until=24h" || true
+          docker volume prune -f || true
+          docker system df
+        '''
+      }
+    }
   }
 
   post {
+    always {
+      cleanWs(deleteDirs: true)
+    }
     success {
       echo 'Build and push completed successfully. Starting Deploy'
       build job: 'wtf-deploy', wait: false

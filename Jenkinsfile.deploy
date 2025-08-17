@@ -1,6 +1,11 @@
 pipeline {
   agent any
 
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
+  }
+
   environment {
     DEPLOY_DIR = "/opt/wealth-tracking-framework"
     CONTAINER_NAME = "wtf-deploy"
@@ -28,7 +33,6 @@ pipeline {
       }
     }
 
-
     stage('Run Deploy Container Detached') {
       steps {
         withCredentials([string(credentialsId: 'ansible_vault_password', variable: 'ANSIBLE_VAULT_PASSWORD')]) {
@@ -44,9 +48,24 @@ pipeline {
         }
       }
     }
+
+    stage('Docker Cleanup') {
+      steps {
+        sh '''
+          docker builder prune -af --filter "until=24h" || true
+          docker image prune   -af --filter "until=24h" || true
+          docker container prune -f --filter "until=24h" || true
+          docker volume prune -f || true
+          docker system df || true
+        '''
+      }
+    }
   }
 
   post {
+    always {
+      cleanWs(deleteDirs: true)
+    }
     success {
       echo "Deploy container '${CONTAINER_NAME}' started successfully in background."
     }

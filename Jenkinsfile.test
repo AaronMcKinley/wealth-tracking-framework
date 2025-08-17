@@ -1,8 +1,13 @@
 pipeline {
   agent any
 
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
+  }
+
   environment {
-    CYPRESS_BASE_URL = "https://wealth-tracking-framework.com"
+    CYPRESS_BASE_URL = "https://www.wealth-tracking-framework.com"
     REPORT_NAME      = "E2E Tests"
     CYPRESS_WORKDIR  = "wtf-cypress"
     CYPRESS_IMAGE    = "custom-cypress:13.11"
@@ -30,9 +35,10 @@ pipeline {
             mkdir -p "${WORKSPACE}/${CYPRESS_WORKDIR}/allure-results" \
                      "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/screenshots" \
                      "${WORKSPACE}/${CYPRESS_WORKDIR}/cypress/videos"
-
             docker run --rm \
-              -u \$(id -u):\$(id -g) \
+              --shm-size=1g \
+              -e XDG_RUNTIME_DIR=/tmp \
+              -u $(id -u):$(id -g) \
               -e FORCE_COLOR=1 \
               -e CYPRESS_allure=true \
               -e CYPRESS_allureResultsPath=/allure-results \
@@ -57,6 +63,18 @@ pipeline {
         }
       }
     }
+
+    stage('Docker Cleanup') {
+      steps {
+        sh '''
+          docker builder prune -af --filter "until=24h" || true
+          docker image prune   -af --filter "until=24h" || true
+          docker container prune -f --filter "until=24h" || true
+          docker volume prune -f || true
+          docker system df || true
+        '''
+      }
+    }
   }
 
   post {
@@ -67,6 +85,7 @@ pipeline {
         ${CYPRESS_WORKDIR}/allure-results/**,
         ${CYPRESS_WORKDIR}/allure-report/**
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
+      cleanWs(deleteDirs: true)
     }
   }
 }
