@@ -11,13 +11,14 @@ pipeline {
     REPORT_NAME      = "E2E Tests"
     CYPRESS_WORKDIR  = "wtf-cypress"
     CYPRESS_IMAGE    = "custom-cypress:13.11"
+    JUNIT_DIR        = "${CYPRESS_WORKDIR}/cypress/results/junit"
+    GITHUB_OWNER     = "AaronMcKinley"
+    GITHUB_REPO      = "wealth-tracking-framework"
   }
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build Cypress Docker Image') {
@@ -31,11 +32,13 @@ pipeline {
     stage('Run Cypress E2E Tests') {
       steps {
         ansiColor('xterm') {
+          // Mark UNSTABLE on failure but keep going
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
-                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos"
+                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
+                       "$WORKSPACE/$JUNIT_DIR"
 
               docker run --rm \
                 --shm-size=1g \
@@ -48,8 +51,12 @@ pipeline {
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/allure-results:/allure-results" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
+                -v "$WORKSPACE/$JUNIT_DIR:/app/cypress/results/junit" \
                 $CYPRESS_IMAGE \
-                cypress run --e2e --browser chrome --headless --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
+                cypress run --e2e --browser chrome --headless \
+                  --reporter junit \
+                  --reporter-options "mochaFile=cypress/results/junit/results-[hash].xml,toConsole=false" \
+                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
             '''
           }
         }
@@ -63,6 +70,34 @@ pipeline {
             results: [[path: 'allure-results']],
             reportBuildPolicy: 'ALWAYS'
           ])
+        }
+      }
+    }
+
+    stage('Create GitHub Issue on Failures') {
+      when {
+        expression { currentBuild.currentResult == 'UNSTABLE' }
+      }
+      steps {
+        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
+          sh '''
+            # Count JUnit files with failures > 0
+            FAILS=$(grep -Rho 'failures="[^"]*"' "$JUNIT_DIR" 2>/dev/null | grep -v 'failures="0"' | wc -l || true)
+
+            if [ "$FAILS" -gt 0 ]; then
+              TITLE="E2E failures in build #${BUILD_NUMBER}"
+              BODY="Build: ${BUILD_URL}\\nCommit: ${GIT_COMMIT}\\nBranch: ${BRANCH_NAME}\\n\\nOne or more Cypress specs failed. See Allure + JUnit artifacts in this build."
+
+              curl -s \
+                -H "Authorization: token ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -d "{\"title\":\"${TITLE}\",\"body\":\"${BODY}\",\"labels\":[\"bug\",\"e2e\"]}" \
+                https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues \
+                >/dev/null || true
+            else
+              echo "No JUnit failures found; skipping issue creation."
+            fi
+          '''
         }
       }
     }
@@ -86,7 +121,8 @@ pipeline {
         ${CYPRESS_WORKDIR}/cypress/videos/**,
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
-        ${CYPRESS_WORKDIR}/allure-report/**
+        ${CYPRESS_WORKDIR}/allure-report/**,
+        ${JUNIT_DIR}/**
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
     }
