@@ -58,7 +58,7 @@ pipeline {
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
                   --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
-                  --spec cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js
+                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
             '''
           }
         }
@@ -77,7 +77,7 @@ pipeline {
     }
 
     stage('Create GitHub ticket for failures') {
-      when { expression { currentBuild.currentResult == 'UNSTABLE' } }
+      when { expression { currentBuild.currentResult == 'UNSTABLE' || currentBuild.currentResult == 'FAILURE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
@@ -86,56 +86,56 @@ pipeline {
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              SUMMARY="$FAIL_DIR/summary.txt"
-              SPEC="unknown"
-              TEST_NAME="Unknown test"
-              MSG="none"
+              curl -fsSL "${BUILD_URL}consoleText" -o console-full.txt || echo "Unable to fetch consoleText" > console-full.txt
 
-              if [ -s "$SUMMARY" ]; then
-                LINE="$(head -1 "$SUMMARY")"
-                SPEC="$(printf "%s" "$LINE" | awk -F'|' '{print $1}' | sed 's/^ *//; s/ *$//')"
-                TEST_NAME="$(printf "%s" "$LINE" | awk -F'|' '{print $2}' | sed 's/^ *//; s/ *$//')"
-                MSG="$(printf "%s" "$LINE" | awk -F'|' '{print $3}' | sed 's/^ *//; s/ *$//')"
-              else
-                FAIL_XML="$(grep -Rsl "<failure" "$JUNIT_DIR" 2>/dev/null | head -1 || true)"
-                if [ -n "${FAIL_XML:-}" ]; then
-                  ONE="$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')"
-                  SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                  [ -n "${SPEC}" ] || SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                  [ -n "${SPEC}" ] || SPEC="unknown"
-                  TEST_NAME="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                  [ -n "${TEST_NAME}" ] || TEST_NAME="Unknown test"
-                  MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                  if [ -z "$MSG" ]; then
-                    MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*>\\([^<]*\\)<\\/failure>.*/\\1/p' | head -1 || true)"
-                  fi
-                  [ -n "$MSG" ] || MSG="(no message in JUnit)"
-                fi
+              awk '/\\(Run Starting\\)/, /\\(Run Finished\\)/' console-full.txt > cypress-log.txt || true
+
+              if [ ! -s cypress-log.txt ]; then
+                echo "Cypress section not found; including last 2000 lines of console." > cypress-log.txt
+                echo >> cypress-log.txt
+                tail -n 2000 console-full.txt >> cypress-log.txt || true
               fi
 
-              TITLE="E2E fail: ${SPEC} — ${TEST_NAME}"
-              BODY="Build: ${BUILD_URL}\\nSpec: ${SPEC}\\nTest: ${TEST_NAME}\\n\\nFailure:\\n${MSG}"
+              tail -n 2000 cypress-log.txt > cypress-log-last-2000.txt || cp cypress-log.txt cypress-log-last-2000.txt
 
+              TITLE="Cypress failures in build #${BUILD_NUMBER}"
+              PREFIX="Build: ${BUILD_URL}\\n\\nCypress log:\\n\\n```\\n"
+              SUFFIX="\\n```"
+
+              FULL_ESC="$(sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g' cypress-log.txt)"
               TITLE_ESC="$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
-              BODY_ESC="$(printf "%s" "$BODY" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
+              BODY_ESC="$(printf "%s%s%s" "$PREFIX" "$FULL_ESC" "$SUFFIX")"
 
-              JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
+              printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC" > payload.json
 
               echo "Posting issue to ${OWNER}/${REPO} …"
               HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
                 -H "Authorization: token ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
-                --data-binary "$JSON_PAYLOAD" \
+                --data-binary @payload.json \
                 "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
               echo "GitHub API HTTP status: $HTTP"
-              if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
-                ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
-                echo "Created issue: ${ISSUE_URL:-<no url found>}"
-              else
-                echo "Create issue failed; response follows:"
-                sed -n '1,200p' resp.json || true
-                exit 1
+
+              if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
+                echo "Body too large or failed; falling back to last 2000 lines of Cypress log…"
+                LAST_ESC="$(sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g' cypress-log-last-2000.txt)"
+                BODY_ESC="$(printf "%s%s%s" "$PREFIX" "$LAST_ESC" "$SUFFIX")"
+                printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC" > payload-small.json
+                HTTP2="$(curl -sS -o resp.json -w '%{http_code}' \
+                  -H "Authorization: token ${GH_TOKEN}" \
+                  -H "Accept: application/vnd.github+json" \
+                  --data-binary @payload-small.json \
+                  "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
+                echo "GitHub API HTTP status (fallback): $HTTP2"
+                if [ "$HTTP2" -lt 200 ] || [ "$HTTP2" -ge 300 ]; then
+                  echo "Create issue failed; response follows:"
+                  sed -n '1,200p' resp.json || true
+                  exit 1
+                fi
               fi
+
+              ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
+              echo "Created issue: ${ISSUE_URL:-<no url found>}"
             '''
           }
         }
@@ -162,8 +162,13 @@ pipeline {
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
         ${CYPRESS_WORKDIR}/allure-report/**,
-        ${JUNIT_DIR}/**
-        ${FAIL_DIR}/**
+        ${JUNIT_DIR}/**,
+        ${FAIL_DIR}/**,
+        console-full.txt,
+        cypress-log.txt,
+        cypress-log-last-2000.txt,
+        payload.json,
+        payload-small.json
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
     }
