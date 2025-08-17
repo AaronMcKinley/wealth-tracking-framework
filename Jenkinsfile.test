@@ -48,7 +48,7 @@ pipeline {
               -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
               -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
               $CYPRESS_IMAGE \
-              cypress run --e2e --browser chrome --headless --spec "cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
+              cypress run --e2e --browser chrome --headless --spec "cypress/e2e/infra/robots.e2e.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
           '''
         }
       }
