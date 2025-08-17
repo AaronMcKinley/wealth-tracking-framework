@@ -75,25 +75,36 @@ pipeline {
       when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
-          sh '''
-            set -eu
-            OWNER="AaronMcKinley"
-            REPO="wealth-tracking-framework"
+          catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+            sh '''
+              set -eu
+              OWNER="AaronMcKinley"
+              REPO="wealth-tracking-framework"
 
-            TITLE="E2E failures in build #${BUILD_NUMBER}"
-            BODY=$(printf 'Build: %s\nCommit: %s\nBranch: %s\n\nSee Allure and artifacts in this build.' "${BUILD_URL}" "${GIT_COMMIT:-unknown}" "${BRANCH_NAME:-unknown}" | sed 's/"/\\"/g')
+              TITLE="E2E failures in build #${BUILD_NUMBER}"
+              BODY="Build: ${BUILD_URL}\nCommit: ${GIT_COMMIT:-unknown}\nBranch: ${BRANCH_NAME:-unknown}\n\nSee Allure and artifacts in this build."
 
-            echo "Creating GitHub issue in ${OWNER}/${REPO}…"
-            HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
-              -H "Authorization: token ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -d "{\"title\":\"${TITLE}\",\"body\":\"${BODY}\",\"labels\":[\"bug\",\"e2e\"]}" \
-              "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
+              BODY_ESCAPED=$(printf "%s" "$BODY" | sed ':a;N;$!ba; s/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g')
+              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE" "$BODY_ESCAPED")
 
-            echo "GitHub API HTTP status: $HTTP"
-            ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
-            [ -n "$ISSUE_URL" ] && echo "Created issue: ${ISSUE_URL}" || { echo "No issue URL found; response:"; sed -n '1,120p' resp.json; }
-          '''
+              echo "Posting issue to ${OWNER}/${REPO} …"
+              HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
+                -H "Authorization: token ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                --data-binary "$JSON_PAYLOAD" \
+                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
+
+              echo "GitHub API HTTP status: $HTTP"
+              if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
+                ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
+                echo "Created issue: ${ISSUE_URL:-<no url found>}"
+              else
+                echo "Create issue failed; response follows:"
+                sed -n '1,200p' resp.json || true
+                exit 1
+              fi
+            '''
+          }
         }
       }
     }
