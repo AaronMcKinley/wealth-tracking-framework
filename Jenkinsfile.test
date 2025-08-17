@@ -73,53 +73,59 @@ pipeline {
       }
     }
 
-    stage('Create GitHub ticket') {
-      when { expression { currentBuild.currentResult == 'UNSTABLE' } }
+    stage('Create ticket on failure') {
+      when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
-            set -eu
+            set -euo pipefail
             OWNER="AaronMcKinley"
             REPO="wealth-tracking-framework"
-
-            BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)}"
-            SHORT_SHA="${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
-
-            ALLURE_URL="${BUILD_URL}allure"
-            VIDEOS_URL="${BUILD_URL}artifact/${CYPRESS_WORKDIR}/cypress/videos/"
-            SCREENSHOTS_URL="${BUILD_URL}artifact/${CYPRESS_WORKDIR}/cypress/screenshots/"
-            JUNIT_URL="${BUILD_URL}artifact/${JUNIT_DIR}/"
-            LOG_URL="${BUILD_URL}artifact/${FAIL_DIR}/cypress-run.log"
-
-            FAIL_COUNT="$(grep -Rsl "<failure" "$JUNIT_DIR" 2>/dev/null | wc -l || true)"
-
-            SNIP=""
-            if [ -f "$FAIL_DIR/cypress-run.log" ]; then
-              SNIP="$(tail -n 200 "$FAIL_DIR/cypress-run.log" || true)"
+            JUNIT_DIR="wtf-cypress/cypress/results/junit"
+            LOG_FILE="wtf-cypress/cypress/results/failures/cypress-run.log"
+            BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD || echo detached)}"
+            SHA="$(git rev-parse --short=8 HEAD || echo unknown)"
+            FAIL_COUNT=$(grep -Rho "<failure" "${JUNIT_DIR}"/*.xml 2>/dev/null | wc -l || true)
+            if [ "${FAIL_COUNT}" -eq 0 ]; then
+              echo "No JUnit <failure> elements found; skipping ticket."
+              exit 0
             fi
-
-            TITLE="E2E failure on ${BRANCH} (#${BUILD_NUMBER})"
-            BODY="Build: ${BUILD_URL}\nBranch: ${BRANCH}\nCommit: ${SHORT_SHA}\n\nAllure: ${ALLURE_URL}\nVideos: ${VIDEOS_URL}\nScreenshots: ${SCREENSHOTS_URL}\nJUnit: ${JUNIT_URL}\nLog: ${LOG_URL}\n\nFailed test files detected: ${FAIL_COUNT}\n\nCypress tail (last 200 lines):\n```\n${SNIP}\n```"
-            [ -n "${GH_MENTION:-}" ] && BODY="${BODY}\n\n/cc @${GH_MENTION}"
-
-            TITLE_ESC="$(printf "%s" "$TITLE" | tr '\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
-            BODY_ESC="$(printf "%s" "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
-            JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
-
-            HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
+            mkdir -p tmp
+            BODY_FILE="tmp/issue.md"
+            {
+              echo "### Cypress failures in build #${BUILD_NUMBER} (${BRANCH})"
+              echo
+              echo "**Commit:** ${SHA}"
+              echo "**Detected failures (JUnit):** ${FAIL_COUNT}"
+              echo
+              echo "**Links**"
+              echo "- Build: ${BUILD_URL}"
+              echo "- Videos: ${BUILD_URL}artifact/wtf-cypress/cypress/videos/"
+              echo "- Screenshots: ${BUILD_URL}artifact/wtf-cypress/cypress/screenshots/"
+              echo "- JUnit XMLs: ${BUILD_URL}artifact/${JUNIT_DIR}/"
+              echo "- Cypress log: ${BUILD_URL}artifact/${LOG_FILE}"
+            } > "${BODY_FILE}"
+            if [ -f "${LOG_FILE}" ]; then
+              tail -n 50 "${LOG_FILE}" | sed -r "s/\\x1B\\[[0-9;]*[mK]//g" > tmp/log_snip.txt || true
+              {
+                echo
+                echo "<details><summary>Last 50 lines of cypress-run.log</summary>"
+                echo
+                echo '```text'
+                cat tmp/log_snip.txt
+                echo '```'
+                echo "</details>"
+              } >> "${BODY_FILE}"
+            fi
+            BODY_JSON=$(node -e "const fs=require('fs');process.stdout.write(JSON.stringify(fs.readFileSync(process.argv[1],'utf8')))" "${BODY_FILE}")
+            TITLE="Cypress failures: build #${BUILD_NUMBER} on ${BRANCH}"
+            curl -sS \
               -H "Authorization: token ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
-              --data-binary "$JSON_PAYLOAD" \
-              "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
-            echo "GitHub API HTTP status: $HTTP"
-            if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
-              ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
-              echo "Created issue: ${ISSUE_URL:-<no url found>}"
-            else
-              echo "Create issue failed; response follows:"
-              sed -n '1,200p' resp.json || true
-              exit 1
-            fi
+              -H "Content-Type: application/json" \
+              --data "{\"title\": \"${TITLE}\", \"body\": ${BODY_JSON}}" \
+              "https://api.github.com/repos/${OWNER}/${REPO}/issues" >/dev/null
+            echo "Created GitHub issue for ${FAIL_COUNT} failures."
           '''
         }
       }
