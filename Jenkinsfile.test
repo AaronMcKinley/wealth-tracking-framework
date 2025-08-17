@@ -11,12 +11,14 @@ pipeline {
     REPORT_NAME      = "E2E Tests"
     CYPRESS_WORKDIR  = "wtf-cypress"
     CYPRESS_IMAGE    = "custom-cypress:13.11"
-    JUNIT_DIR        = "${CYPRESS_WORKDIR}/cypress/results/junit"
+    JUNIT_DIR        = "wtf-cypress/cypress/results/junit"
   }
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build Cypress Docker Image') {
@@ -35,7 +37,7 @@ pipeline {
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
-                       "$WORKSPACE/$JUNIT_DIR"
+                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit"
 
               docker run --rm \
                 --shm-size=1g \
@@ -48,11 +50,11 @@ pipeline {
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/allure-results:/allure-results" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
-                -v "$WORKSPACE/$JUNIT_DIR:/app/cypress/results/junit" \
+                -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit:/app/cypress/results/junit" \
                 $CYPRESS_IMAGE \
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
-                  --reporter-options "mochaFile=cypress/results/junit/results-[hash].xml,toConsole=false" \
+                  --reporter-options mochaFile=cypress/results/junit/results-[hash].xml,toConsole=false \
                   --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
             '''
           }
@@ -71,7 +73,7 @@ pipeline {
       }
     }
 
-    stage('Create GitHub Issue on UNSTABLE') {
+    stage('Create GitHub ticket for failures') {
       when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
@@ -81,29 +83,43 @@ pipeline {
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              FAIL_XML=$(grep -Rl "<failure" "${JUNIT_DIR}" || true | head -1)
-
-              SPEC=""
-              TEST_NAME=""
-              MSG=""
-              SUITE_NAME=""
-
-              if [ -n "${FAIL_XML}" ] && [ -f "${FAIL_XML}" ]; then
-                SPEC=$(sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*<failure.*/\\1/p' "${FAIL_XML}" | head -1 || true)
-                TEST_NAME=$(sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*<failure.*/\\1/p' "${FAIL_XML}" | head -1 || true)
-                MSG=$(sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' "${FAIL_XML}" | head -1 || true)
-                SUITE_NAME=$(sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' "${FAIL_XML}" | head -1 || true)
+              FAIL_XML=""
+              if ls "${JUNIT_DIR}"/*.xml >/dev/null 2>&1; then
+                FAIL_XML=$(grep -Rl '<failure' "${JUNIT_DIR}" || true | head -1)
+                if [ -z "${FAIL_XML}" ]; then
+                  FAIL_XML=$(grep -Rl 'failures="[1-9][0-9]*"' "${JUNIT_DIR}" || true | head -1)
+                fi
+                if [ -z "${FAIL_XML}" ]; then
+                  FAIL_XML=$(ls -t "${JUNIT_DIR}"/*.xml 2>/dev/null | head -1 || true)
+                fi
               fi
 
-              [ -z "$SPEC" ] && SPEC="$SUITE_NAME"
-              SHORT_SPEC=$(basename "${SPEC:-unknown}" 2>/dev/null || echo "${SPEC:-unknown}")
+              SPEC="unknown"
+              TEST_NAME="Unknown test"
+              MSG="none"
 
-              TITLE_BASE="E2E fail: ${SHORT_SPEC:-unknown} — ${TEST_NAME:-Unknown test}"
-              BODY="Build: ${BUILD_URL} | Spec: ${SPEC:-unknown} | Test: ${TEST_NAME:-unknown} | Message: ${MSG:-none}"
+              if [ -n "${FAIL_XML}" ] && [ -f "${FAIL_XML}" ]; then
+                echo "Parsing JUnit: ${FAIL_XML}"
+                ONE=$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')
+
+                TEST_NAME=$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*<failure[^>]*>.*/\\1/p' | head -1 || true)
+                CLASS=$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*<failure[^>]*>.*/\\1/p' | head -1 || true)
+                SUITE=$(printf "%s" "$ONE" | sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)
+                MSG=$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' | head -1 || true)
+
+                [ -n "${CLASS:-}" ] && SPEC="$CLASS" || SPEC="${SUITE:-unknown}"
+                [ -n "${TEST_NAME:-}" ] || TEST_NAME="Unknown test"
+                [ -n "${MSG:-}" ] || MSG="none"
+              else
+                echo "No JUnit XML found or no failures detected."
+              fi
+
+              SHORT_SPEC=$(basename "${SPEC:-unknown}" 2>/dev/null || echo "${SPEC:-unknown}")
+              TITLE_BASE="E2E fail: ${SHORT_SPEC} — ${TEST_NAME}"
+              BODY="Build: ${BUILD_URL} | Spec: ${SPEC} | Test: ${TEST_NAME} | Message: ${MSG}"
 
               TITLE_ESC=$(printf "%s" "$TITLE_BASE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
               BODY_ESC=$(printf "%s" "$BODY" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
-
               JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")
 
               echo "Posting issue to ${OWNER}/${REPO} …"
@@ -147,6 +163,7 @@ pipeline {
         ${CYPRESS_WORKDIR}/cypress/videos/**,
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
+        ${CYPRESS_WORKDIR}/allure-report/**,
         ${JUNIT_DIR}/**
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
