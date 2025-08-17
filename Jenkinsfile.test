@@ -33,18 +33,22 @@ pipeline {
         ansiColor('xterm') {
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
+              set -e
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
                        "$WORKSPACE/$JUNIT_DIR"
-
               rm -rf "$WORKSPACE/$FAIL_DIR"
               mkdir -p "$WORKSPACE/$FAIL_DIR"
 
-              docker run --rm \
+              CID="cypress_run_${BUILD_NUMBER}"
+              docker rm -f "$CID" >/dev/null 2>&1 || true
+
+              docker run \
+                --name "$CID" \
                 --shm-size=1g \
                 -e XDG_RUNTIME_DIR=/tmp \
-                -u $(id -u):$(id -g) \
+                -u 0:0 \
                 -e FORCE_COLOR=1 \
                 -e CYPRESS_allure=true \
                 -e CYPRESS_allureResultsPath=/allure-results \
@@ -53,12 +57,22 @@ pipeline {
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
                 -v "$WORKSPACE/$JUNIT_DIR:/app/$JUNIT_DIR" \
-                -v "$WORKSPACE/$FAIL_DIR:/app/$FAIL_DIR" \
-                $CYPRESS_IMAGE \
+                ${CYPRESS_IMAGE} \
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
                   --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
-                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
+                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js" || true
+
+              EXIT="$(docker wait "$CID" || true)"
+              docker logs "$CID" > "$WORKSPACE/cypress-run.log" 2>&1 || true
+
+              awk '/\\(Run Starting\\)/, /\\(Run Finished\\)/' "$WORKSPACE/cypress-run.log" > "$WORKSPACE/cypress-log-snippet.txt" || true
+              if [ ! -s "$WORKSPACE/cypress-log-snippet.txt" ]; then
+                tail -n 2000 "$WORKSPACE/cypress-run.log" > "$WORKSPACE/cypress-log-snippet.txt" || true
+              fi
+
+              docker rm "$CID" >/dev/null 2>&1 || true
+              [ "$EXIT" = "0" ]
             '''
           }
         }
@@ -86,25 +100,16 @@ pipeline {
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              curl -fsSL "${BUILD_URL}consoleText" -o console-full.txt || echo "Unable to fetch consoleText" > console-full.txt
-
-              awk '/\\(Run Starting\\)/, /\\(Run Finished\\)/' console-full.txt > cypress-log.txt || true
-
-              if [ ! -s cypress-log.txt ]; then
-                echo "Cypress section not found; including last 2000 lines of console." > cypress-log.txt
-                echo >> cypress-log.txt
-                tail -n 2000 console-full.txt >> cypress-log.txt || true
+              LOG_SNIP="$WORKSPACE/cypress-log-snippet.txt"
+              if [ ! -s "$LOG_SNIP" ]; then
+                echo "No Cypress log snippet found." > "$LOG_SNIP"
               fi
 
-              tail -n 2000 cypress-log.txt > cypress-log-last-2000.txt || cp cypress-log.txt cypress-log-last-2000.txt
-
               TITLE="Cypress failures in build #${BUILD_NUMBER}"
-              PREFIX="Build: ${BUILD_URL}\\n\\nCypress log:\\n\\n```\\n"
-              SUFFIX="\\n```"
+              BODY="$(printf 'Build: %s\\n\\nCypress log:\\n\\n```\\n%s\\n```' "${BUILD_URL}" "$(sed 's/\\r//g' "$LOG_SNIP")")"
 
-              FULL_ESC="$(sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g' cypress-log.txt)"
-              TITLE_ESC="$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
-              BODY_ESC="$(printf "%s%s%s" "$PREFIX" "$FULL_ESC" "$SUFFIX")"
+              TITLE_ESC="$(printf '%s' "$TITLE" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
+              BODY_ESC="$(printf '%s' "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; :a;N;$!ba; s/\\n/\\\\n/g')"
 
               printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC" > payload.json
 
@@ -117,21 +122,9 @@ pipeline {
               echo "GitHub API HTTP status: $HTTP"
 
               if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
-                echo "Body too large or failed; falling back to last 2000 lines of Cypress log…"
-                LAST_ESC="$(sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g' cypress-log-last-2000.txt)"
-                BODY_ESC="$(printf "%s%s%s" "$PREFIX" "$LAST_ESC" "$SUFFIX")"
-                printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC" > payload-small.json
-                HTTP2="$(curl -sS -o resp.json -w '%{http_code}' \
-                  -H "Authorization: token ${GH_TOKEN}" \
-                  -H "Accept: application/vnd.github+json" \
-                  --data-binary @payload-small.json \
-                  "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
-                echo "GitHub API HTTP status (fallback): $HTTP2"
-                if [ "$HTTP2" -lt 200 ] || [ "$HTTP2" -ge 300 ]; then
-                  echo "Create issue failed; response follows:"
-                  sed -n '1,200p' resp.json || true
-                  exit 1
-                fi
+                echo "Create issue failed; response follows:"
+                sed -n '1,200p' resp.json || true
+                exit 1
               fi
 
               ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
@@ -164,11 +157,10 @@ pipeline {
         ${CYPRESS_WORKDIR}/allure-report/**,
         ${JUNIT_DIR}/**,
         ${FAIL_DIR}/**,
-        console-full.txt,
-        cypress-log.txt,
-        cypress-log-last-2000.txt,
+        cypress-run.log,
+        cypress-log-snippet.txt,
         payload.json,
-        payload-small.json
+        resp.json
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
     }
