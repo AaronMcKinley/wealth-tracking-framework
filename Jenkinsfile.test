@@ -11,12 +11,13 @@ pipeline {
     REPORT_NAME      = "E2E Tests"
     CYPRESS_WORKDIR  = "wtf-cypress"
     CYPRESS_IMAGE    = "custom-cypress:13.11"
-    JUNIT_DIR        = "wtf-cypress/cypress/results/junit"
   }
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build Cypress Docker Image') {
@@ -30,38 +31,30 @@ pipeline {
     stage('Run Cypress E2E Tests') {
       steps {
         ansiColor('xterm') {
-          catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+          catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
             sh '''
-              set -eu
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
-                       "$WORKSPACE/$JUNIT_DIR"
+                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit"
 
-              LOG="$WORKSPACE/$CYPRESS_WORKDIR/cypress_run.log"
-              TMP_RC="$(mktemp)"
-
-              (
-                docker run --shm-size=1g \
-                  -e XDG_RUNTIME_DIR=/tmp \
-                  -u $(id -u):$(id -g) \
-                  -e FORCE_COLOR=1 \
-                  -e CYPRESS_allure=true \
-                  -e CYPRESS_allureResultsPath=/allure-results \
-                  -e CYPRESS_baseUrl=$CYPRESS_BASE_URL \
-                  -v "$WORKSPACE/$CYPRESS_WORKDIR/allure-results:/allure-results" \
-                  -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
-                  -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
-                  -v "$WORKSPACE/$JUNIT_DIR:/app/$JUNIT_DIR" \
-                  $CYPRESS_IMAGE \
-                  cypress run --e2e --browser chrome --headless \
-                    --reporter junit \
-                    --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
-                    --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
-                echo $? > "$TMP_RC"
-              ) 2>&1 | tee "$LOG"
-
-              exit $(cat "$TMP_RC")
+              docker run --rm \
+                --shm-size=1g \
+                -e XDG_RUNTIME_DIR=/tmp \
+                -u $(id -u):$(id -g) \
+                -e FORCE_COLOR=1 \
+                -e CYPRESS_allure=true \
+                -e CYPRESS_allureResultsPath=/allure-results \
+                -e CYPRESS_baseUrl=$CYPRESS_BASE_URL \
+                -v "$WORKSPACE/$CYPRESS_WORKDIR/allure-results:/allure-results" \
+                -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
+                -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
+                -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit:/app/cypress/results/junit" \
+                $CYPRESS_IMAGE \
+                cypress run --e2e --browser chrome --headless \
+                  --reporter junit \
+                  --reporter-options mochaFile=cypress/results/junit/results-[hash].xml,toConsole=false \
+                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
             '''
           }
         }
@@ -79,78 +72,47 @@ pipeline {
       }
     }
 
-    stage('Create GitHub ticket for failures') {
-      when { expression { currentBuild.currentResult == 'UNSTABLE' } }
+    stage('Create ticket for failures') {
+      when {
+        anyOf {
+          expression { currentBuild.currentResult == 'UNSTABLE' }
+          expression { currentBuild.currentResult == 'FAILURE' }
+        }
+      }
       steps {
-        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
-          catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+        withCredentials([string(credentialsId: 'gh-wtf-token', variable: 'GH_TOKEN')]) {
+          catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
             sh '''
               set -eu
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              SPEC="unknown"
-              TEST_NAME="Unknown test"
-              MSG="none"
+              CONSOLE_URL="${BUILD_URL}consoleText"
+              echo "Fetching full Jenkins console from: ${CONSOLE_URL}"
+              curl -fsSL "${CONSOLE_URL}" -o console.txt
 
-              LOG="$WORKSPACE/$CYPRESS_WORKDIR/cypress_run.log"
+              TITLE="E2E failures in build #${BUILD_NUMBER}"
+              BODY="Build: ${BUILD_URL}\n\nFull Jenkins console output:\n\n```\\n$(cat console.txt)\\n```"
 
-              if [ -f "$LOG" ]; then
-                SHOT_PATH="$(sed -nE 's#.*(cypress/screenshots/.+\\.png).*#\\1#p' "$LOG" | head -1 || true)"
-                if [ -n "${SHOT_PATH:-}" ]; then
-                  SPEC="$(printf "%s" "$SHOT_PATH" | sed -E 's#cypress/screenshots/([^/]+)/.*#\\1#')"
-                  BASE="$(basename "$SHOT_PATH")"
-                  NAME="${BASE%.png}"
-                  NAME="$(printf "%s" "$NAME" | sed -E 's/ \\((failed|attempt [0-9]+)\\)//g')"
-                  TEST_NAME="$NAME"
-                  MSG="See CLI screenshot path: $SHOT_PATH"
-                fi
-              fi
+              TITLE_ESC=$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
+              BODY_ESC=$(printf "%s" "$BODY" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
 
-              if [ "$SPEC" = "unknown" ] || [ "$TEST_NAME" = "Unknown test" ]; then
-                if ls "$JUNIT_DIR"/*.xml >/dev/null 2>&1; then
-                  FAIL_XML="$(ls -t "$JUNIT_DIR"/*.xml | head -1 || true)"
-                  if [ -n "${FAIL_XML:-}" ]; then
-                    ONE="$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')"
-                    SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                    [ -n "${SPEC}" ] || SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                    [ -n "${SPEC}" ] || SPEC="unknown"
-                    TEST_NAME="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                    [ -n "${TEST_NAME}" ] || TEST_NAME="Unknown test"
-                    MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
-                    if [ -z "$MSG" ]; then
-                      MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*>\\([^<]*\\)<\\/failure>.*/\\1/p' | head -1 || true)"
-                    fi
-                    [ -n "$MSG" ] || MSG="(no message in JUnit)"
-                  fi
-                fi
-              fi
-
-              TITLE="E2E fail: ${SPEC} — ${TEST_NAME}"
-              BODY="Build: ${BUILD_URL}\\nSpec: ${SPEC}\\nTest: ${TEST_NAME}\\n\\nFailure:\\n${MSG}"
-
-              echo "Issue title: $TITLE"
-              echo "Issue body (first line): $(printf "%s" "$BODY" | head -1)"
-
-              TITLE_ESC="$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
-              BODY_ESC="$(printf "%s" "$BODY" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
-              JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
+              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")
 
               echo "Posting issue to ${OWNER}/${REPO} …"
-              HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
+              HTTP=$(curl -sS -o resp.json -w "%{http_code}" \
                 -H "Authorization: token ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
                 --data-binary "$JSON_PAYLOAD" \
-                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
-              echo "GitHub API HTTP status: $HTTP"
+                "https://api.github.com/repos/${OWNER}/${REPO}/issues")
 
+              echo "GitHub API HTTP status: $HTTP"
               if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
-                ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
-                echo "Created issue: ${ISSUE_URL:-<no url found>}"
+                ISSUE_URL=$(grep -o '"html_url":[[:space:]]*"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
+                [ -n "$ISSUE_URL" ] && echo "Created issue: $ISSUE_URL" || echo "Created issue, but couldn't parse URL"
               else
-                echo "Create issue failed; response follows:"
-                sed -n '1,200p' resp.json || true
-                exit 1
+                echo "Failed to create issue; response follows:"
+                head -120 resp.json || true
               fi
             '''
           }
@@ -177,9 +139,7 @@ pipeline {
         ${CYPRESS_WORKDIR}/cypress/videos/**,
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
-        ${CYPRESS_WORKDIR}/allure-report/**,
-        ${JUNIT_DIR}/**,
-        ${CYPRESS_WORKDIR}/cypress_run.log
+        ${CYPRESS_WORKDIR}/allure-report/**
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
     }
