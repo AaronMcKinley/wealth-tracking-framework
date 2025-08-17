@@ -17,7 +17,9 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build Cypress Docker Image') {
@@ -33,7 +35,7 @@ pipeline {
         ansiColor('xterm') {
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
-              set -e
+              set -eu
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
@@ -41,14 +43,10 @@ pipeline {
               rm -rf "$WORKSPACE/$FAIL_DIR"
               mkdir -p "$WORKSPACE/$FAIL_DIR"
 
-              CID="cypress_run_${BUILD_NUMBER}"
-              docker rm -f "$CID" >/dev/null 2>&1 || true
-
-              docker run \
-                --name "$CID" \
+              docker run --rm \
                 --shm-size=1g \
                 -e XDG_RUNTIME_DIR=/tmp \
-                -u 0:0 \
+                -u $(id -u):$(id -g) \
                 -e FORCE_COLOR=1 \
                 -e CYPRESS_allure=true \
                 -e CYPRESS_allureResultsPath=/allure-results \
@@ -57,22 +55,12 @@ pipeline {
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
                 -v "$WORKSPACE/$JUNIT_DIR:/app/$JUNIT_DIR" \
-                ${CYPRESS_IMAGE} \
+                -v "$WORKSPACE/$FAIL_DIR:/app/$FAIL_DIR" \
+                $CYPRESS_IMAGE \
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
                   --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
-                  --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js" || true
-
-              EXIT="$(docker wait "$CID" || true)"
-              docker logs "$CID" > "$WORKSPACE/cypress-run.log" 2>&1 || true
-
-              awk '/\\(Run Starting\\)/, /\\(Run Finished\\)/' "$WORKSPACE/cypress-run.log" > "$WORKSPACE/cypress-log-snippet.txt" || true
-              if [ ! -s "$WORKSPACE/cypress-log-snippet.txt" ]; then
-                tail -n 2000 "$WORKSPACE/cypress-run.log" > "$WORKSPACE/cypress-log-snippet.txt" || true
-              fi
-
-              docker rm "$CID" >/dev/null 2>&1 || true
-              [ "$EXIT" = "0" ]
+                  --spec cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js
             '''
           }
         }
@@ -90,47 +78,103 @@ pipeline {
       }
     }
 
-    stage('Create GitHub ticket for failures') {
-      when { expression { currentBuild.currentResult == 'UNSTABLE' || currentBuild.currentResult == 'FAILURE' } }
+    stage('Create GitHub ticket from console logs') {
+      when {
+        expression { currentBuild.currentResult == 'UNSTABLE' }
+      }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
-              set -eu
+              set -Eeuo pipefail
+
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              LOG_SNIP="$WORKSPACE/cypress-log-snippet.txt"
-              if [ ! -s "$LOG_SNIP" ]; then
-                echo "No Cypress log snippet found." > "$LOG_SNIP"
+              mkdir -p "$FAIL_DIR"
+
+              LOG_PATH="$FAIL_DIR/cypress-ansi.log"
+              ARTIFACT_REL_PATH="$LOG_PATH"
+              ISSUE_LABELS="bug,e2e"
+              MAX_LINES="${MAX_LINES:-800}"
+
+              if curl -fsSL "${BUILD_URL}consoleText" -o "$FAIL_DIR/console.txt"; then
+                :
+              else
+                echo "WARN: could not fetch consoleText; continuing with placeholder."
               fi
 
-              TITLE="Cypress failures in build #${BUILD_NUMBER}"
-              BODY="$(printf 'Build: %s\\n\\nCypress log:\\n\\n```\\n%s\\n```' "${BUILD_URL}" "$(sed 's/\\r//g' "$LOG_SNIP")")"
+              if [[ -s "$FAIL_DIR/console.txt" ]]; then
+                awk '
+                  /\(Run Starting\)/ { inblk=1; buf=""; }
+                  { if (inblk) buf = buf $0 ORS; }
+                  /\(Run Finished\)/ { if (inblk) { last=buf; inblk=0; } }
+                  END { if (last) printf "%s", last; }
+                ' "$FAIL_DIR/console.txt" > "$LOG_PATH" || true
+              fi
 
-              TITLE_ESC="$(printf '%s' "$TITLE" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
-              BODY_ESC="$(printf '%s' "$BODY"  | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; :a;N;$!ba; s/\\n/\\\\n/g')"
+              if [[ ! -s "$LOG_PATH" ]]; then
+                if [[ -s "$FAIL_DIR/console.txt" ]]; then
+                  mv "$FAIL_DIR/console.txt" "$LOG_PATH"
+                else
+                  echo "No consoleText available at ${BUILD_URL}consoleText" > "$LOG_PATH"
+                fi
+              fi
 
-              printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC" > payload.json
+              FAILED=0
+              if grep -Eq '(^|[[:space:]])Failing:[[:space:]]+[1-9]' "$LOG_PATH" \
+                 || grep -Eq '([1-9][0-9]*)[[:space:]]+of[[:space:]]+[0-9]+[[:space:]]+failed' "$LOG_PATH"; then
+                FAILED=1
+              fi
 
-              echo "Posting issue to ${OWNER}/${REPO} …"
-              HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
-                -H "Authorization: token ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                --data-binary @payload.json \
-                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
+              TITLE="Cypress result in build #${BUILD_NUMBER} ($( [[ "$FAILED" == "1" ]] && echo FAILED || echo UNSTABLE ))"
+              ARTIFACT_URL="${BUILD_URL}artifact/${ARTIFACT_REL_PATH}"
+              PREVIEW="$(tail -n "$MAX_LINES" "$LOG_PATH" || true)"
+
+              BODY=$(cat <<EOF
+Build: ${BUILD_URL}
+
+Log file (ANSI kept): ${ARTIFACT_URL}
+
+Preview (last ${MAX_LINES} lines):
+
+\`\`\`
+${PREVIEW}
+\`\`\`
+EOF
+)
+
+              HTTP="$(
+                python3 - "$TITLE" "$BODY" "$ISSUE_LABELS" <<'PY' | \
+                curl -sS -o resp.json -w '%{http_code}' \
+                  -H "Authorization: Bearer ${GH_TOKEN}" \
+                  -H "Accept: application/vnd.github+json" \
+                  -d @- "https://api.github.com/repos/${OWNER}/${REPO}/issues"
+import json, sys
+print(json.dumps({
+  "title": sys.argv[1],
+  "body": sys.argv[2],
+  "labels": [s.strip() for s in sys.argv[3].split(",") if s.strip()]
+}))
+PY
+              )"
+
               echo "GitHub API HTTP status: $HTTP"
-
-              if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
+              if [[ "$HTTP" -ge 200 && "$HTTP" -lt 300 ]]; then
+                ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
+                echo "Created issue: ${ISSUE_URL:-<no url found>}"
+              else
                 echo "Create issue failed; response follows:"
                 sed -n '1,200p' resp.json || true
                 exit 1
               fi
-
-              ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
-              echo "Created issue: ${ISSUE_URL:-<no url found>}"
             '''
           }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: "${FAIL_DIR}/cypress-ansi.log", allowEmptyArchive: true
         }
       }
     }
@@ -139,8 +183,8 @@ pipeline {
       steps {
         sh '''
           docker builder prune -af --filter "until=24h" || true
-          docker image prune   -af --filter "until=24h" || true
-          docker container prune -f --filter "until=24h" || true
+          docker image  prune -af --filter "until=24h" || true
+          docker container prune -f  --filter "until=24h" || true
           docker volume prune -f || true
           docker system df || true
         '''
@@ -156,12 +200,11 @@ pipeline {
         ${CYPRESS_WORKDIR}/allure-results/**,
         ${CYPRESS_WORKDIR}/allure-report/**,
         ${JUNIT_DIR}/**,
-        ${FAIL_DIR}/**,
-        cypress-run.log,
-        cypress-log-snippet.txt,
-        payload.json,
-        resp.json
-      """, excludes: '**/node_modules/**', allowEmptyArchive: true
+        ${FAIL_DIR}/**
+      """,
+      excludes: '**/node_modules/**',
+      allowEmptyArchive: true
+
       cleanWs(deleteDirs: true)
     }
   }
