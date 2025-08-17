@@ -12,8 +12,6 @@ pipeline {
     CYPRESS_WORKDIR  = "wtf-cypress"
     CYPRESS_IMAGE    = "custom-cypress:13.11"
     JUNIT_DIR        = "${CYPRESS_WORKDIR}/cypress/results/junit"
-    GITHUB_OWNER     = "AaronMcKinley"
-    GITHUB_REPO      = "wealth-tracking-framework"
   }
 
   stages {
@@ -32,7 +30,6 @@ pipeline {
     stage('Run Cypress E2E Tests') {
       steps {
         ansiColor('xterm') {
-          // Mark UNSTABLE on failure but keep going
           catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
             sh '''
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
@@ -75,28 +72,27 @@ pipeline {
     }
 
     stage('Create GitHub Issue on Failures') {
-      when {
-        expression { currentBuild.currentResult == 'UNSTABLE' }
-      }
+      when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
-            # Count JUnit files with failures > 0
-            FAILS=$(grep -Rho 'failures="[^"]*"' "$JUNIT_DIR" 2>/dev/null | grep -v 'failures="0"' | wc -l || true)
+            set -eu
+            OWNER="AaronMcKinley"
+            REPO="wealth-tracking-framework"
 
-            if [ "$FAILS" -gt 0 ]; then
-              TITLE="E2E failures in build #${BUILD_NUMBER}"
-              BODY="Build: ${BUILD_URL}\\nCommit: ${GIT_COMMIT}\\nBranch: ${BRANCH_NAME}\\n\\nOne or more Cypress specs failed. See Allure + JUnit artifacts in this build."
+            TITLE="E2E failures in build #${BUILD_NUMBER}"
+            BODY=$(printf 'Build: %s\nCommit: %s\nBranch: %s\n\nSee Allure and artifacts in this build.' "${BUILD_URL}" "${GIT_COMMIT:-unknown}" "${BRANCH_NAME:-unknown}" | sed 's/"/\\"/g')
 
-              curl -s \
-                -H "Authorization: token ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                -d "{\"title\":\"${TITLE}\",\"body\":\"${BODY}\",\"labels\":[\"bug\",\"e2e\"]}" \
-                https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues \
-                >/dev/null || true
-            else
-              echo "No JUnit failures found; skipping issue creation."
-            fi
+            echo "Creating GitHub issue in ${OWNER}/${REPO}…"
+            HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -d "{\"title\":\"${TITLE}\",\"body\":\"${BODY}\",\"labels\":[\"bug\",\"e2e\"]}" \
+              "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
+
+            echo "GitHub API HTTP status: $HTTP"
+            ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
+            [ -n "$ISSUE_URL" ] && echo "Created issue: ${ISSUE_URL}" || { echo "No issue URL found; response:"; sed -n '1,120p' resp.json; }
           '''
         }
       }
