@@ -37,7 +37,7 @@ pipeline {
               mkdir -p "$WORKSPACE/$CYPRESS_WORKDIR/allure-results" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots" \
                        "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos" \
-                       "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit"
+                       "$WORKSPACE/$JUNIT_DIR"
 
               docker run --rm \
                 --shm-size=1g \
@@ -50,11 +50,11 @@ pipeline {
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/allure-results:/allure-results" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/screenshots:/app/cypress/screenshots" \
                 -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/videos:/app/cypress/videos" \
-                -v "$WORKSPACE/$CYPRESS_WORKDIR/cypress/results/junit:/app/cypress/results/junit" \
+                -v "$WORKSPACE/$JUNIT_DIR:/app/$JUNIT_DIR" \
                 $CYPRESS_IMAGE \
                 cypress run --e2e --browser chrome --headless \
                   --reporter junit \
-                  --reporter-options mochaFile=cypress/results/junit/results-[hash].xml,toConsole=false \
+                  --reporter-options mochaFile=$JUNIT_DIR/results-[hash].xml,toConsole=false \
                   --spec "cypress/e2e/infra/robots.cy.js,cypress/e2e/signup/signup.cy.js,cypress/e2e/login/login.cy.js,cypress/e2e/addinvestment/addinvestment.cy.js,cypress/e2e/savings/savings.cy.js,cypress/e2e/transactions/transactions.cy.js,cypress/e2e/sidebar/sidebar.cy.js,cypress/e2e/sample.cy.js,cypress/e2e/signup/delete-account.cy.js"
             '''
           }
@@ -83,55 +83,51 @@ pipeline {
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
 
-              FAIL_XML=""
-              if ls "${JUNIT_DIR}"/*.xml >/dev/null 2>&1; then
-                FAIL_XML=$(grep -Rl '<failure' "${JUNIT_DIR}" || true | head -1)
-                if [ -z "${FAIL_XML}" ]; then
-                  FAIL_XML=$(grep -Rl 'failures="[1-9][0-9]*"' "${JUNIT_DIR}" || true | head -1)
-                fi
-                if [ -z "${FAIL_XML}" ]; then
-                  FAIL_XML=$(ls -t "${JUNIT_DIR}"/*.xml 2>/dev/null | head -1 || true)
-                fi
-              fi
-
               SPEC="unknown"
               TEST_NAME="Unknown test"
               MSG="none"
 
-              if [ -n "${FAIL_XML}" ] && [ -f "${FAIL_XML}" ]; then
-                echo "Parsing JUnit: ${FAIL_XML}"
-                ONE=$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')
-
-                TEST_NAME=$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*<failure[^>]*>.*/\\1/p' | head -1 || true)
-                CLASS=$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*<failure[^>]*>.*/\\1/p' | head -1 || true)
-                SUITE=$(printf "%s" "$ONE" | sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)
-                MSG=$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' | head -1 || true)
-
-                [ -n "${CLASS:-}" ] && SPEC="$CLASS" || SPEC="${SUITE:-unknown}"
-                [ -n "${TEST_NAME:-}" ] || TEST_NAME="Unknown test"
-                [ -n "${MSG:-}" ] || MSG="none"
+              SHOT="$(find "$CYPRESS_WORKDIR/cypress/screenshots" -type f -name "*failed*.png" | head -1 || true)"
+              if [ -n "${SHOT:-}" ]; then
+                SPEC="$(printf "%s" "$SHOT" | sed -E 's#.*/cypress/screenshots/(.+\\.cy\\.js)/.*#\\1#' || true)"
+                [ -n "$SPEC" ] || SPEC="unknown"
+                BASE="$(basename "$SHOT")"
+                TEST_NAME="$(printf "%s" "$BASE" | sed -E 's/ \\((failed|attempt [0-9]+)\\)\\.png$//' )"
+                MSG="See failing screenshot: $SHOT"
               else
-                echo "No JUnit XML found or no failures detected."
+                FAIL_XML="$(grep -Rsl "<failure" "$JUNIT_DIR" 2>/dev/null | head -1 || true)"
+                if [ -n "${FAIL_XML:-}" ]; then
+                  ONE="$(tr '\\n' ' ' < "$FAIL_XML" | sed 's/[[:space:]]\\+/ /g; s/>[[:space:]]*</></g')"
+                  SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*classname="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
+                  [ -n "${SPEC}" ] || SPEC="$(printf "%s" "$ONE" | sed -n 's/.*<testsuite[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
+                  [ -n "${SPEC}" ] || SPEC="unknown"
+                  TEST_NAME="$(printf "%s" "$ONE" | sed -n 's/.*<testcase[^>]*name="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
+                  [ -n "${TEST_NAME}" ] || TEST_NAME="Unknown test"
+                  MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*message="\\([^"]*\\)".*/\\1/p' | head -1 || true)"
+                  if [ -z "$MSG" ]; then
+                    MSG="$(printf "%s" "$ONE" | sed -n 's/.*<failure[^>]*>\\([^<]*\\)<\\/failure>.*/\\1/p' | head -1 || true)"
+                  fi
+                  [ -n "$MSG" ] || MSG="(no message in JUnit)"
+                fi
               fi
 
-              SHORT_SPEC=$(basename "${SPEC:-unknown}" 2>/dev/null || echo "${SPEC:-unknown}")
-              TITLE_BASE="E2E fail: ${SHORT_SPEC} — ${TEST_NAME}"
-              BODY="Build: ${BUILD_URL} | Spec: ${SPEC} | Test: ${TEST_NAME} | Message: ${MSG}"
+              TITLE="E2E fail: ${SPEC} — ${TEST_NAME}"
+              BODY="Build: ${BUILD_URL}\\nSpec: ${SPEC}\\nTest: ${TEST_NAME}\\n\\nFailure:\\n${MSG}"
 
-              TITLE_ESC=$(printf "%s" "$TITLE_BASE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
-              BODY_ESC=$(printf "%s" "$BODY" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')
-              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")
+              TITLE_ESC="$(printf "%s" "$TITLE" | tr '\\n' ' ' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g')"
+              BODY_ESC="$(printf "%s" "$BODY" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\\\"/g; s/\\r//g; :a;N;$!ba; s/\\n/\\\\n/g')"
+
+              JSON_PAYLOAD="$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE_ESC" "$BODY_ESC")"
 
               echo "Posting issue to ${OWNER}/${REPO} …"
-              HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
+              HTTP="$(curl -sS -o resp.json -w '%{http_code}' \
                 -H "Authorization: token ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
                 --data-binary "$JSON_PAYLOAD" \
-                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
-
+                "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)"
               echo "GitHub API HTTP status: $HTTP"
               if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
-                ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
+                ISSUE_URL="$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)"
                 echo "Created issue: ${ISSUE_URL:-<no url found>}"
               else
                 echo "Create issue failed; response follows:"
