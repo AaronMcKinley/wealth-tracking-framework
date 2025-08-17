@@ -74,63 +74,65 @@ pipeline {
     }
 
     stage('Create ticket on failure') {
-     when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
-     steps {
-       withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
-         script {
-           def owner  = 'AaronMcKinley'
-           def repo   = 'wealth-tracking-framework'
-           def sha    = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
-           def branch = env.BRANCH_NAME ?: 'detached'
-           def build  = env.BUILD_URL
+      when { expression { currentBuild.currentResult in ['UNSTABLE','FAILURE'] } }
+      steps {
+        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
+          script {
+            def owner  = 'AaronMcKinley'
+            def repo   = 'wealth-tracking-framework'
+            def sha    = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
+            def branch = env.BRANCH_NAME ?: 'detached'
+            def build  = env.BUILD_URL
 
-           def candidates = [
-             "${env.WORKSPACE}/cypress/results/failures/cypress-run.log",
-             "${env.WORKSPACE}/wtf-cypress/cypress/results/failures/cypress-run.log"
-           ]
-           def logPath = candidates.find { fileExists(it) }
-           def logText = logPath ? readFile(logPath) : ''
-           logText = logText.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
+            def candidates = [
+              "${env.WORKSPACE}/cypress/results/failures/cypress-run.log",
+              "${env.WORKSPACE}/wtf-cypress/cypress/results/failures/cypress-run.log"
+            ]
+            def logPath = candidates.find { fileExists(it) }
+            def logText = logPath ? readFile(logPath) : ''
+            logText = logText.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/, '')
 
-           def failingSpecs = []
-           def specRe = /(?m)^[\s\|]*[✖xX]\s+([^\s]+?\.(?:cy|spec)\.(?:js|ts))/
-           def ms = (logText =~ specRe)
-           while (ms.find()) { failingSpecs << ms.group(1) }
-           failingSpecs = failingSpecs.unique()
+            def failingSpecs = []
+            def specRe = /(?m)^[\s\|]*[✖xX]\s+([^\s]+?\.(?:cy|spec)\.(?:js|ts))/
+            def ms = (logText =~ specRe)
+            while (ms.find()) { failingSpecs << ms.group(1) }
+            failingSpecs = failingSpecs.unique()
 
-           def errMatch = (logText =~ /(?m)^(?:AssertionError|CypressError|Error|TypeError|ReferenceError).*$/)
-           def shortErr = errMatch.find() ? errMatch.group(0) : null
+            def errMatch = (logText =~ /(?m)^(?:AssertionError|CypressError|Error|TypeError|ReferenceError).*$/)
+            def shortErr = errMatch.find() ? errMatch.group(0) : null
 
-           def overall = (logText =~ /(?m)\b(\d+ of \d+ failed.*)\b/)
-           def overallLine = overall.find() ? overall.group(1) : null
+            def overall = (logText =~ /(?m)\b(\d+ of \d+ failed.*)\b/)
+            def overallLine = overall.find() ? overall.group(1) : null
 
-           def title = "E2E ${currentBuild.currentResult.toLowerCase()}: ${branch} #${env.BUILD_NUMBER} (${sha})"
+            ms = null; errMatch = null; overall = null
 
-           def bodyLines = []
-           bodyLines << "Build: ${build}"
-           bodyLines << "Branch: ${branch}"
-           bodyLines << "Commit: ${sha}"
-           if (overallLine) bodyLines << "\n${overallLine}"
+            def title = "E2E ${currentBuild.currentResult.toLowerCase()}: ${branch} #${env.BUILD_NUMBER} (${sha})"
 
-           if (failingSpecs && failingSpecs.size() > 0) {
-             bodyLines << "\nFailing spec file" + (failingSpecs.size()>1 ? "s:" : ":")
-             failingSpecs.each { bodyLines << "- `${it}`" }
-           } else {
-             bodyLines << "\nFailing spec files: (not detected)"
-           }
+            def bodyLines = []
+            bodyLines << "Build: ${build}"
+            bodyLines << "Branch: ${branch}"
+            bodyLines << "Commit: ${sha}"
+            if (overallLine) bodyLines << "\n${overallLine}"
 
-           if (shortErr) {
-             bodyLines << "\nError (first line):\n"
-             bodyLines << "    ${shortErr}\n"
-           }
+            if (failingSpecs && failingSpecs.size() > 0) {
+              bodyLines << "\nFailing spec file" + (failingSpecs.size()>1 ? "s:" : ":")
+              failingSpecs.each { bodyLines << "- `${it}`" }
+            } else {
+              bodyLines << "\nFailing spec files: (not detected)"
+            }
 
-           bodyLines << "\nJenkins console: ${build}console"
+            if (shortErr) {
+              bodyLines << "\nError (first line):\n"
+              bodyLines << "    ${shortErr}\n"
+            }
 
-           def lines = logText ? logText.readLines() : []
-           def startIdx = Math.max(0, lines.size() - 300)
-           def tail = lines ? lines[startIdx..<lines.size()].join('\n') : '(no log tail available)'
-           def tailIndented = tail.replaceAll('(?m)^', '    ')
-           bodyLines << """
+            bodyLines << "\nJenkins console: ${build}console"
+
+            def lines = logText ? logText.readLines() : []
+            def startIdx = Math.max(0, lines.size() - 300)
+            def tail = lines ? lines[startIdx..<lines.size()].join('\n') : '(no log tail available)'
+            def tailIndented = tail.replaceAll('(?m)^', '    ')
+            bodyLines << """
     <details>
     <summary>Console tail</summary>
 
@@ -138,25 +140,25 @@ pipeline {
     </details>
     """
 
-           def payload = groovy.json.JsonOutput.toJson([
-             title: title,
-             body : bodyLines.join('\n')
-           ])
+            def payload = groovy.json.JsonOutput.toJson([
+              title: title,
+              body : bodyLines.join('\n')
+            ])
 
-           httpRequest acceptType: 'APPLICATION_JSON',
-                       contentType: 'APPLICATION_JSON',
-                       httpMode: 'POST',
-                       customHeaders: [
-                         [name: 'Authorization', value: "token ${env.GH_TOKEN}"],
-                         [name: 'Accept', value: 'application/vnd.github+json'],
-                         [name: 'X-GitHub-Api-Version', value: '2022-11-28']
-                       ],
-                       url: "https://api.github.com/repos/${owner}/${repo}/issues",
-                       requestBody: payload,
-                       validResponseCodes: '201'
-         }
-       }
-     }
+            httpRequest acceptType: 'APPLICATION_JSON',
+                        contentType: 'APPLICATION_JSON',
+                        httpMode: 'POST',
+                        customHeaders: [
+                          [name: 'Authorization', value: 'token ' + env.GH_TOKEN],
+                          [name: 'Accept', value: 'application/vnd.github+json'],
+                          [name: 'X-GitHub-Api-Version', value: '2022-11-28']
+                        ],
+                        url: "https://api.github.com/repos/${owner}/${repo}/issues",
+                        requestBody: payload,
+                        validResponseCodes: '201'
+          }
+        }
+      }
     }
 
 
