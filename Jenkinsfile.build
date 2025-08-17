@@ -2,9 +2,8 @@ pipeline {
   agent any
 
   options {
-    // keep only last 10 builds; no artifact retention
-    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
     timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '2', artifactNumToKeepStr: '0'))
   }
 
   environment {
@@ -22,7 +21,7 @@ pipeline {
             echo "Resetting any local changes..."
             git reset --hard
             echo "Pulling latest from origin/main..."
-            git pull origin main
+            git pull origin main --ff-only
           '''
         }
       }
@@ -58,11 +57,11 @@ pipeline {
           script {
             def images = ['wtf-node','wtf-react','wtf-jenkins','wtf-coingecko','wtf-finnhub']
             images.each { img ->
-              sh """
-                echo "Building $img..."
-                docker build --pull --no-cache -t $REGISTRY/${img}:latest ./${img}
-                docker push $REGISTRY/${img}:latest
-              """
+              sh '''
+                echo "Building ''' + "${img}" + '''..."
+                DOCKER_BUILDKIT=1 docker build --pull -t ''' + "$REGISTRY/${img}:latest" + ''' ./''' + "${img}" + '''
+                docker push ''' + "$REGISTRY/${img}:latest" + '''
+              '''
             }
           }
         }
@@ -72,12 +71,11 @@ pipeline {
     stage('Docker Cleanup') {
       steps {
         sh '''
-          echo "Pruning Docker build cache and dangling artifacts..."
-          docker builder prune -af --filter "until=24h" || true
-          docker image prune   -af --filter "until=24h" || true
+          echo "Light prune (keeps build cache warm)…"
+          docker image prune -f --filter "dangling=true" || true
           docker container prune -f --filter "until=24h" || true
           docker volume prune -f || true
-          docker system df
+          docker system df || true
         '''
       }
     }
