@@ -71,7 +71,7 @@ pipeline {
       }
     }
 
-    stage('Create GitHub Issue on Failures') {
+    stage('Create GitHub Issue on UNSTABLE') {
       when { expression { currentBuild.currentResult == 'UNSTABLE' } }
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
@@ -80,20 +80,15 @@ pipeline {
               set -eu
               OWNER="AaronMcKinley"
               REPO="wealth-tracking-framework"
-
               TITLE="E2E failures in build #${BUILD_NUMBER}"
-              BODY="Build: ${BUILD_URL}\nCommit: ${GIT_COMMIT:-unknown}\nBranch: ${BRANCH_NAME:-unknown}\n\nSee Allure and artifacts in this build."
-
-              BODY_ESCAPED=$(printf "%s" "$BODY" | sed ':a;N;$!ba; s/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g')
-              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE" "$BODY_ESCAPED")
-
+              BODY="Build URL: ${BUILD_URL}"
+              JSON_PAYLOAD=$(printf '{"title":"%s","body":"%s","labels":["bug","e2e"]}' "$TITLE" "$BODY")
               echo "Posting issue to ${OWNER}/${REPO} …"
               HTTP=$(curl -sS -o resp.json -w '%{http_code}' \
                 -H "Authorization: token ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
-                --data-binary "$JSON_PAYLOAD" \
+                --data-raw "$JSON_PAYLOAD" \
                 "https://api.github.com/repos/${OWNER}/${REPO}/issues" || true)
-
               echo "GitHub API HTTP status: $HTTP"
               if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
                 ISSUE_URL=$(grep -o '"html_url": *"[^"]*"' resp.json | head -1 | cut -d'"' -f4 || true)
@@ -128,7 +123,6 @@ pipeline {
         ${CYPRESS_WORKDIR}/cypress/videos/**,
         ${CYPRESS_WORKDIR}/cypress/screenshots/**,
         ${CYPRESS_WORKDIR}/allure-results/**,
-        ${CYPRESS_WORKDIR}/allure-report/**,
         ${JUNIT_DIR}/**
       """, excludes: '**/node_modules/**', allowEmptyArchive: true
       cleanWs(deleteDirs: true)
