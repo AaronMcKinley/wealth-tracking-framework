@@ -175,9 +175,8 @@ pipeline {
     post {
       always {
         script {
-          // Fire-and-forget; never affects this job’s result
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-            build job: 'wtf-linting/main', wait: false, propagate: false
+            build job: 'wtf-linting', wait: false, propagate: false
           }
         }
 
