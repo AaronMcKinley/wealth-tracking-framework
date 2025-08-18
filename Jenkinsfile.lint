@@ -12,9 +12,8 @@ pipeline {
   }
 
   environment {
-    REPO       = 'AaronMcKinley/wealth-tracking-framework'
-    LINT_JSON  = 'lint-report.json'
-    LINT_LABEL = 'lint'
+    REPO      = 'AaronMcKinley/wealth-tracking-framework'
+    LINT_JSON = 'lint-report.json'
   }
 
   stages {
@@ -40,139 +39,66 @@ pipeline {
       }
     }
 
-    stage('Summarize + Pretty Report') {
+    stage('Summarize') {
       steps {
         sh '''
-          if [ -s "$LINT_JSON" ]; then
-            ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON")
-            WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON")
-          else
-            ERRORS=0; WARNINGS=0
-          fi
-          echo "$ERRORS $WARNINGS" > counts.txt
-
-          jq -r '
-            def sev(n): if n==2 then "error" else "warning" end;
-            [ .[] | .filePath as $f | (.messages // [])[]? |
-              {f:$f, loc: ((.line//0|tostring)+":" + (.column//0|tostring)),
-               sev: sev(.severity), rule:(.ruleId//"-"), msg:(.message//"")} ]
-            | sort_by( (if .sev=="error" then 0 else 1 end), .f, .loc )
-            | .[0:50][]
-            | "- \(.f):\(.loc) [\(.sev)] \(.rule) — \(.msg)"
-          ' "$LINT_JSON" > top50.txt || true
-
-          jq -r '
-            def sev(n): if n==2 then "error" else "warning" end;
-            [ .[] | .filePath as $f | (.messages // [])[]? |
-              {f:$f, loc: ((.line//0|tostring)+":" + (.column//0|tostring)),
-               sev: sev(.severity), rule:(.ruleId//"-"), msg:(.message//"")} ]
-            | sort_by(.f, .loc)
-            | group_by(.f)[]
-            | "### \(. [0].f)\\n" + ( map("- \(.loc) [\(.sev)] \(.rule) — \(.msg)") | join("\\n") ) + "\\n"
-          ' "$LINT_JSON" > lint-body.md || true
-
-          {
-            echo "# ESLint Summary"
-            echo
-            echo "- Errors: $ERRORS"
-            echo "- Warnings: $WARNINGS"
-            echo
-            echo "### Top 50 issues"
-            if [ -s top50.txt ]; then cat top50.txt; else echo "_No issues found_"; fi
-          } > lint-summary.md
-
-          {
-            echo "# ESLint Report"
-            echo
-            echo "- Errors: $ERRORS"
-            echo "- Warnings: $WARNINGS"
-            echo
-            if [ -s lint-body.md ]; then cat lint-body.md; else echo "_No issues found_"; fi
-          } > lint-report.md
+          ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
+          WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
+          jq -n --arg errors "$ERRORS" --arg warnings "$WARNINGS" \
+            --arg branch "${BRANCH_NAME:-detached}" \
+            --arg sha "$(git rev-parse --short=8 HEAD || echo unknown)" \
+            '{errors:($errors|tonumber), warnings:($warnings|tonumber), branch:$branch, sha:$sha}' \
+            > lint-counts.json
         '''
       }
     }
 
-    stage('GitHub Issue + Status') {
+    stage('Create GitHub Issue if Needed') {
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
-            set -e
-            read ERRORS WARNINGS < counts.txt || { ERRORS=0; WARNINGS=0; }
+            ERRORS=$(jq -r '.errors' lint-counts.json)
+            WARNINGS=$(jq -r '.warnings' lint-counts.json)
+            COUNT=$(( ERRORS + WARNINGS ))
 
-            BRANCH="${BRANCH_NAME:-detached}"
-            SHA=$(git rev-parse --short=8 HEAD || echo unknown)
-            MARKER="lint-branch:${BRANCH}"
-            TITLE="ESLint: ${ERRORS} errors, ${WARNINGS} warnings on ${BRANCH} @ ${SHA}"
+            if [ "$COUNT" -le 0 ]; then
+              echo "No lint issues. Skipping ticket."
+              exit 0
+            fi
 
-            JSON_URL="${BUILD_URL}artifact/${LINT_JSON}"
-            MD_URL="${BUILD_URL}artifact/lint-report.md"
-            SUM_URL="${BUILD_URL}artifact/lint-summary.md"
-
-            BODY_TOP="**Automated ESLint report**
-<!-- ${MARKER} -->
-
-- Branch: ${BRANCH}
-- Commit: \`${GIT_COMMIT}\`
-- Errors: ${ERRORS}
-- Warnings: ${WARNINGS}
+            BRANCH=$(jq -r '.branch' lint-counts.json)
+            SHA=$(jq -r '.sha' lint-counts.json)
+            TITLE="[lint] ${BRANCH} ESLint issues"
+            BODY="Branch: ${BRANCH}
+Commit: \`${GIT_COMMIT}\`
+Errors: ${ERRORS}
+Warnings: ${WARNINGS}
 
 Artifacts:
-- JSON: ${JSON_URL}
-- Markdown: ${MD_URL}
-- Summary: ${SUM_URL}
+- ${BUILD_URL}artifact/${LINT_JSON}
+- ${BUILD_URL}artifact/lint-counts.json
 
-<details><summary>Top issues (first 50)</summary>
-
-"
-            BODY_SUMMARY="$(cat lint-summary.md || true)"
-            BODY_BOTTOM="
-
-</details>
-"
-            BODY="${BODY_TOP}${BODY_SUMMARY}${BODY_BOTTOM}"
+<!-- lint-branch:${BRANCH} -->"
 
             API="https://api.github.com/repos/${REPO}"
             AUTH="Authorization: token ${GH_TOKEN}"
             ACCEPT="Accept: application/vnd.github+json"
 
-            Q="repo:${REPO} is:issue is:open label:${LINT_LABEL} in:body \\"${MARKER}\\""
+            Q="repo:${REPO} is:issue is:open in:title \\"${TITLE}\\""
             Q_ENC=$(jq -rn --arg q "$Q" '$q|@uri')
-            SEARCH_URL="${API}/search/issues?q=${Q_ENC}"
-            NUMBERS=$(curl -s -H "$AUTH" -H "$ACCEPT" "$SEARCH_URL" | jq -r '.items[].number // empty')
-            EXISTING=$(echo "$NUMBERS" | head -n1)
-            DUPES=$(echo "$NUMBERS" | awk 'NR>1')
+            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "${API}/search/issues?q=${Q_ENC}" | jq -r '.total_count')
 
-            if [ $((ERRORS + WARNINGS)) > 0 ]; then
-              if [ -n "$EXISTING" ]; then
-                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
-                  "${API}/issues/${EXISTING}/comments" \
-                  -d "$(jq -n --arg body "$BODY" '{body:$body}')" >/dev/null
-                curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
-                  "${API}/issues/${EXISTING}" \
-                  -d "$(jq -n --arg title "$TITLE" '{title:$title}')" >/dev/null
-              else
-                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
-                  "${API}/issues" \
-                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
-              fi
-              if [ -n "$DUPES" ]; then
-                echo "$DUPES" | while read n; do
-                  [ -z "$n" ] || curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" "${API}/issues/$n" -d '{"state":"closed"}' >/dev/null
-                done
-              fi
-              echo "UNSTABLE" > result.txt
-            else
-              if [ -n "$EXISTING" ]; then
-                curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" "${API}/issues/${EXISTING}" -d '{"state":"closed"}' >/dev/null
-              fi
-              echo "SUCCESS" > result.txt
+            if [ "$EXIST" -gt 0 ]; then
+              echo "Open lint issue already exists for ${BRANCH}. Skipping create."
+              exit 0
             fi
+
+            curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+              "${API}/issues" \
+              -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" \
+                    '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
+            echo "Created GitHub issue: $TITLE"
           '''
-          script {
-            def r = readFile('result.txt').trim()
-            currentBuild.result = (r == 'UNSTABLE' ? 'UNSTABLE' : 'SUCCESS')
-          }
         }
       }
     }
@@ -180,7 +106,7 @@ Artifacts:
 
   post {
     always {
-      archiveArtifacts artifacts: 'lint-report.json,lint-summary.md,lint-report.md,counts.txt', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'lint-*.json', allowEmptyArchive: true, fingerprint: true
       cleanWs(deleteDirs: true)
     }
   }
