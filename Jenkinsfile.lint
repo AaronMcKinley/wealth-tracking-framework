@@ -45,7 +45,7 @@ pipeline {
           ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
           WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
           jq -n --arg errors "$ERRORS" --arg warnings "$WARNINGS" \
-                --arg branch "${BRANCH_NAME:-detached}" \
+                --arg branch "main" \
                 --arg sha "$(git rev-parse --short=8 HEAD || echo unknown)" \
                 '{errors:($errors|tonumber), warnings:($warnings|tonumber), branch:$branch, sha:$sha}' \
                 > lint-counts.json
