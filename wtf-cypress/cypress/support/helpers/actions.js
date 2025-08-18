@@ -6,8 +6,12 @@ const Helper = {
   resetState: () => {
     cy.clearCookies();
     cy.window({ log: false }).then((w) => {
-      try { w.localStorage.clear(); } catch {}
-      try { w.sessionStorage.clear(); } catch {}
+      try {
+        w.localStorage.clear();
+      } catch {}
+      try {
+        w.sessionStorage.clear();
+      } catch {}
     });
   },
 
@@ -28,8 +32,12 @@ const Helper = {
   ensureLoggedOut: () => {
     cy.clearCookies();
     cy.window({ log: false }).then((w) => {
-      try { w.localStorage.removeItem(TOKEN_KEY); } catch {}
-      try { w.sessionStorage.clear(); } catch {}
+      try {
+        w.localStorage.removeItem(TOKEN_KEY);
+      } catch {}
+      try {
+        w.sessionStorage.clear();
+      } catch {}
     });
     Helper.goHome();
     cy.window().should((w) => {

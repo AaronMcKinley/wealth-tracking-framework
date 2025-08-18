@@ -1,8 +1,4 @@
-function calculateCompoundSavings({
-  principal,
-  annualRate,
-  compoundingFrequency
-}) {
+function calculateCompoundSavings({ principal, annualRate, compoundingFrequency }) {
   principal = Number(principal);
   annualRate = Number(annualRate);
 
@@ -14,7 +10,7 @@ function calculateCompoundSavings({
     daily: 365,
     weekly: 52,
     monthly: 12,
-    yearly: 1
+    yearly: 1,
   };
 
   const periodsPerYear = freqMap[compoundingFrequency] || 12;
@@ -33,10 +29,13 @@ function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 
 
   if (num === 0) return prefix + '0.00';
   if (num > 0 && num < lessThan) return prefix + '<' + lessThan.toFixed(minDigits);
-  return prefix + num.toLocaleString(undefined, {
-    minimumFractionDigits: minDigits,
-    maximumFractionDigits: minDigits
-  });
+  return (
+    prefix +
+    num.toLocaleString(undefined, {
+      minimumFractionDigits: minDigits,
+      maximumFractionDigits: minDigits,
+    })
+  );
 }
 
 module.exports = { calculateCompoundSavings, formatAmount };

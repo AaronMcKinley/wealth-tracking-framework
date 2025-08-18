@@ -23,7 +23,10 @@ describe('Investments — Add & Sell', { tags: ['@regression', '@investments', '
     AddInvestment.startAddFromDashboard();
     AddInvestment.selectFromTypeaheadExpectPrice('AAPL', priceAlias, 120);
     AddInvestment.setAmountAndExpectTotal(2, 240);
-    const postAlias = AddInvestment.interceptPostAddAssert({ name: 'AAPL', amount: 2, total_value: 240, type: 'stock' }, 'postAAPL');
+    const postAlias = AddInvestment.interceptPostAddAssert(
+      { name: 'AAPL', amount: 2, total_value: 240, type: 'stock' },
+      'postAAPL',
+    );
     AddInvestment.confirmAndWait(postAlias);
     Helpers.pathEq('/dashboard');
   });
@@ -33,7 +36,10 @@ describe('Investments — Add & Sell', { tags: ['@regression', '@investments', '
     AddInvestment.startAddFromDashboard();
     AddInvestment.selectFromTypeaheadExpectPrice('BTC', priceAlias, 30000);
     AddInvestment.setAmountAndExpectTotal(0.1, 3000);
-    const postAlias = AddInvestment.interceptPostAddAssert({ name: 'BTC', amount: 0.1, total_value: 3000, type: 'crypto' }, 'postBTC');
+    const postAlias = AddInvestment.interceptPostAddAssert(
+      { name: 'BTC', amount: 0.1, total_value: 3000, type: 'crypto' },
+      'postBTC',
+    );
     AddInvestment.confirmAndWait(postAlias);
     Helpers.pathEq('/dashboard');
   });
@@ -59,8 +65,14 @@ describe('Investments — Add & Sell', { tags: ['@regression', '@investments', '
     cy.wait('@priceSell2');
     AddInvestment.typeAmount(1);
     AddInvestment.typeTotalSpend(100);
-    const postAlias = AddInvestment.interceptPostSellAssert({ name: 'AAPL', amount: -1, total_value: 100, type: 'stock' }, 'postSell1');
-    const afterAlias = AddInvestment.interceptAfterSellHoldings({ ticker: 'AAPL', qty: 1, price: 100 }, 'invAfterSell');
+    const postAlias = AddInvestment.interceptPostSellAssert(
+      { name: 'AAPL', amount: -1, total_value: 100, type: 'stock' },
+      'postSell1',
+    );
+    const afterAlias = AddInvestment.interceptAfterSellHoldings(
+      { ticker: 'AAPL', qty: 1, price: 100 },
+      'invAfterSell',
+    );
     AddInvestment.confirmAndWait([postAlias, afterAlias]);
     Helpers.pathEq('/dashboard');
     AddInvestment.assertDashboardRow({ ticker: 'AAPL', qtyText: '1', valueText: '€100.00' });

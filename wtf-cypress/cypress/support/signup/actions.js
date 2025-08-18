@@ -17,8 +17,8 @@ const Signup = {
   cancel: () => cy.get(SL.cancelButton).first().click(),
   clickSignIn: () => cy.get(SL.signInLink).first().click(),
   expectOnSignup: () => H.pathHas('/signup'),
-  expectOnLogin:  () => H.pathHas('/login'),
-  expectOnHome:   () => H.pathEq('/'),
+  expectOnLogin: () => H.pathHas('/login'),
+  expectOnHome: () => H.pathEq('/'),
   expectValidationError: () => H.expectFormError(),
 };
 

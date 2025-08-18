@@ -7,7 +7,6 @@ exports.up = async (pgm) => {
     INSERT INTO users (email, name, password)
     VALUES ('test@email.com', 'Demo User', '${hashedPassword}');
   `);
-
 };
 
 exports.down = async (pgm) => {

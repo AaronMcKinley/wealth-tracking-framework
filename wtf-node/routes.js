@@ -44,7 +44,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email, name: user.name },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' },
     );
 
     res.json({
@@ -70,18 +70,18 @@ router.post('/signup', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, email, name',
-      [name, email, hashedPassword]
+      [name, email, hashedPassword],
     );
     const user = result.rows[0];
     const token = jwt.sign(
       { userId: user.id, email: user.email, name: user.name },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' },
     );
     res.status(201).json({
       message: 'Signup successful',
       token,
-      user
+      user,
     });
   } catch (err) {
     console.error('Signup error:', err);
@@ -151,12 +151,12 @@ router.post('/investments', authenticateToken, async (req, res) => {
     if (lowerType === 'crypto') {
       assetResult = await pool.query(
         `SELECT name, ticker FROM cryptocurrencies WHERE LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1) LIMIT 1`,
-        [name]
+        [name],
       );
     } else if (['stock', 'etf', 'bond', 'reit', 'commodity'].includes(lowerType)) {
       assetResult = await pool.query(
         `SELECT name, ticker FROM stocks_and_funds WHERE (LOWER(name) = LOWER($1) OR LOWER(ticker) = LOWER($1)) AND type = $2 LIMIT 1`,
-        [name, lowerType]
+        [name, lowerType],
       );
     } else {
       return handleError(res, `Unsupported type: ${type}`, 400);
@@ -173,7 +173,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
       const invRes = await pool.query(
         `SELECT total_quantity, average_buy_price, total_profit_loss
          FROM investments WHERE user_id = $1 AND asset_ticker = $2`,
-        [user_id, asset.ticker]
+        [user_id, asset.ticker],
       );
       if (invRes.rows.length === 0) {
         return handleError(res, 'No holdings to sell', 400);
@@ -192,7 +192,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
         `INSERT INTO transactions
          (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
          VALUES ($1, $2, 'sell', $3, $4, $5, 0, $6, NOW())`,
-        [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value), realizedProfitLoss]
+        [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value), realizedProfitLoss],
       );
 
       const remainingQty = currentQty - quantity;
@@ -206,7 +206,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
                total_profit_loss = $1,
                updated_at = NOW()
            WHERE user_id = $2 AND asset_ticker = $3`,
-          [currentPL + realizedProfitLoss, user_id, asset.ticker]
+          [currentPL + realizedProfitLoss, user_id, asset.ticker],
         );
       } else {
         await pool.query(
@@ -214,7 +214,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
            SET total_quantity = $1,
                updated_at = NOW()
            WHERE user_id = $2 AND asset_ticker = $3`,
-          [remainingQty, user_id, asset.ticker]
+          [remainingQty, user_id, asset.ticker],
         );
       }
       return res.status(201).json({ message: 'Sell recorded', realizedProfitLoss });
@@ -224,7 +224,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
       `INSERT INTO transactions
         (user_id, asset_ticker, transaction_type, quantity, price_per_unit, total_value, fees, realized_profit_loss, transaction_date)
        VALUES ($1, $2, 'buy', $3, $4, $5, 0, null, NOW())`,
-      [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value)]
+      [user_id, asset.ticker, quantity, pricePerUnit, Number(total_value)],
     );
 
     const agg = await pool.query(
@@ -234,22 +234,20 @@ router.post('/investments', authenticateToken, async (req, res) => {
          SUM(CASE WHEN transaction_type = 'buy' THEN quantity ELSE 0 END) AS total_buy_quantity
        FROM transactions
        WHERE user_id = $1 AND asset_ticker = $2`,
-      [user_id, asset.ticker]
+      [user_id, asset.ticker],
     );
 
     const total_quantity = parseFloat(agg.rows[0].total_quantity) || 0;
     const total_buy_quantity = parseFloat(agg.rows[0].total_buy_quantity) || 0;
     const average_price =
-      total_buy_quantity > 0
-        ? parseFloat(agg.rows[0].total_buy_value) / total_buy_quantity
-        : 0;
+      total_buy_quantity > 0 ? parseFloat(agg.rows[0].total_buy_value) / total_buy_quantity : 0;
 
     const update = await pool.query(
       `UPDATE investments
        SET total_quantity = $1, average_buy_price = $2, updated_at = NOW()
        WHERE user_id = $3 AND asset_ticker = $4
        RETURNING *`,
-      [total_quantity, average_price, user_id, asset.ticker]
+      [total_quantity, average_price, user_id, asset.ticker],
     );
 
     if (update.rowCount === 0) {
@@ -257,7 +255,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
         `INSERT INTO investments
          (user_id, asset_name, asset_ticker, type, total_quantity, average_buy_price, total_profit_loss, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, 0, NOW())`,
-        [user_id, asset.name, asset.ticker, type, total_quantity, average_price]
+        [user_id, asset.name, asset.ticker, type, total_quantity, average_price],
       );
     }
 
@@ -289,12 +287,12 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   try {
     let asset = await pool.query(
       `SELECT ticker, current_price FROM cryptocurrencies WHERE LOWER(ticker) = LOWER($1) LIMIT 1`,
-      [ticker]
+      [ticker],
     );
     if (asset.rows.length === 0) {
       asset = await pool.query(
         `SELECT ticker, current_price FROM stocks_and_funds WHERE LOWER(ticker) = LOWER($1) LIMIT 1`,
-        [ticker]
+        [ticker],
       );
     }
     if (asset.rows.length === 0) {
@@ -318,7 +316,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
     `;
     const result = await pool.query(q, [userId]);
 
-    const savingsWithCalc = result.rows.map(account => {
+    const savingsWithCalc = result.rows.map((account) => {
       const {
         id,
         provider,
@@ -327,13 +325,13 @@ router.get('/savings', authenticateToken, async (req, res) => {
         compounding_frequency,
         total_interest_paid,
         created_at,
-        updated_at
+        updated_at,
       } = account;
 
       const calc = calculateCompoundSavings({
         principal,
         annualRate: interest_rate,
-        compoundingFrequency: compounding_frequency
+        compoundingFrequency: compounding_frequency,
       });
 
       const next_payout = Number(calc.nextPaymentAmount).toFixed(2);
@@ -347,27 +345,23 @@ router.get('/savings', authenticateToken, async (req, res) => {
         total_interest_paid,
         created_at,
         updated_at,
-        next_payout
+        next_payout,
       };
     });
 
     res.json(savingsWithCalc);
   } catch (err) {
-    console.error("Savings API error:", err);
-    res.status(500).json({ message: 'Failed to fetch savings accounts', error: err.message, stack: err.stack });
+    console.error('Savings API error:', err);
+    res
+      .status(500)
+      .json({ message: 'Failed to fetch savings accounts', error: err.message, stack: err.stack });
   }
 });
 
 router.post('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-    const {
-      provider,
-      principal,
-      interest_rate,
-      compounding_frequency,
-      mode = 'add'
-    } = req.body;
+    const { provider, principal, interest_rate, compounding_frequency, mode = 'add' } = req.body;
 
     if (!provider || principal == null || !compounding_frequency) {
       return handleError(res, 'Missing required fields', 400);
@@ -377,14 +371,15 @@ router.post('/savings', authenticateToken, async (req, res) => {
       `SELECT id, principal, interest_rate, compounding_frequency
        FROM savings_accounts
        WHERE user_id = $1 AND LOWER(provider) = LOWER($2)`,
-      [userId, provider]
+      [userId, provider],
     );
 
     if (existing.rows.length > 0) {
       const current = existing.rows[0];
       const currentPrincipal = Number(current.principal);
       const change = Number(principal);
-      const newPrincipal = mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+      const newPrincipal =
+        mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
 
       if (newPrincipal < 0) {
         return handleError(res, 'Cannot withdraw more than the current balance', 400);
@@ -398,7 +393,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
       const updatedCalc = calculateCompoundSavings({
         principal: newPrincipal,
         annualRate: interest_rate ?? current.interest_rate,
-        compoundingFrequency: compounding_frequency
+        compoundingFrequency: compounding_frequency,
       });
 
       await pool.query(
@@ -414,15 +409,14 @@ router.post('/savings', authenticateToken, async (req, res) => {
           Number(interest_rate ?? current.interest_rate),
           compounding_frequency,
           updatedCalc.nextPaymentAmount,
-          current.id
-        ]
+          current.id,
+        ],
       );
 
       return res.status(200).json({
-        message: mode === 'remove'
-          ? 'Amount withdrawn from savings'
-          : 'Updated existing savings account',
-        principal: newPrincipal
+        message:
+          mode === 'remove' ? 'Amount withdrawn from savings' : 'Updated existing savings account',
+        principal: newPrincipal,
       });
     } else {
       if (mode === 'remove') {
@@ -432,7 +426,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
       const calc = calculateCompoundSavings({
         principal,
         annualRate: interest_rate,
-        compoundingFrequency: compounding_frequency
+        compoundingFrequency: compounding_frequency,
       });
 
       await pool.query(
@@ -445,64 +439,64 @@ router.post('/savings', authenticateToken, async (req, res) => {
           Number(principal),
           Number(interest_rate),
           compounding_frequency,
-          calc.nextPaymentAmount
-        ]
+          calc.nextPaymentAmount,
+        ],
       );
       return res.status(201).json({
-        message: 'Savings account created successfully'
+        message: 'Savings account created successfully',
       });
     }
   } catch (err) {
-    console.error("Savings API error (POST):", err);
+    console.error('Savings API error (POST):', err);
     handleError(res, err.message || 'Failed to update savings account', 500, err);
   }
 });
 
- router.get('/user', authenticateToken, async (req, res) => {
-   try {
-     const { rows } = await pool.query(
-       'SELECT id, name, email, created_at FROM users WHERE id = $1',
-       [req.user.userId]
-     );
-     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
-     return res.status(200).json(rows[0]);
-   } catch (err) {
-     return handleError(res, 'Failed to fetch user', 500, err);
-   }
- });
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, email, created_at FROM users WHERE id = $1',
+      [req.user.userId],
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    return handleError(res, 'Failed to fetch user', 500, err);
+  }
+});
 
- router.put('/user', authenticateToken, async (req, res) => {
-   const { name, email } = req.body || {};
+router.put('/user', authenticateToken, async (req, res) => {
+  const { name, email } = req.body || {};
 
-   if (!name || !email) {
-     return handleError(res, 'name and email are required', 400);
-   }
-   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-   if (!isEmail) return handleError(res, 'invalid email format', 400);
+  if (!name || !email) {
+    return handleError(res, 'name and email are required', 400);
+  }
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (!isEmail) return handleError(res, 'invalid email format', 400);
 
-   try {
-     const { rows, rowCount } = await pool.query(
-       'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email',
-       [name, email, req.user.userId]
-     );
-     if (!rowCount) return res.status(404).json({ message: 'User not found' });
-     return res.status(200).json({ message: 'Profile updated', user: rows[0] });
-   } catch (err) {
-     if (err && err.code === '23505') {
-       return handleError(res, 'Email already in use', 409, err);
-     }
-     return handleError(res, 'Failed to update user', 500, err);
-   }
- });
+  try {
+    const { rows, rowCount } = await pool.query(
+      'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email',
+      [name, email, req.user.userId],
+    );
+    if (!rowCount) return res.status(404).json({ message: 'User not found' });
+    return res.status(200).json({ message: 'Profile updated', user: rows[0] });
+  } catch (err) {
+    if (err && err.code === '23505') {
+      return handleError(res, 'Email already in use', 409, err);
+    }
+    return handleError(res, 'Failed to update user', 500, err);
+  }
+});
 
- router.delete('/user', authenticateToken, async (req, res) => {
-   try {
-     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.user.userId]);
-     if (!rowCount) return res.status(404).json({ message: 'User not found' });
-     return res.sendStatus(204);
-   } catch (err) {
-     return handleError(res, 'Failed to delete user', 500, err);
-   }
- });
+router.delete('/user', authenticateToken, async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.user.userId]);
+    if (!rowCount) return res.status(404).json({ message: 'User not found' });
+    return res.sendStatus(204);
+  } catch (err) {
+    return handleError(res, 'Failed to delete user', 500, err);
+  }
+});
 
 module.exports = router;

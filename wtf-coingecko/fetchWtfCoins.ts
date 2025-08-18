@@ -101,7 +101,7 @@ const fetchSelectedCoins = async () => {
           coin.ath,
           coin.atl,
           coin.last_updated,
-        ]
+        ],
       );
     }
 

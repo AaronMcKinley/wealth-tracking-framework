@@ -61,9 +61,7 @@ const Transactions: React.FC = () => {
 
   return (
     <Layout>
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        {ticker?.toUpperCase()} Transactions
-      </h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">{ticker?.toUpperCase()} Transactions</h1>
 
       {loading && <p className="text-center">Loading transactions...</p>}
 
@@ -93,10 +91,7 @@ const Transactions: React.FC = () => {
             </thead>
             <tbody>
               {transactions.map((tx) => (
-                <tr
-                  key={tx.id}
-                  className="hover:bg-primaryGreen/20 transition-colors duration-200"
-                >
+                <tr key={tx.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
                   <td className="px-6 py-4">{tx.transaction_type}</td>
                   <td className="px-6 py-4">{formatNumber(tx.quantity)}</td>
                   <td className="px-6 py-4">{formatNumber(tx.price_per_unit)}</td>
@@ -112,14 +107,12 @@ const Transactions: React.FC = () => {
                         ? tx.realized_profit_loss > 0
                           ? 'text-green-600 font-semibold'
                           : tx.realized_profit_loss < 0
-                          ? 'text-red-600 font-semibold'
-                          : ''
+                            ? 'text-red-600 font-semibold'
+                            : ''
                         : '')
                     }
                   >
-                    {tx.realized_profit_loss != null
-                      ? formatNumber(tx.realized_profit_loss)
-                      : '—'}
+                    {tx.realized_profit_loss != null ? formatNumber(tx.realized_profit_loss) : '—'}
                   </td>
                 </tr>
               ))}
@@ -129,10 +122,7 @@ const Transactions: React.FC = () => {
       )}
 
       <div className="text-center">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="btn btn-primary"
-        >
+        <button onClick={() => navigate('/dashboard')} className="btn btn-primary">
           Back to Dashboard
         </button>
       </div>

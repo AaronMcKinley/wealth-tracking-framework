@@ -1,21 +1,21 @@
-import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import Layout from "../components/Layout";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import Layout from '../components/Layout';
+import { useNavigate } from 'react-router-dom';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user, token, setUser, logout } = useAuth(); // note: added logout
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
+    name: user?.name || '',
+    email: user?.email || '',
   });
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
   const [showDelete, setShowDelete] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const confirmTarget = user?.email ?? "";
+  const [confirmText, setConfirmText] = useState('');
+  const confirmTarget = user?.email ?? '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -24,30 +24,30 @@ const Settings: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/user", {
-        method: "PUT",
+      const res = await fetch('/api/user', {
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        setMessage("Profile updated!");
+        setMessage('Profile updated!');
         setEdit(false);
         if (user) setUser({ ...user, name: form.name, email: form.email });
       } else {
-        setMessage("Update failed.");
+        setMessage('Update failed.');
       }
     } catch {
-      setMessage("Server error.");
+      setMessage('Server error.');
     }
   };
 
   const handleDelete = async () => {
     try {
-      const res = await fetch("/api/user", {
-        method: "DELETE",
+      const res = await fetch('/api/user', {
+        method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -55,15 +55,15 @@ const Settings: React.FC = () => {
       if (res.ok || res.status === 204) {
         logout?.();
         setUser?.(null as any);
-        navigate("/", { replace: true });
+        navigate('/', { replace: true });
       } else {
-        setMessage("Delete failed.");
+        setMessage('Delete failed.');
       }
     } catch {
-      setMessage("Server error.");
+      setMessage('Server error.');
     } finally {
       setShowDelete(false);
-      setConfirmText("");
+      setConfirmText('');
     }
   };
 
@@ -108,7 +108,7 @@ const Settings: React.FC = () => {
                 className="btn btn-negative flex-1"
                 onClick={() => {
                   setEdit(false);
-                  setForm({ name: user?.name || "", email: user?.email || "" });
+                  setForm({ name: user?.name || '', email: user?.email || '' });
                 }}
                 data-testid="settings-cancel"
               >
@@ -129,7 +129,8 @@ const Settings: React.FC = () => {
           <div className="mt-6 border-2 border-negative/60 rounded p-4 bg-negative/10">
             <h3 className="text-lg font-semibold mb-2 text-negative">Danger zone</h3>
             <p className="text-sm opacity-80 mb-3">
-              Deleting your account will permanently remove your profile, transactions and investments.
+              Deleting your account will permanently remove your profile, transactions and
+              investments.
             </p>
             <button
               type="button"
@@ -157,7 +158,7 @@ const Settings: React.FC = () => {
               Confirm account deletion
             </h4>
             <p className="text-sm mb-4">
-              This action cannot be undone. To confirm, type your email{" "}
+              This action cannot be undone. To confirm, type your email{' '}
               <span className="font-semibold">{confirmTarget}</span> below.
             </p>
 
@@ -184,7 +185,7 @@ const Settings: React.FC = () => {
                 className="btn btn-primary flex-1"
                 onClick={() => {
                   setShowDelete(false);
-                  setConfirmText("");
+                  setConfirmText('');
                 }}
                 data-testid="cancel-delete"
               >

@@ -2,11 +2,15 @@ import InvestmentLocators from './locators';
 
 const AddInvestment = {
   startAddFromDashboard() {
-    cy.contains(InvestmentLocators.dashboard.addBtn, /^Add Investment$/i).should('be.visible').click();
+    cy.contains(InvestmentLocators.dashboard.addBtn, /^Add Investment$/i)
+      .should('be.visible')
+      .click();
   },
 
   startSellFromDashboard() {
-    cy.contains(InvestmentLocators.dashboard.sellBtn, /^Sell Investment$/i).should('be.visible').click();
+    cy.contains(InvestmentLocators.dashboard.sellBtn, /^Sell Investment$/i)
+      .should('be.visible')
+      .click();
   },
 
   search(query) {
@@ -19,7 +23,11 @@ const AddInvestment = {
   },
 
   selectSellTicker(ticker) {
-    cy.get(InvestmentLocators.sell.select).filter(':visible').first().should('be.enabled').select(ticker);
+    cy.get(InvestmentLocators.sell.select)
+      .filter(':visible')
+      .first()
+      .should('be.enabled')
+      .select(ticker);
   },
 
   typeAmount(value) {
@@ -44,7 +52,10 @@ const AddInvestment = {
   },
 
   interceptPrice(ticker, price, alias) {
-    cy.intercept('GET', `**/api/assets/${ticker}`, { statusCode: 200, body: { current_price: price } }).as(alias);
+    cy.intercept('GET', `**/api/assets/${ticker}`, {
+      statusCode: 200,
+      body: { current_price: price },
+    }).as(alias);
     return `@${alias}`;
   },
 
@@ -52,7 +63,10 @@ const AddInvestment = {
     this.search(ticker);
     this.pickSuggestionTicker(ticker);
     cy.wait(priceAlias);
-    cy.get(InvestmentLocators.form.unitPrice).should('have.value', `€${Number(expectedPrice).toFixed(2)}`);
+    cy.get(InvestmentLocators.form.unitPrice).should(
+      'have.value',
+      `€${Number(expectedPrice).toFixed(2)}`,
+    );
   },
 
   setAmountAndExpectTotal(amount, total) {
@@ -94,7 +108,10 @@ const AddInvestment = {
     this.typeAmount(amount);
     this.typeTotalSpend(total);
     cy.get(InvestmentLocators.form.submitBtn).click();
-    cy.get(InvestmentLocators.form.errorMsg).should('contain', `You can only sell up to ${maxAllowed} units of ${ticker}.`);
+    cy.get(InvestmentLocators.form.errorMsg).should(
+      'contain',
+      `You can only sell up to ${maxAllowed} units of ${ticker}.`,
+    );
   },
 
   interceptPostSellAssert(expected, alias) {
@@ -122,11 +139,21 @@ const AddInvestment = {
   interceptAfterSellHoldings({ ticker, qty, price }, alias) {
     cy.intercept('GET', '**/api/investments*', {
       statusCode: 200,
-      body: [{
-        id: 1, asset_name: ticker, asset_ticker: ticker, type: 'stock',
-        total_quantity: qty, average_buy_price: price, current_price: price,
-        current_value: qty * price, profit_loss: 0, percent_change_24h: 0, total_profit_loss: 0,
-      }],
+      body: [
+        {
+          id: 1,
+          asset_name: ticker,
+          asset_ticker: ticker,
+          type: 'stock',
+          total_quantity: qty,
+          average_buy_price: price,
+          current_price: price,
+          current_value: qty * price,
+          profit_loss: 0,
+          percent_change_24h: 0,
+          total_profit_loss: 0,
+        },
+      ],
     }).as(alias);
     return `@${alias}`;
   },
@@ -139,10 +166,12 @@ const AddInvestment = {
   },
 
   assertDashboardRow({ ticker, qtyText, valueText }) {
-    cy.contains('td', ticker).parent('tr').within(() => {
-      if (qtyText) cy.get('td').eq(3).should('contain', qtyText);
-      if (valueText) cy.get('td').eq(8).should('contain', valueText);
-    });
+    cy.contains('td', ticker)
+      .parent('tr')
+      .within(() => {
+        if (qtyText) cy.get('td').eq(3).should('contain', qtyText);
+        if (valueText) cy.get('td').eq(8).should('contain', valueText);
+      });
   },
 };
 

@@ -28,7 +28,7 @@ const COIN_IDS = [
   'kaspa',
   'render-token',
   'near',
-  'fartcoin'
+  'fartcoin',
 ];
 
 export default COIN_IDS;

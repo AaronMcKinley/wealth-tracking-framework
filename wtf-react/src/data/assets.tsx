@@ -106,5 +106,5 @@ export const ASSETS: Asset[] = [
   { ticker: 'KAS', fullName: 'Kaspa', type: 'crypto' },
   { ticker: 'RNDR', fullName: 'Render Token', type: 'crypto' },
   { ticker: 'NEAR', fullName: 'NEAR Protocol', type: 'crypto' },
-  { ticker: 'FART', fullName: 'FartCoin', type: 'crypto' }
+  { ticker: 'FART', fullName: 'FartCoin', type: 'crypto' },
 ];

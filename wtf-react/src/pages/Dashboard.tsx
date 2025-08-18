@@ -40,7 +40,7 @@ const formatNumberWithCommas = (num?: number | string | null) => {
 
 const parseEuroString = (val: string | undefined | null) => {
   if (!val) return 0;
-  return Number(val.replace(/[^0-9.-]+/g,""));
+  return Number(val.replace(/[^0-9.-]+/g, ''));
 };
 
 const Dashboard: React.FC = () => {
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         setInvestments(res.data);
         if (location.state?.newInvestment) {
@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         setSavings(res.data);
       } catch (err) {}
@@ -96,13 +96,17 @@ const Dashboard: React.FC = () => {
   }, [location.state, token, isAuthenticated]);
 
   const totalValue = investments.reduce((sum, inv) => {
-    const val = typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
+    const val =
+      typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
   const totalPL = investments.reduce((sum, inv) => {
-    const pl = ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
-               ((typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss)) || 0);
+    const pl =
+      ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
+      ((typeof inv.total_profit_loss === 'number'
+        ? inv.total_profit_loss
+        : Number(inv.total_profit_loss)) || 0);
     return sum + (isNaN(pl) ? 0 : pl);
   }, 0);
 
@@ -114,7 +118,7 @@ const Dashboard: React.FC = () => {
     return sum + parseEuroString(s.total_interest_paid);
   }, 0);
 
-  const hasSellable = investments.some(inv => Number(inv.total_quantity) > 0);
+  const hasSellable = investments.some((inv) => Number(inv.total_quantity) > 0);
 
   return (
     <Layout>
@@ -135,7 +139,9 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-2">Total Profit / Loss</h2>
-          <p className={`text-3xl font-bold ${totalPL + totalSavingsInterest < 0 ? 'text-negative' : 'text-primaryGreen'}`}>
+          <p
+            className={`text-3xl font-bold ${totalPL + totalSavingsInterest < 0 ? 'text-negative' : 'text-primaryGreen'}`}
+          >
             €{formatNumberWithCommas(totalPL + totalSavingsInterest)}
           </p>
         </div>
@@ -157,7 +163,7 @@ const Dashboard: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {investments.map(inv => (
+            {investments.map((inv) => (
               <tr
                 key={inv.id}
                 className="hover:bg-primaryGreen/20 transition-colors duration-200 cursor-pointer"
@@ -170,9 +176,14 @@ const Dashboard: React.FC = () => {
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.average_buy_price)}</td>
                 <td className="px-6 py-4">€{formatNumberWithCommas(inv.current_price)}</td>
                 <td className="px-6 py-4">
-                  €{formatNumberWithCommas(
-                    ((typeof inv.profit_loss === 'number' ? inv.profit_loss : Number(inv.profit_loss)) || 0) +
-                    ((typeof inv.total_profit_loss === 'number' ? inv.total_profit_loss : Number(inv.total_profit_loss)) || 0)
+                  €
+                  {formatNumberWithCommas(
+                    ((typeof inv.profit_loss === 'number'
+                      ? inv.profit_loss
+                      : Number(inv.profit_loss)) || 0) +
+                      ((typeof inv.total_profit_loss === 'number'
+                        ? inv.total_profit_loss
+                        : Number(inv.total_profit_loss)) || 0),
                   )}
                 </td>
                 <td className="px-6 py-4">{formatNumberWithCommas(inv.percent_change_24h)}%</td>
@@ -200,9 +211,7 @@ const Dashboard: React.FC = () => {
         </button>
       </div>
       {!hasSellable && (
-        <div className="w-full text-center text-sm text-gray-400 italic pt-2">
-          Nothing to sell
-        </div>
+        <div className="w-full text-center text-sm text-gray-400 italic pt-2">Nothing to sell</div>
       )}
 
       {savings.length > 0 && (
@@ -220,7 +229,7 @@ const Dashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {savings.map(s => (
+              {savings.map((s) => (
                 <tr key={s.id} className="hover:bg-primaryGreen/20 transition-colors duration-200">
                   <td className="px-6 py-4">{s.provider || '—'}</td>
                   <td className="px-6 py-4">€{formatNumberWithCommas(s.principal)}</td>
@@ -232,7 +241,13 @@ const Dashboard: React.FC = () => {
                       const p = parseEuroString(s.principal);
                       const t = parseEuroString(s.total_interest_paid);
                       if (isNaN(p + t)) return '—';
-                      return '€' + (p + t).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      return (
+                        '€' +
+                        (p + t).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      );
                     })()}
                   </td>
                 </tr>

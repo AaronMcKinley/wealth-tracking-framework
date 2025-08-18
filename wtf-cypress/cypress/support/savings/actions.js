@@ -2,7 +2,9 @@ import SavingsLocators from './locators';
 
 const Savings = {
   startAddFromDashboard() {
-    cy.contains(SavingsLocators.dashboard.addBtnScope, /^Add Savings$/i).should('be.visible').click();
+    cy.contains(SavingsLocators.dashboard.addBtnScope, /^Add Savings$/i)
+      .should('be.visible')
+      .click();
   },
 
   fillNewGoal({ name, target }) {
@@ -24,7 +26,9 @@ const Savings = {
   },
 
   confirm() {
-    cy.contains(SavingsLocators.modal.confirmBtn, /confirm/i).should('be.visible').click();
+    cy.contains(SavingsLocators.modal.confirmBtn, /confirm/i)
+      .should('be.visible')
+      .click();
   },
 
   depositFlow({ name, amount }) {
@@ -56,9 +60,11 @@ const Savings = {
   },
 
   assertDashboardRow({ name, balanceText }) {
-    cy.contains('td,th', new RegExp(name, 'i')).parents('tr').within(() => {
-      cy.contains(/€|EUR|[0-9]/).should('contain', balanceText);
-    });
+    cy.contains('td,th', new RegExp(name, 'i'))
+      .parents('tr')
+      .within(() => {
+        cy.contains(/€|EUR|[0-9]/).should('contain', balanceText);
+      });
   },
 
   interceptList({ name, balance = 0, target = 1000 }, alias = 'getSavings') {
@@ -78,7 +84,10 @@ const Savings = {
     cy.intercept('POST', '**/api/savings', (req) => {
       expect(req.body).to.include({ name });
       expect(Number(req.body.target_amount ?? req.body.target)).to.eq(Number(target));
-      req.reply({ statusCode: 200, body: { ok: true, id: 1, name, target_amount: target, current_amount: 0 } });
+      req.reply({
+        statusCode: 200,
+        body: { ok: true, id: 1, name, target_amount: target, current_amount: 0 },
+      });
     }).as(alias);
     return `@${alias}`;
   },

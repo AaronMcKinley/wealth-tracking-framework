@@ -49,8 +49,8 @@ const AddInvestment: React.FC = () => {
       fetch(`${API_BASE}/investments`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           setUserHoldings(data.filter((h: any) => Number(h.total_quantity) > 0));
           setLoadingHoldings(false);
         })
@@ -94,7 +94,7 @@ const AddInvestment: React.FC = () => {
 
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
-      const holding = userHoldings.find(h => h.asset_ticker === sellAssetTicker);
+      const holding = userHoldings.find((h) => h.asset_ticker === sellAssetTicker);
       if (holding) {
         const holdingType = isAssetType(holding.type) ? holding.type : 'stock';
         setSelectedAsset({
@@ -112,10 +112,11 @@ const AddInvestment: React.FC = () => {
     if (!isSellMode && searchInput) {
       const searchLower = searchInput.toLowerCase();
       setSuggestions(
-        ASSETS.filter(a =>
-          a.fullName.toLowerCase().includes(searchLower) ||
-          a.ticker.toLowerCase().includes(searchLower)
-        )
+        ASSETS.filter(
+          (a) =>
+            a.fullName.toLowerCase().includes(searchLower) ||
+            a.ticker.toLowerCase().includes(searchLower),
+        ),
       );
     } else if (!isSellMode) {
       setSuggestions([]);
@@ -153,9 +154,10 @@ const AddInvestment: React.FC = () => {
     e.preventDefault();
 
     if (!selectedAsset) {
-      setError(isSellMode
-        ? 'Please select an asset to sell.'
-        : 'Please select a valid asset from the suggestions.'
+      setError(
+        isSellMode
+          ? 'Please select an asset to sell.'
+          : 'Please select a valid asset from the suggestions.',
       );
       return;
     }
@@ -167,7 +169,7 @@ const AddInvestment: React.FC = () => {
     }
 
     if (isSellMode) {
-      const holding = userHoldings.find(h => h.asset_ticker === selectedAsset.ticker);
+      const holding = userHoldings.find((h) => h.asset_ticker === selectedAsset.ticker);
       const max = holding ? holding.total_quantity : 0;
       if (amt > max) {
         setError(`You can only sell up to ${max} units of ${selectedAsset.ticker}.`);
@@ -245,14 +247,14 @@ const AddInvestment: React.FC = () => {
                 <select
                   className="input"
                   value={sellAssetTicker}
-                  onChange={e => setSellAssetTicker(e.target.value)}
+                  onChange={(e) => setSellAssetTicker(e.target.value)}
                   required
                   disabled={loadingHoldings}
                 >
                   <option value="">Select asset…</option>
                   {userHoldings
-                    .filter(h => h.total_quantity > 0)
-                    .map(h => (
+                    .filter((h) => h.total_quantity > 0)
+                    .map((h) => (
                       <option key={h.asset_ticker} value={h.asset_ticker}>
                         {h.asset_name} ({h.asset_ticker}) — Held: {h.total_quantity}
                       </option>
@@ -268,7 +270,7 @@ const AddInvestment: React.FC = () => {
                   id="searchInput"
                   type="text"
                   value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   required
                   autoComplete="off"
                   className="input"
@@ -280,7 +282,7 @@ const AddInvestment: React.FC = () => {
                     role="listbox"
                     className="absolute z-20 bg-cardBg border border-borderGreen mt-1 rounded max-h-40 overflow-auto w-full"
                   >
-                    {suggestions.map(asset => (
+                    {suggestions.map((asset) => (
                       <li
                         key={asset.ticker}
                         role="option"
@@ -308,9 +310,12 @@ const AddInvestment: React.FC = () => {
               onChange={handleAmountChange}
               required
               min="0"
-              max={isSellMode && selectedAsset
-                ? userHoldings.find(h => h.asset_ticker === selectedAsset.ticker)?.total_quantity || undefined
-                : undefined}
+              max={
+                isSellMode && selectedAsset
+                  ? userHoldings.find((h) => h.asset_ticker === selectedAsset.ticker)
+                      ?.total_quantity || undefined
+                  : undefined
+              }
               className="input"
               disabled={isSellMode && !selectedAsset}
             />
@@ -330,7 +335,8 @@ const AddInvestment: React.FC = () => {
           </div>
           <div>
             <label htmlFor="totalSpend" className="block mb-2 font-semibold">
-              {isSellMode ? 'Total Sale Value (€)' : 'Total Spend (€)'} <span className="text-red-500">*</span>
+              {isSellMode ? 'Total Sale Value (€)' : 'Total Spend (€)'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               id="totalSpend"
@@ -355,28 +361,48 @@ const AddInvestment: React.FC = () => {
             />
           </div>
           <div className="flex justify-end space-x-4">
-            <button type="button" onClick={() => navigate('/dashboard')} className="btn btn-negative">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="btn btn-negative"
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={isSellMode && !selectedAsset}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isSellMode && !selectedAsset}
+            >
               {isSellMode ? 'Sell' : 'Add Investment'}
             </button>
           </div>
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">
-                <h2 className="text-2xl font-bold mb-4">Confirm {isSellMode ? 'Sell' : 'Investment'}</h2>
+                <h2 className="text-2xl font-bold mb-4">
+                  Confirm {isSellMode ? 'Sell' : 'Investment'}
+                </h2>
                 <p className="mb-4">
-                  Type: <strong>{type}</strong><br />
-                  Name: <strong>{selectedAsset?.fullName}</strong><br />
-                  Ticker: <strong>{selectedAsset?.ticker}</strong><br />
-                  {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong><br />
-                  Unit Price: <strong>{assetPrice !== null ? `€${assetPrice.toFixed(2)}` : ''}</strong><br />
+                  Type: <strong>{type}</strong>
+                  <br />
+                  Name: <strong>{selectedAsset?.fullName}</strong>
+                  <br />
+                  Ticker: <strong>{selectedAsset?.ticker}</strong>
+                  <br />
+                  {isSellMode ? 'Sell' : 'Amount'}: <strong>{amount}</strong>
+                  <br />
+                  Unit Price:{' '}
+                  <strong>{assetPrice !== null ? `€${assetPrice.toFixed(2)}` : ''}</strong>
+                  <br />
                   {isSellMode ? 'Total Sale Value' : 'Total Spend'}: <strong>€{totalSpend}</strong>
                 </p>
                 <div className="flex justify-center gap-4">
-                  <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
-                  <button onClick={confirmAddInvestment} className="btn btn-primary">Confirm</button>
+                  <button onClick={cancelConfirm} className="btn btn-negative">
+                    Cancel
+                  </button>
+                  <button onClick={confirmAddInvestment} className="btn btn-primary">
+                    Confirm
+                  </button>
                 </div>
               </div>
             </div>

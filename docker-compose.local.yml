@@ -7,14 +7,14 @@ services:
       dockerfile: Dockerfile.dev
     container_name: wtf-react
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - CHOKIDAR_USEPOLLING=true
       - HOST=0.0.0.0
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
     networks:
       - wtfnet
-    command: ["npm", "start"]
+    command: ['npm', 'start']
     mem_limit: 1.5g
     mem_reservation: 1g
     # ⚠️ dropped the `depends_on` health condition so React always starts
@@ -22,10 +22,10 @@ services:
   node:
     build:
       context: ./wtf-node
-      dockerfile: Dockerfile.dev   # ← point at your dev‐Dockerfile
+      dockerfile: Dockerfile.dev # ← point at your dev‐Dockerfile
     container_name: wtf-node
     ports:
-      - "4000:5000"
+      - '4000:5000'
     volumes:
       - ./wtf-node:/app
       - /app/node_modules
@@ -38,7 +38,7 @@ services:
     mem_limit: 1.5g
     mem_reservation: 1g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:5000/api/health']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -56,9 +56,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${PGUSER}"]
+      test: ['CMD-SHELL', 'pg_isready -U $${PGUSER}']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -70,7 +70,7 @@ services:
       context: ./wtf-jenkins
     container_name: wtf-jenkins
     ports:
-      - "8080:8080"
+      - '8080:8080'
     volumes:
       - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
@@ -84,7 +84,7 @@ services:
     image: frankescobar/allure-docker-service
     container_name: wtf-allure
     ports:
-      - "5050:5050"
+      - '5050:5050'
     volumes:
       - allure_results:/app/allure-results
     networks:
@@ -95,7 +95,7 @@ services:
     container_name: wtf-adminer
     restart: always
     ports:
-      - "8081:8080"
+      - '8081:8080'
     networks:
       - wtfnet
 

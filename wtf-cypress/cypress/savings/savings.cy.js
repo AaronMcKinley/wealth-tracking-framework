@@ -47,7 +47,10 @@ describe('Savings — deposit and withdraw flows', { tags: ['@regression', '@sav
   it('withdraws part and reflects reduced balance', () => {
     Savings.interceptList({ name: NAME, balance: DEPOSIT }, 'list3');
     const postW = Savings.interceptWithdrawAssert({ amount: PARTIAL_WITHDRAW }, 'postW');
-    const afterW = Savings.interceptAfterList({ name: NAME, balance: DEPOSIT - PARTIAL_WITHDRAW }, 'listAfterW');
+    const afterW = Savings.interceptAfterList(
+      { name: NAME, balance: DEPOSIT - PARTIAL_WITHDRAW },
+      'listAfterW',
+    );
 
     Helpers.visit('/dashboard');
     Sidebar.waitForSidebar();
@@ -57,6 +60,9 @@ describe('Savings — deposit and withdraw flows', { tags: ['@regression', '@sav
     Savings.withdrawFlow({ name: NAME, amount: PARTIAL_WITHDRAW });
     cy.wait([postW, afterW]);
 
-    Savings.assertDashboardRow({ name: NAME, balanceText: `€${(DEPOSIT - PARTIAL_WITHDRAW).toFixed(2)}` });
+    Savings.assertDashboardRow({
+      name: NAME,
+      balanceText: `€${(DEPOSIT - PARTIAL_WITHDRAW).toFixed(2)}`,
+    });
   });
 });

@@ -73,9 +73,7 @@ async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
       });
       const profileData = profileResponse.data;
       const assetName =
-        profileData.name && profileData.name.trim() !== ''
-          ? profileData.name
-          : ticker;
+        profileData.name && profileData.name.trim() !== '' ? profileData.name : ticker;
 
       const open = quoteData.o ? quoteData.o * usdToEur : null;
       const high = quoteData.h ? quoteData.h * usdToEur : null;
@@ -123,13 +121,13 @@ async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
           asset.current_price,
           asset.previous_close,
           asset.timestamp,
-        ]
+        ],
       );
       console.log(`Upserted ${ticker} (${asset.name}) in EUR successfully.`);
     } catch (innerErr: any) {
       console.error(`Error fetching/updating ${ticker}:`, innerErr.message || innerErr);
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
   }
   const outputPath = path.resolve(__dirname, `./data/assets-chunk.json`);
   writeFileSync(outputPath, JSON.stringify(results, null, 2));
@@ -143,7 +141,7 @@ async function main() {
     await fetchAndUpsertChunk(ALL_CHUNKS[chunkIdx]);
     chunkIdx = (chunkIdx + 1) % ALL_CHUNKS.length;
     console.log(`Sleeping ${CHUNK_INTERVAL_MS / 1000 / 60} minutes before next chunk...`);
-    await new Promise(r => setTimeout(r, CHUNK_INTERVAL_MS));
+    await new Promise((r) => setTimeout(r, CHUNK_INTERVAL_MS));
   }
 }
 

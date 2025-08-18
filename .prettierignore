@@ -1,0 +1,42 @@
+# dependencies & build output
+node_modules
+**/node_modules
+**/dist
+**/build
+**/coverage
+
+# lockfiles / env
+**/package-lock.json
+**/yarn.lock
+.env
+.env.*
+*.env
+
+# CI / infra
+jenkins_home
+jenkins_data
+wtf-jenkins/
+wtf-ansible/
+wtf-nginx/
+wtf-cronjobs/
+
+# Allure artifacts
+allure-results
+allure-report
+allure-history
+.allure*
+
+# Cypress output
+wtf-cypress/cypress/screenshots
+wtf-cypress/cypress/videos
+
+# Large/generated data
+finnhub-api/data/
+wtf-finnhub/data/
+wtf-coingecko/data/
+
+# Static public bundles
+wtf-react/public
+
+# OS noise
+.DS_Store

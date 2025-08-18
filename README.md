@@ -54,9 +54,11 @@ ansible-playbook -i <your-server-ip>, setup-ubuntu.yml --ask-vault-pass --ask-be
 ### 4. Start the Full Stack (Local or Server)
 
 **Local:**
+
 ```bash
 ansible-playbook start-locally.yml
 ```
+
 **Server:**  
 (SSH into your server, then run Docker Compose or use the provided Ansible playbook.)
 
@@ -82,7 +84,7 @@ ansible-playbook start-locally.yml -e reset_db=true
 - **Frontend:** https://wealth-tracking-framework.com
 - **Jenkins:** https://jenkins.wealth-tracking-framework.com
 
-*Note: The API is proxied under `/api` on the production frontend URL.*
+_Note: The API is proxied under `/api` on the production frontend URL._
 
 ---
 
@@ -117,6 +119,4 @@ ansible-vault edit secrets.yml
 
 ## Contributing
 
-
 ---
-

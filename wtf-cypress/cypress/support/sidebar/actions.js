@@ -31,11 +31,11 @@ const Sidebar = {
     H.pathEq('/');
   },
 
-  assertDashboardActive:   () => H.pathHas('/dashboard'),
+  assertDashboardActive: () => H.pathHas('/dashboard'),
   assertInvestmentsActive: () => H.pathHas('/add-investment'),
-  assertSavingsActive:     () => H.pathHas('/savings'),
-  assertSettingsActive:    () => H.pathHas('/settings'),
-  assertNoneActive:        () => H.pathEq('/'),
+  assertSavingsActive: () => H.pathHas('/savings'),
+  assertSettingsActive: () => H.pathHas('/settings'),
+  assertNoneActive: () => H.pathEq('/'),
 };
 
 export default Sidebar;

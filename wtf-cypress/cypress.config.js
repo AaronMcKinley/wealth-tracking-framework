@@ -9,10 +9,10 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       allureWriter(on, config);
       return config;
-    }
+    },
   },
   env: {
     allure: true,
-    allureResultsPath: '/app/allure-results'
-  }
+    allureResultsPath: '/app/allure-results',
+  },
 });

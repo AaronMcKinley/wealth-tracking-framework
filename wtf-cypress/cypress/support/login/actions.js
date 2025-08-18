@@ -4,14 +4,9 @@ const TOKEN_KEY = Cypress.env('TOKEN_KEY') || 'token';
 const DEFAULT_SESSION_ID = 'auth:primary';
 
 function setupPrimarySession() {
-  const email =
-    Cypress.env('signupEmail') ||
-    Cypress.env('defaultEmail');
+  const email = Cypress.env('signupEmail') || Cypress.env('defaultEmail');
 
-  const password =
-    Cypress.env('signupPassword') ||
-    Cypress.env('defaultPassword') ||
-    'Password1!';
+  const password = Cypress.env('signupPassword') || Cypress.env('defaultPassword') || 'Password1!';
 
   Login.loginForSession(email, password);
 }
@@ -76,16 +71,12 @@ const Login = {
     cy.session(
       sessionId,
       setupPrimarySession, // stable reference avoids "This session already exists…" errors
-      { cacheAcrossSpecs: true }
+      { cacheAcrossSpecs: true },
     );
   },
 
   restoreSession(sessionId = DEFAULT_SESSION_ID) {
-    cy.session(
-      sessionId,
-      setupPrimarySession,
-      { cacheAcrossSpecs: true }
-    );
+    cy.session(sessionId, setupPrimarySession, { cacheAcrossSpecs: true });
   },
 
   getToken() {
@@ -94,8 +85,12 @@ const Login = {
 
   logout() {
     cy.window({ log: false }).then((w) => {
-      try { w.localStorage.removeItem(TOKEN_KEY); } catch {}
-      try { w.sessionStorage.clear(); } catch {}
+      try {
+        w.localStorage.removeItem(TOKEN_KEY);
+      } catch {}
+      try {
+        w.sessionStorage.clear();
+      } catch {}
     });
     cy.clearCookies();
   },

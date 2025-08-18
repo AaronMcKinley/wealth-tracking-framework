@@ -38,15 +38,15 @@ const AddSavingsAccount: React.FC = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
       fetch(`${API_BASE}/savings`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.json())
-        .then(data => setAccounts(data))
+        .then((res) => res.json())
+        .then((data) => setAccounts(data))
         .catch(() => setAccounts([]));
     }
   }, [isRemoveMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    setForm((f) => ({ ...f, [name]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -80,7 +80,7 @@ const AddSavingsAccount: React.FC = () => {
     }
 
     if (isRemoveMode) {
-      const account = accounts.find(a => String(a.id) === selectedAccountId);
+      const account = accounts.find((a) => String(a.id) === selectedAccountId);
       if (!account) {
         setError('Account not found.');
         return;
@@ -150,11 +150,11 @@ const AddSavingsAccount: React.FC = () => {
                 <select
                   className="input"
                   value={selectedAccountId}
-                  onChange={e => setSelectedAccountId(e.target.value)}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
                   required
                 >
                   <option value="">Choose an account…</option>
-                  {accounts.map(acc => (
+                  {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.provider} — €{acc.principal}
                     </option>
@@ -247,7 +247,11 @@ const AddSavingsAccount: React.FC = () => {
             </>
           )}
           <div className="flex justify-end space-x-4">
-            <button type="button" onClick={() => navigate('/dashboard')} className="btn btn-negative">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="btn btn-negative"
+            >
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
@@ -264,21 +268,32 @@ const AddSavingsAccount: React.FC = () => {
                 <p className="mb-4">
                   {isRemoveMode ? (
                     <>
-                      Account: <strong>{accounts.find(a => String(a.id) === selectedAccountId)?.provider}</strong><br />
+                      Account:{' '}
+                      <strong>
+                        {accounts.find((a) => String(a.id) === selectedAccountId)?.provider}
+                      </strong>
+                      <br />
                       Amount to remove: <strong>€{removeAmount}</strong>
                     </>
                   ) : (
                     <>
-                      Provider: <strong>{form.provider}</strong><br />
-                      Amount: <strong>€{form.principal}</strong><br />
-                      APR: <strong>{form.interest_rate}%</strong><br />
+                      Provider: <strong>{form.provider}</strong>
+                      <br />
+                      Amount: <strong>€{form.principal}</strong>
+                      <br />
+                      APR: <strong>{form.interest_rate}%</strong>
+                      <br />
                       Compounding: <strong>{form.compounding_frequency}</strong>
                     </>
                   )}
                 </p>
                 <div className="flex justify-center gap-4">
-                  <button onClick={cancelConfirm} className="btn btn-negative">Cancel</button>
-                  <button onClick={confirmAction} className="btn btn-primary">Confirm</button>
+                  <button onClick={cancelConfirm} className="btn btn-negative">
+                    Cancel
+                  </button>
+                  <button onClick={confirmAction} className="btn btn-primary">
+                    Confirm
+                  </button>
                 </div>
               </div>
             </div>

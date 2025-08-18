@@ -26,8 +26,10 @@ const Transactions = {
 
   assertUrlForAsset(ticker) {
     const lower = ticker.toLowerCase();
-    cy.location('pathname', { timeout: 20000 })
-      .should('match', new RegExp(`/transactions/\\d+/${lower}$`, 'i'));
+    cy.location('pathname', { timeout: 20000 }).should(
+      'match',
+      new RegExp(`/transactions/\\d+/${lower}$`, 'i'),
+    );
   },
 
   assertTransactionsPageLoaded(ticker) {

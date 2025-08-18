@@ -8,10 +8,7 @@ const NotFound: React.FC = () => {
       <p className="text-xl text-textMuted mb-8">
         Sorry, the page you’re looking for doesn’t exist.
       </p>
-      <Link
-        to="/dashboard"
-        className="btn btn-primary px-6 py-2 text-lg font-semibold rounded"
-      >
+      <Link to="/dashboard" className="btn btn-primary px-6 py-2 text-lg font-semibold rounded">
         Back to Dashboard
       </Link>
     </div>

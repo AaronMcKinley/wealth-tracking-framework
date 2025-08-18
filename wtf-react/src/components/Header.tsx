@@ -7,14 +7,8 @@ export default function Header() {
     <header className="w-full bg-cardBg py-4 shadow-md">
       <div className="flex items-center pl-12 pr-4">
         <Link to="/" className="flex items-center">
-          <img
-            src={icon}
-            alt="WTF Icon"
-            className="w-10 h-auto mr-3"
-          />
-          <span className="text-xl font-bold text-textLight">
-            Wealth Tracking Framework
-          </span>
+          <img src={icon} alt="WTF Icon" className="w-10 h-auto mr-3" />
+          <span className="text-xl font-bold text-textLight">Wealth Tracking Framework</span>
         </Link>
       </div>
     </header>

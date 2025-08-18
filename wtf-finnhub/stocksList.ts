@@ -67,7 +67,7 @@ const ALL_tickerS = [
   // Bonds
   { ticker: 'BND', type: 'bond' },
   { ticker: 'TLT', type: 'bond' },
-  { ticker: 'AGG', type: 'bond' }
+  { ticker: 'AGG', type: 'bond' },
 ];
 
 export default ALL_tickerS;
