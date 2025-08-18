@@ -1,0 +1,125 @@
+pipeline {
+  agent {
+    docker {
+      image 'node:20-alpine'
+      args '-v $WORKSPACE/.npm:/root/.npm'
+    }
+  }
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '0'))
+  }
+
+  environment {
+    REPO       = 'AaronMcKinley/wealth-tracking-framework'
+    LINT_JSON  = 'lint-report.json'
+    LINT_LABEL = 'lint'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Install') {
+      steps {
+        sh '''
+          set -e
+          apk add --no-cache git >/dev/null
+          npm ci --ignore-scripts --no-audit
+        '''
+      }
+    }
+
+    stage('Run ESLint') {
+      steps {
+        sh '''
+          set +e
+          npx eslint . --ext .js,.jsx,.ts,.tsx -f json -o "$LINT_JSON"
+          exit 0
+        '''
+      }
+    }
+
+    stage('GitHub Issue + Status') {
+      steps {
+        withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
+          script {
+            def errs = 0, warns = 0
+            if (fileExists(env.LINT_JSON)) {
+              def data = new groovy.json.JsonSlurper().parseText(readFile(env.LINT_JSON))
+              errs  = (data.collect { it.errorCount   ?: 0 }.sum()) ?: 0
+              warns = (data.collect { it.warningCount ?: 0 }.sum()) ?: 0
+            }
+
+            def branch = env.BRANCH_NAME ?: 'detached'
+            def sha8   = (env.GIT_COMMIT ?: 'unknown').take(8)
+            def marker = "lint-branch:${branch}"
+            def title  = "ESLint: ${errs} errors, ${warns} warnings on ${branch} @ ${sha8}"
+            def body   = [
+              "**Automated ESLint report**",
+              "<!-- ${marker} -->",
+              "",
+              "- Branch: ${branch}",
+              "- Commit: `${env.GIT_COMMIT}`",
+              "- Errors: ${errs}",
+              "- Warnings: ${warns}",
+              "",
+              "Jenkins artifact: ${env.BUILD_URL}artifact/${env.LINT_JSON}"
+            ].join("\n")
+
+            def headers = [
+              [name: 'Authorization', value: "token ${GH_TOKEN}"],
+              [name: 'Accept', value: 'application/vnd.github+json'],
+              [name: 'X-GitHub-Api-Version', value: '2022-11-28']
+            ]
+
+            def q = "repo:${env.REPO} is:issue is:open label:${env.LINT_LABEL} in:body \\\"${marker}\\\""
+            def searchUrl = "https://api.github.com/search/issues?q=" + java.net.URLEncoder.encode(q, 'UTF-8')
+            def searchResp = httpRequest url: searchUrl, customHeaders: headers, httpMode: 'GET', validResponseCodes: '200'
+            def items = new groovy.json.JsonSlurper().parseText(searchResp.content).items ?: []
+            def existingNum = items ? items[0].number : null
+            def duplicates = items.size() > 1 ? items.tail().collect { it.number } : []
+
+            if (errs + warns > 0) {
+              if (existingNum) {
+                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}/comments",
+                            customHeaders: headers, httpMode: 'POST', contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson([body: body]), validResponseCodes: '201'
+                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}",
+                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson([title: title]), validResponseCodes: '200'
+              } else {
+                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues",
+                            customHeaders: headers, httpMode: 'POST', contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson([title: title, body: body, labels: [env.LINT_LABEL, 'eslint', 'automated']]),
+                            validResponseCodes: '201'
+              }
+              duplicates.each { num ->
+                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${num}",
+                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson([state: 'closed']), validResponseCodes: '200'
+              }
+              currentBuild.result = 'UNSTABLE'
+            } else {
+              if (existingNum) {
+                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}",
+                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson([state: 'closed']), validResponseCodes: '200'
+              }
+              currentBuild.result = 'SUCCESS'
+            }
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'lint-report.json', allowEmptyArchive: true, fingerprint: true
+      cleanWs(deleteDirs: true)
+    }
+  }
+}
