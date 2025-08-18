@@ -26,7 +26,7 @@ pipeline {
       steps {
         sh '''
           set -e
-          apk add --no-cache git >/dev/null
+          apk add --no-cache git jq curl >/dev/null
           npm ci --ignore-scripts --no-audit
         '''
       }
@@ -37,7 +37,60 @@ pipeline {
         sh '''
           set +e
           npx eslint . --ext .js,.jsx,.ts,.tsx -f json -o "$LINT_JSON"
-          exit 0
+          set -e
+        '''
+      }
+    }
+
+    stage('Summarize + Pretty Report') {
+      steps {
+        sh '''
+          if [ -s "$LINT_JSON" ]; then
+            ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON")
+            WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON")
+          else
+            ERRORS=0; WARNINGS=0
+          fi
+          echo "$ERRORS $WARNINGS" > counts.txt
+
+          cat > lint-summary.md <<EOF
+# ESLint Summary
+
+- Errors: $ERRORS
+- Warnings: $WARNINGS
+
+### Top 50 issues
+| File | Line:Col | Severity | Rule | Message |
+|---|---|---|---|---|
+EOF
+
+          if [ -s "$LINT_JSON" ]; then
+            jq -r '
+              def sev(n): if n==2 then "error" else "warning" end;
+              [ .[] | .filePath as $f | .messages[] | {file:$f, line:(.line//0), column:(.column//0), severity:sev(.severity), rule:(.ruleId//"-"), message:(.message//"")} ]
+              | sort_by( (if .severity=="error" then 0 else 1 end), .file, .line, .column )
+              | .[0:50][]
+              | "| \(.file) | \(.line):\(.column) | \(.severity) | \(.rule) | \(.message|gsub("\\|"; "\\\\|")) |"
+            ' "$LINT_JSON" >> lint-summary.md
+          fi
+
+          {
+            echo "# ESLint Report"
+            echo
+            echo "- Errors: $ERRORS"
+            echo "- Warnings: $WARNINGS"
+            jq -r '
+              def sev(n): if n==2 then "error" else "warning" end;
+              .[] | select(.messages|length>0) |
+              "\n### " + .filePath + "\n" +
+              "| Line:Col | Severity | Rule | Message |\\n|---|---|---|---|\\n" +
+              ( .messages[] |
+                ("| " + ((.line//0|tostring) + ":" + (.column//0|tostring)) + " | " +
+                 ( .severity|sev ) + " | " + ( .ruleId // "-" ) + " | " +
+                 ( .message | gsub("\\|"; "\\\\|") ) + " |\\n")
+              )
+            ' "$LINT_JSON"
+          } > lint-report.md
         '''
       }
     }
@@ -45,71 +98,85 @@ pipeline {
     stage('GitHub Issue + Status') {
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
+          sh '''
+            set -e
+            read ERRORS WARNINGS < counts.txt || { ERRORS=0; WARNINGS=0; }
+
+            BRANCH="${BRANCH_NAME:-detached}"
+            SHA=$(git rev-parse --short=8 HEAD || echo unknown)
+            MARKER="lint-branch:${BRANCH}"
+            TITLE="ESLint: ${ERRORS} errors, ${WARNINGS} warnings on ${BRANCH} @ ${SHA}"
+
+            JSON_URL="${BUILD_URL}artifact/${LINT_JSON}"
+            MD_URL="${BUILD_URL}artifact/lint-report.md"
+            SUM_URL="${BUILD_URL}artifact/lint-summary.md"
+
+            BODY_TOP="**Automated ESLint report**
+<!-- ${MARKER} -->
+
+- Branch: ${BRANCH}
+- Commit: \`${GIT_COMMIT}\`
+- Errors: ${ERRORS}
+- Warnings: ${WARNINGS}
+
+Artifacts:
+- JSON: ${JSON_URL}
+- Markdown: ${MD_URL}
+- Summary: ${SUM_URL}
+
+<details><summary>Top issues (first 50)</summary>
+
+"
+            BODY_SUMMARY="$(cat lint-summary.md || true)"
+            BODY_BOTTOM="
+
+</details>
+"
+            BODY="${BODY_TOP}${BODY_SUMMARY}${BODY_BOTTOM}"
+
+            API="https://api.github.com/repos/${REPO}"
+            AUTH="Authorization: token ${GH_TOKEN}"
+            ACCEPT="Accept: application/vnd.github+json"
+
+            Q="repo:${REPO} is:issue is:open label:${LINT_LABEL} in:body \\"${MARKER}\\""
+            Q_ENC=$(jq -rn --arg q "$Q" '$q|@uri')
+            SEARCH_URL="${API}/search/issues?q=${Q_ENC}"
+            NUMBERS=$(curl -s -H "$AUTH" -H "$ACCEPT" "$SEARCH_URL" | jq -r '.items[].number // empty')
+            EXISTING=$(echo "$NUMBERS" | head -n1)
+            DUPES=$(echo "$NUMBERS" | awk 'NR>1')
+
+            TITLE_JSON=$(jq -Rn --arg s "$TITLE" '$s')
+            BODY_JSON=$(jq -Rn --arg s "$BODY" '$s')
+
+            if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
+              if [ -n "$EXISTING" ]; then
+                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues/${EXISTING}/comments" \
+                  -d "$(jq -n --arg body "$BODY" '{body:$body}')" >/dev/null
+                curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues/${EXISTING}" \
+                  -d "$(jq -n --arg title "$TITLE" '{title:$title}')" >/dev/null
+              else
+                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues" \
+                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" --argjson labels "[\\"${LINT_LABEL}\\",\\"eslint\\",\\"automated\\"]" '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
+              fi
+              if [ -n "$DUPES" ]; then
+                echo "$DUPES" | while read n; do
+                  [ -z "$n" ] || curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" "${API}/issues/$n" -d '{"state":"closed"}' >/dev/null
+                done
+              fi
+              echo "UNSTABLE" > result.txt
+            else
+              if [ -n "$EXISTING" ]; then
+                curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" "${API}/issues/${EXISTING}" -d '{"state":"closed"}' >/dev/null
+              fi
+              echo "SUCCESS" > result.txt
+            fi
+          '''
           script {
-            def errs = 0, warns = 0
-            if (fileExists(env.LINT_JSON)) {
-              def data = new groovy.json.JsonSlurper().parseText(readFile(env.LINT_JSON))
-              errs  = (data.collect { it.errorCount   ?: 0 }.sum()) ?: 0
-              warns = (data.collect { it.warningCount ?: 0 }.sum()) ?: 0
-            }
-
-            def branch = env.BRANCH_NAME ?: 'detached'
-            def sha8   = (env.GIT_COMMIT ?: 'unknown').take(8)
-            def marker = "lint-branch:${branch}"
-            def title  = "ESLint: ${errs} errors, ${warns} warnings on ${branch} @ ${sha8}"
-            def body   = [
-              "**Automated ESLint report**",
-              "<!-- ${marker} -->",
-              "",
-              "- Branch: ${branch}",
-              "- Commit: `${env.GIT_COMMIT}`",
-              "- Errors: ${errs}",
-              "- Warnings: ${warns}",
-              "",
-              "Jenkins artifact: ${env.BUILD_URL}artifact/${env.LINT_JSON}"
-            ].join("\n")
-
-            def headers = [
-              [name: 'Authorization', value: "token ${GH_TOKEN}"],
-              [name: 'Accept', value: 'application/vnd.github+json'],
-              [name: 'X-GitHub-Api-Version', value: '2022-11-28']
-            ]
-
-            def q = "repo:${env.REPO} is:issue is:open label:${env.LINT_LABEL} in:body \\\"${marker}\\\""
-            def searchUrl = "https://api.github.com/search/issues?q=" + java.net.URLEncoder.encode(q, 'UTF-8')
-            def searchResp = httpRequest url: searchUrl, customHeaders: headers, httpMode: 'GET', validResponseCodes: '200'
-            def items = new groovy.json.JsonSlurper().parseText(searchResp.content).items ?: []
-            def existingNum = items ? items[0].number : null
-            def duplicates = items.size() > 1 ? items.tail().collect { it.number } : []
-
-            if (errs + warns > 0) {
-              if (existingNum) {
-                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}/comments",
-                            customHeaders: headers, httpMode: 'POST', contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson([body: body]), validResponseCodes: '201'
-                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}",
-                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson([title: title]), validResponseCodes: '200'
-              } else {
-                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues",
-                            customHeaders: headers, httpMode: 'POST', contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson([title: title, body: body, labels: [env.LINT_LABEL, 'eslint', 'automated']]),
-                            validResponseCodes: '201'
-              }
-              duplicates.each { num ->
-                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${num}",
-                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson([state: 'closed']), validResponseCodes: '200'
-              }
-              currentBuild.result = 'UNSTABLE'
-            } else {
-              if (existingNum) {
-                httpRequest url: "https://api.github.com/repos/${env.REPO}/issues/${existingNum}",
-                            customHeaders: headers, httpMode: 'PATCH', contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson([state: 'closed']), validResponseCodes: '200'
-              }
-              currentBuild.result = 'SUCCESS'
-            }
+            def r = readFile('result.txt').trim()
+            currentBuild.result = (r == 'UNSTABLE' ? 'UNSTABLE' : 'SUCCESS')
           }
         }
       }
@@ -118,7 +185,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'lint-report.json', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'lint-report.json,lint-report.md,lint-summary.md,counts.txt,result.txt', allowEmptyArchive: true, fingerprint: true
       cleanWs(deleteDirs: true)
     }
   }
