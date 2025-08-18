@@ -78,17 +78,14 @@ Warnings: ${WARNINGS}
 Artifacts:
 - ${BUILD_URL}artifact/${LINT_JSON}
 - ${BUILD_URL}artifact/lint-counts.json
-
-lint-branch:${BRANCH}
 "
 
             API="https://api.github.com/repos/${REPO}"
             AUTH="Authorization: token ${GH_TOKEN}"
             ACCEPT="Accept: application/vnd.github+json"
 
-            Q="repo:${REPO} is:issue is:open in:title ${TITLE}"
-            Q_ENC=$(jq -rn --arg q "$Q" '$q|@uri')
-            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "${API}/search/issues?q=${Q_ENC}" | jq -r '.total_count // 0')
+            LIST_URL="${API}/issues?state=open&labels=lint&per_page=100"
+            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "$LIST_URL" | jq -r --arg t "$TITLE" '[.[] | select(.title == $t)] | length')
 
             if [ "$EXIST" -gt 0 ]; then
               echo "Open lint issue already exists for ${BRANCH}. Skipping create."
