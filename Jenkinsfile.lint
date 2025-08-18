@@ -67,8 +67,8 @@ pipeline {
                 }
               ]
               | sort_by(.file)
-              | map(.file + "\n" + (.lines | join("\n")))
-              | join("\n\n")
+              | map(.file + "\\n" + (.lines | join("\\n")))
+              | join("\\n\\n")
             ' "$LINT_JSON" > lint-stylish.txt || echo "Failed to parse lint-report.json" > lint-stylish.txt
           else
             echo "No lint results" > lint-stylish.txt
@@ -77,23 +77,18 @@ pipeline {
       }
     }
 
-    stage('Create GitHub Issue if Needed') {
+    stage('Create/Rotate GitHub Issue (by counts)') {
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
             set -e
             ERRORS=$(jq -r '.errors' lint-counts.json)
             WARNINGS=$(jq -r '.warnings' lint-counts.json)
-            COUNT=$(( ERRORS + WARNINGS ))
-            if [ "$COUNT" -le 0 ]; then
-              echo "No lint issues. Skipping ticket."
-              exit 0
-            fi
-
             BRANCH=$(jq -r '.branch' lint-counts.json)
             SHA=$(jq -r '.sha' lint-counts.json)
 
-            TITLE="[lint] ${BRANCH} ESLint issues"
+            TITLE_BASE="[lint] ${BRANCH}"
+            NEW_TITLE="${TITLE_BASE} E:${ERRORS} W:${WARNINGS} @ ${SHA}"
             BODY="Branch: ${BRANCH}
 Commit: ${GIT_COMMIT}
 Errors: ${ERRORS}
@@ -109,19 +104,65 @@ Artifacts:
             AUTH="Authorization: token ${GH_TOKEN}"
             ACCEPT="Accept: application/vnd.github+json"
 
-            LIST_URL="${API}/issues?state=open&labels=lint&per_page=100"
-            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "$LIST_URL" | jq -r --arg t "$TITLE" '[.[] | select(.title == $t)] | length')
+            OPEN_JSON=$(curl -s -H "$AUTH" -H "$ACCEPT" "${API}/issues?state=open&labels=lint&per_page=100")
 
-            if [ "$EXIST" -gt 0 ]; then
-              echo "Open lint issue already exists for ${BRANCH}. Skipping create."
-              exit 0
+            RECENT_NUM=$(echo "$OPEN_JSON" | jq -r --arg base "$TITLE_BASE" \
+              '[.[] | select(.title | startswith($base))] | sort_by(.created_at) | last | .number // empty')
+            RECENT_TITLE=$(echo "$OPEN_JSON" | jq -r --arg base "$TITLE_BASE" \
+              '[.[] | select(.title | startswith($base))] | sort_by(.created_at) | last | .title // empty')
+
+            if [ -n "$RECENT_NUM" ]; then
+              READ_EW=$(echo "$RECENT_TITLE" | sed -n 's/.*E:\\([0-9][0-9]*\\) W:\\([0-9][0-9]*\\).*/\\1 \\2/p')
+              if [ -z "$READ_EW" ]; then
+                RECENT_E=-1; RECENT_W=-1
+              else
+                RECENT_E=$(echo "$READ_EW" | awk "{print \\$1}")
+                RECENT_W=$(echo "$READ_EW" | awk "{print \\$2}")
+              fi
+
+              if [ "$RECENT_E" = "$ERRORS" ] && [ "$RECENT_W" = "$WARNINGS" ]; then
+                curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues/${RECENT_NUM}" \
+                  -d "$(jq -n --arg t "$NEW_TITLE" '{title:$t}')" >/dev/null
+
+                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues/${RECENT_NUM}/comments" \
+                  -d "$(jq -n --arg body "$BODY" '{body:$body}')" >/dev/null
+
+                DUPES=$(echo "$OPEN_JSON" | jq -r --arg base "$TITLE_BASE" --arg keep "$RECENT_NUM" \
+                  '[.[] | select(.title | startswith($base)) | .number] | map(tostring) | map(select(. != $keep)) | .[]?')
+                if [ -n "$DUPES" ]; then
+                  echo "$DUPES" | while read n; do
+                    [ -z "$n" ] || curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
+                      "${API}/issues/$n" -d '{"state":"closed"}' >/dev/null
+                  done
+                fi
+
+                echo "Updated issue #${RECENT_NUM} (counts unchanged)."
+              else
+                TO_CLOSE=$(echo "$OPEN_JSON" | jq -r --arg base "$TITLE_BASE" \
+                  '[.[] | select(.title | startswith($base)) | .number] | .[]?')
+                if [ -n "$TO_CLOSE" ]; then
+                  echo "$TO_CLOSE" | while read n; do
+                    [ -z "$n" ] || curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
+                      "${API}/issues/$n" -d '{"state":"closed"}' >/dev/null
+                  done
+                fi
+
+                PAYLOAD=$(jq -n --arg title "$NEW_TITLE" --arg body "$BODY" \
+                  '{title:$title, body:$body, labels:["lint","eslint","automated"]}')
+                curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+                  "${API}/issues" -d "$PAYLOAD" >/dev/null
+
+                echo "Counts changed. Closed old issue(s) and created: $NEW_TITLE"
+              fi
+            else
+              PAYLOAD=$(jq -n --arg title "$NEW_TITLE" --arg body "$BODY" \
+                '{title:$title, body:$body, labels:["lint","eslint","automated"]}')
+              curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
+                "${API}/issues" -d "$PAYLOAD" >/dev/null
+              echo "No existing issue. Created: $NEW_TITLE"
             fi
-
-            curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
-              "${API}/issues" \
-              -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" \
-                    '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
-            echo "Created GitHub issue: $TITLE"
           '''
         }
       }
