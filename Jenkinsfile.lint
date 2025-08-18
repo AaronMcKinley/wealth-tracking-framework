@@ -53,10 +53,23 @@ pipeline {
 
           jq -r '
             def sev(n): if n==2 then "error" else "warning" end;
-            .[] | .filePath as $f | (.messages // [])[]?
-            | [$f, ((.line//0|tostring)+":" + (.column//0|tostring)), sev(.severity), (.ruleId//"-"), (.message//"")]
-            | @tsv
-          ' "$LINT_JSON" > lint.tsv || true
+            [ .[] | .filePath as $f | (.messages // [])[]? |
+              {f:$f, loc: ((.line//0|tostring)+":" + (.column//0|tostring)),
+               sev: sev(.severity), rule:(.ruleId//"-"), msg:(.message//"")} ]
+            | sort_by( (if .sev=="error" then 0 else 1 end), .f, .loc )
+            | .[0:50][]
+            | "- \(.f):\(.loc) [\(.sev)] \(.rule) — \(.msg)"
+          ' "$LINT_JSON" > top50.txt || true
+
+          jq -r '
+            def sev(n): if n==2 then "error" else "warning" end;
+            [ .[] | .filePath as $f | (.messages // [])[]? |
+              {f:$f, loc: ((.line//0|tostring)+":" + (.column//0|tostring)),
+               sev: sev(.severity), rule:(.ruleId//"-"), msg:(.message//"")} ]
+            | sort_by(.f, .loc)
+            | group_by(.f)[]
+            | "### \(. [0].f)\\n" + ( map("- \(.loc) [\(.sev)] \(.rule) — \(.msg)") | join("\\n") ) + "\\n"
+          ' "$LINT_JSON" > lint-body.md || true
 
           {
             echo "# ESLint Summary"
@@ -65,17 +78,7 @@ pipeline {
             echo "- Warnings: $WARNINGS"
             echo
             echo "### Top 50 issues"
-            echo "| File | Line:Col | Severity | Rule | Message |"
-            echo "|---|---|---|---|---|"
-            if [ -s lint.tsv ]; then
-              head -n 50 lint.tsv | awk -F'\\t' '{
-                file=$1; loc=$2; sev=$3; rule=$4; msg=$5;
-                gsub(/\|/, "\\\\|", file); gsub(/\|/, "\\\\|", loc);
-                gsub(/\|/, "\\\\|", sev);  gsub(/\|/, "\\\\|", rule);
-                gsub(/\|/, "\\\\|", msg);
-                printf("| %s | %s | %s | %s | %s |\\n", file, loc, sev, rule, msg);
-              }'
-            fi
+            if [ -s top50.txt ]; then cat top50.txt; else echo "_No issues found_"; fi
           } > lint-summary.md
 
           {
@@ -84,25 +87,7 @@ pipeline {
             echo "- Errors: $ERRORS"
             echo "- Warnings: $WARNINGS"
             echo
-            if [ -s lint.tsv ]; then
-              awk -F'\\t' '
-                BEGIN { curr="" }
-                {
-                  file=$1; loc=$2; sev=$3; rule=$4; msg=$5;
-                  gsub(/\|/, "\\\\|", file); gsub(/\|/, "\\\\|", loc);
-                  gsub(/\|/, "\\\\|", sev);  gsub(/\|/, "\\\\|", rule);
-                  gsub(/\|/, "\\\\|", msg);
-                  if (file != curr) {
-                    if (curr != "") print "";
-                    print "### " file;
-                    print "| Line:Col | Severity | Rule | Message |";
-                    print "|---|---|---|---|";
-                    curr=file;
-                  }
-                  printf("| %s | %s | %s | %s |\\n", loc, sev, rule, msg);
-                }
-              ' lint.tsv
-            fi
+            if [ -s lint-body.md ]; then cat lint-body.md; else echo "_No issues found_"; fi
           } > lint-report.md
         '''
       }
@@ -158,7 +143,7 @@ Artifacts:
             EXISTING=$(echo "$NUMBERS" | head -n1)
             DUPES=$(echo "$NUMBERS" | awk 'NR>1')
 
-            if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
+            if [ $((ERRORS + WARNINGS)) > 0 ]; then
               if [ -n "$EXISTING" ]; then
                 curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
                   "${API}/issues/${EXISTING}/comments" \
