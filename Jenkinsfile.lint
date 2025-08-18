@@ -44,14 +44,14 @@ pipeline {
 
     stage('Summarize + Pretty Report') {
       steps {
-        sh '''
+        sh """
           if [ -s "$LINT_JSON" ]; then
-            ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON")
-            WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON")
+            ERRORS=\$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON")
+            WARNINGS=\$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON")
           else
             ERRORS=0; WARNINGS=0
           fi
-          echo "$ERRORS $WARNINGS" > counts.txt
+          echo "\$ERRORS \$WARNINGS" > counts.txt
 
           cat > jq_top50.jq <<'JQ'
 def sev(n): if n==2 then "error" else "warning" end;
@@ -76,8 +76,8 @@ JQ
           cat > lint-summary.md <<EOF
 # ESLint Summary
 
-- Errors: $ERRORS
-- Warnings: $WARNINGS
+- Errors: \$ERRORS
+- Warnings: \$WARNINGS
 
 ### Top 50 issues
 | File | Line:Col | Severity | Rule | Message |
@@ -91,13 +91,13 @@ EOF
           {
             echo "# ESLint Report"
             echo
-            echo "- Errors: $ERRORS"
-            echo "- Warnings: $WARNINGS"
+            echo "- Errors: \$ERRORS"
+            echo "- Warnings: \$WARNINGS"
             if [ -s "$LINT_JSON" ]; then
               jq -r -f jq_full.jq "$LINT_JSON"
             fi
           } > lint-report.md
-        '''
+        """
       }
     }
 
@@ -159,7 +159,7 @@ Artifacts:
                 curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
                   "${API}/issues/${EXISTING}" \
                   -d "$(jq -n --arg title "$TITLE" '{title:$title}')" >/dev/null
-              } else {
+              else
                 curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
                   "${API}/issues" \
                   -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
