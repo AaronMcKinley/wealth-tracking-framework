@@ -45,10 +45,10 @@ pipeline {
           ERRORS=$(jq '[.[] | .errorCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
           WARNINGS=$(jq '[.[] | .warningCount] | add // 0' "$LINT_JSON" 2>/dev/null || echo 0)
           jq -n --arg errors "$ERRORS" --arg warnings "$WARNINGS" \
-            --arg branch "${BRANCH_NAME:-detached}" \
-            --arg sha "$(git rev-parse --short=8 HEAD || echo unknown)" \
-            '{errors:($errors|tonumber), warnings:($warnings|tonumber), branch:$branch, sha:$sha}' \
-            > lint-counts.json
+                --arg branch "${BRANCH_NAME:-detached}" \
+                --arg sha "$(git rev-parse --short=8 HEAD || echo unknown)" \
+                '{errors:($errors|tonumber), warnings:($warnings|tonumber), branch:$branch, sha:$sha}' \
+                > lint-counts.json
         '''
       }
     }
@@ -57,10 +57,10 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'GH_TOKEN', variable: 'GH_TOKEN')]) {
           sh '''
+            set -e
             ERRORS=$(jq -r '.errors' lint-counts.json)
             WARNINGS=$(jq -r '.warnings' lint-counts.json)
             COUNT=$(( ERRORS + WARNINGS ))
-
             if [ "$COUNT" -le 0 ]; then
               echo "No lint issues. Skipping ticket."
               exit 0
@@ -68,9 +68,10 @@ pipeline {
 
             BRANCH=$(jq -r '.branch' lint-counts.json)
             SHA=$(jq -r '.sha' lint-counts.json)
+
             TITLE="[lint] ${BRANCH} ESLint issues"
             BODY="Branch: ${BRANCH}
-Commit: \`${GIT_COMMIT}\`
+Commit: ${GIT_COMMIT}
 Errors: ${ERRORS}
 Warnings: ${WARNINGS}
 
@@ -78,15 +79,16 @@ Artifacts:
 - ${BUILD_URL}artifact/${LINT_JSON}
 - ${BUILD_URL}artifact/lint-counts.json
 
-<!-- lint-branch:${BRANCH} -->"
+lint-branch:${BRANCH}
+"
 
             API="https://api.github.com/repos/${REPO}"
             AUTH="Authorization: token ${GH_TOKEN}"
             ACCEPT="Accept: application/vnd.github+json"
 
-            Q="repo:${REPO} is:issue is:open in:title \\"${TITLE}\\""
+            Q="repo:${REPO} is:issue is:open in:title ${TITLE}"
             Q_ENC=$(jq -rn --arg q "$Q" '$q|@uri')
-            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "${API}/search/issues?q=${Q_ENC}" | jq -r '.total_count')
+            EXIST=$(curl -s -H "$AUTH" -H "$ACCEPT" "${API}/search/issues?q=${Q_ENC}" | jq -r '.total_count // 0')
 
             if [ "$EXIST" -gt 0 ]; then
               echo "Open lint issue already exists for ${BRANCH}. Skipping create."
