@@ -1,8 +1,8 @@
+import { users } from '../../support/data/users';
 import Helpers from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
-import { users } from '../../support/data/users';
-import Sidebar from '../../support/sidebar/actions';
 import Savings from '../../support/savings/actions';
+import Sidebar from '../../support/sidebar/actions';
 
 const NAME = 'Emergency Fund';
 const DEPOSIT = 200;

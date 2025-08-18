@@ -1,8 +1,9 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
 import { writeFileSync } from 'fs';
 import { Pool } from 'pg';
+
 import COIN_IDS from './coinList';
-import dotenv from 'dotenv';
 
 dotenv.config({ path: '../.env' });
 

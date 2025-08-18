@@ -1,7 +1,7 @@
+import AddInvestment from '../../support/addinvestment/actions';
+import { users } from '../../support/data/users';
 import Helpers from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
-import { users } from '../../support/data/users';
-import AddInvestment from '../../support/addinvestment/actions';
 
 describe('Investments — Add & Sell', { tags: ['@regression', '@investments', '@ui'] }, () => {
   beforeEach(() => {

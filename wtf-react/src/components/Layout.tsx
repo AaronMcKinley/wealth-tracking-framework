@@ -1,9 +1,10 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { useAuth } from '../context/AuthContext';
+import Footer from './Footer';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import Footer from './Footer';
-import { useAuth } from '../context/AuthContext';
-import { useLocation } from 'react-router-dom';
 
 interface LayoutProps {
   children: React.ReactNode;

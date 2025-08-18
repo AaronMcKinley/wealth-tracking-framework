@@ -1,5 +1,5 @@
-import Login from '../../support/login/actions';
 import { users } from '../../support/data/users';
+import Login from '../../support/login/actions';
 import Transactions from '../../support/transactions/actions';
 
 describe(

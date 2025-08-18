@@ -1,6 +1,6 @@
+import { users } from '../../support/data/users';
 import Helper from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
-import { users } from '../../support/data/users';
 
 const TOKEN_KEY = Cypress.env('TOKEN_KEY') || 'token';
 const email = Cypress.env('signupEmail') || users.validUser.email;

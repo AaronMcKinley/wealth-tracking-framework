@@ -1,6 +1,6 @@
+import { users } from '../../support/data/users';
 import Helper from '../../support/helpers/actions';
 import Login from '../../support/login/actions';
-import { users } from '../../support/data/users';
 import Sidebar from '../../support/sidebar/actions';
 
 const email = Cypress.env('signupEmail') || users.validUser.email;

@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { writeFileSync, mkdirSync } from 'fs';
-import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
+import { Pool } from 'pg';
+
 import ALL_tickerS from './stocksList';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });

@@ -1,9 +1,14 @@
-// eslint.config.js (Flat Config for ESLint v9)
 const globals = require('globals');
 
 const ignorePatterns = [
+  // deps & caches
   'node_modules',
   '**/node_modules',
+  '**/.eslintcache',
+  '**/.cache',
+  '**/.cypress-cache',
+
+  // builds / coverage
   '**/dist',
   '**/build',
   '**/coverage',
@@ -18,11 +23,15 @@ const ignorePatterns = [
   'wtf-nginx/',
   'wtf-cronjobs/',
 
-  // Allure
+  // Allure (global + nested)
   'allure-results',
   'allure-report',
   'allure-history',
   '.allure*',
+  '**/allure-results/**',
+  '**/allure-report/**',
+  '**/allure-history/**',
+  'wtf-cypress/cypress/allure-report/**',
 
   // Cypress output
   'wtf-cypress/cypress/screenshots',

@@ -1,10 +1,10 @@
 import {
-  requestRobots,
-  requestFavicon,
-  requestApiHealth,
-  assertRobots,
-  assertFavicon,
   assertApiNoindex,
+  assertFavicon,
+  assertRobots,
+  requestApiHealth,
+  requestFavicon,
+  requestRobots,
 } from '../../support/infra/actions';
 
 describe('infra: robots, favicon, and API crawl headers', () => {

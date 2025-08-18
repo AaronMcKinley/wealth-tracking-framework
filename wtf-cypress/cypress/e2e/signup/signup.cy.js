@@ -1,8 +1,8 @@
 import Helpers from '../../support/helpers/actions';
-import Signup from '../../support/signup/actions';
-import SignupLocators from '../../support/signup/locators';
 import Login from '../../support/login/actions';
 import Sidebar from '../../support/sidebar/actions';
+import Signup from '../../support/signup/actions';
+import SignupLocators from '../../support/signup/locators';
 
 const NAME = 'E2E Test User';
 const EMAIL_NEG = 'e2e.signup@example.com';

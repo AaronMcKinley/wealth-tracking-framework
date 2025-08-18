@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import Layout from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
+
+import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();

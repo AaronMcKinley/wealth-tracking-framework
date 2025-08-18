@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Layout from '../components/Layout';
+
 import logo from '../assets/logo.png';
+import Layout from '../components/Layout';
 
 export default function Homepage() {
   return (
