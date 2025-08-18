@@ -49,6 +49,30 @@ pipeline {
                 --arg sha "$(git rev-parse --short=8 HEAD || echo unknown)" \
                 '{errors:($errors|tonumber), warnings:($warnings|tonumber), branch:$branch, sha:$sha}' \
                 > lint-counts.json
+
+          if [ -s "$LINT_JSON" ]; then
+            jq -r '
+              [ .[] | select((.messages // []) | length > 0) |
+                { file: .filePath,
+                  lines: ( [ (.messages // [])[]
+                            | { line: (.line // 0),
+                                col:  (.column // 0),
+                                sev:  (if (.severity // 1) == 2 then "error" else "warning" end),
+                                rule: (.ruleId // "-"),
+                                msg:  (.message // "") }
+                          ]
+                          | sort_by(.line, .col)
+                          | map("  " + ((.line|tostring) + ":" + (.col|tostring)) + "  " + .sev + "  " + .msg + "  " + .rule)
+                        )
+                }
+              ]
+              | sort_by(.file)
+              | map(.file + "\n" + (.lines | join("\n")))
+              | join("\n\n")
+            ' "$LINT_JSON" > lint-stylish.txt || echo "Failed to parse lint-report.json" > lint-stylish.txt
+          else
+            echo "No lint results" > lint-stylish.txt
+          fi
         '''
       }
     }
@@ -78,6 +102,7 @@ Warnings: ${WARNINGS}
 Artifacts:
 - ${BUILD_URL}artifact/${LINT_JSON}
 - ${BUILD_URL}artifact/lint-counts.json
+- ${BUILD_URL}artifact/lint-stylish.txt
 "
 
             API="https://api.github.com/repos/${REPO}"
@@ -105,7 +130,7 @@ Artifacts:
 
   post {
     always {
-      archiveArtifacts artifacts: 'lint-*.json', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'lint-*.json,lint-stylish.txt', allowEmptyArchive: true, fingerprint: true
       cleanWs(deleteDirs: true)
     }
   }
