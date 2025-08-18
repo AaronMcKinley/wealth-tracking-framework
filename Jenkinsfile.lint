@@ -53,6 +53,26 @@ pipeline {
           fi
           echo "$ERRORS $WARNINGS" > counts.txt
 
+          cat > jq_top50.jq <<'JQ'
+def sev(n): if n==2 then "error" else "warning" end;
+[ .[] | .filePath as $f | .messages[] | {file:$f, line:(.line//0), column:(.column//0), severity:sev(.severity), rule:(.ruleId//"-"), message:(.message//"")} ]
+| sort_by( (if .severity=="error" then 0 else 1 end), .file, .line, .column )
+| .[0:50][]
+| "| \(.file) | \(.line):\(.column) | \(.severity) | \(.rule) | \(.message|gsub("\\|"; "\\\\|")) |"
+JQ
+
+          cat > jq_full.jq <<'JQ'
+def sev(n): if n==2 then "error" else "warning" end;
+.[] | select(.messages|length>0) |
+"\n### " + .filePath + "\n" +
+"| Line:Col | Severity | Rule | Message |\n|---|---|---|---|\n" +
+( .messages[] |
+  ("| " + ((.line//0|tostring) + ":" + (.column//0|tostring)) + " | " +
+   ( .severity|sev ) + " | " + ( .ruleId // "-" ) + " | " +
+   ( .message | gsub("\\|"; "\\\\|") ) + " |\n")
+)
+JQ
+
           cat > lint-summary.md <<EOF
 # ESLint Summary
 
@@ -65,13 +85,7 @@ pipeline {
 EOF
 
           if [ -s "$LINT_JSON" ]; then
-            jq -r '
-              def sev(n): if n==2 then "error" else "warning" end;
-              [ .[] | .filePath as $f | .messages[] | {file:$f, line:(.line//0), column:(.column//0), severity:sev(.severity), rule:(.ruleId//"-"), message:(.message//"")} ]
-              | sort_by( (if .severity=="error" then 0 else 1 end), .file, .line, .column )
-              | .[0:50][]
-              | "| \(.file) | \(.line):\(.column) | \(.severity) | \(.rule) | \(.message|gsub("\\|"; "\\\\|")) |"
-            ' "$LINT_JSON" >> lint-summary.md
+            jq -r -f jq_top50.jq "$LINT_JSON" >> lint-summary.md
           fi
 
           {
@@ -79,17 +93,9 @@ EOF
             echo
             echo "- Errors: $ERRORS"
             echo "- Warnings: $WARNINGS"
-            jq -r '
-              def sev(n): if n==2 then "error" else "warning" end;
-              .[] | select(.messages|length>0) |
-              "\n### " + .filePath + "\n" +
-              "| Line:Col | Severity | Rule | Message |\\n|---|---|---|---|\\n" +
-              ( .messages[] |
-                ("| " + ((.line//0|tostring) + ":" + (.column//0|tostring)) + " | " +
-                 ( .severity|sev ) + " | " + ( .ruleId // "-" ) + " | " +
-                 ( .message | gsub("\\|"; "\\\\|") ) + " |\\n")
-              )
-            ' "$LINT_JSON"
+            if [ -s "$LINT_JSON" ]; then
+              jq -r -f jq_full.jq "$LINT_JSON"
+            fi
           } > lint-report.md
         '''
       }
@@ -145,9 +151,6 @@ Artifacts:
             EXISTING=$(echo "$NUMBERS" | head -n1)
             DUPES=$(echo "$NUMBERS" | awk 'NR>1')
 
-            TITLE_JSON=$(jq -Rn --arg s "$TITLE" '$s')
-            BODY_JSON=$(jq -Rn --arg s "$BODY" '$s')
-
             if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
               if [ -n "$EXISTING" ]; then
                 curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
@@ -156,10 +159,10 @@ Artifacts:
                 curl -s -X PATCH -H "$AUTH" -H "$ACCEPT" \
                   "${API}/issues/${EXISTING}" \
                   -d "$(jq -n --arg title "$TITLE" '{title:$title}')" >/dev/null
-              else
+              } else {
                 curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
                   "${API}/issues" \
-                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" --argjson labels "[\\"${LINT_LABEL}\\",\\"eslint\\",\\"automated\\"]" '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
+                  -d "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title:$title, body:$body, labels:["lint","eslint","automated"]}')" >/dev/null
               fi
               if [ -n "$DUPES" ]; then
                 echo "$DUPES" | while read n; do
@@ -185,7 +188,7 @@ Artifacts:
 
   post {
     always {
-      archiveArtifacts artifacts: 'lint-report.json,lint-report.md,lint-summary.md,counts.txt,result.txt', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'lint-report.json,lint-report.md,lint-summary.md,counts.txt', allowEmptyArchive: true, fingerprint: true
       cleanWs(deleteDirs: true)
     }
   }
