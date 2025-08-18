@@ -16,9 +16,7 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build Cypress Docker Image') {
@@ -161,7 +159,6 @@ pipeline {
       }
     }
 
-
     stage('Docker Cleanup') {
       steps {
         sh '''
@@ -175,16 +172,23 @@ pipeline {
     }
   }
 
-  post {
-    always {
-      archiveArtifacts artifacts: """
-        ${CYPRESS_WORKDIR}/cypress/videos/**,
-        ${CYPRESS_WORKDIR}/cypress/screenshots/**,
-        ${CYPRESS_WORKDIR}/allure-results/**,
-        ${CYPRESS_WORKDIR}/allure-report/**,
-        ${JUNIT_DIR}/** ${FAIL_DIR}/**
-      """, excludes: '**/node_modules/**', allowEmptyArchive: true
-      cleanWs(deleteDirs: true)
+    post {
+      always {
+        script {
+          // Fire-and-forget; never affects this job’s result
+          catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+            build job: 'wtf-linting/main', wait: false, propagate: false
+          }
+        }
+
+        archiveArtifacts artifacts: """
+          ${CYPRESS_WORKDIR}/cypress/videos/**,
+          ${CYPRESS_WORKDIR}/cypress/screenshots/**,
+          ${CYPRESS_WORKDIR}/allure-results/**,
+          ${CYPRESS_WORKDIR}/allure-report/**,
+          ${JUNIT_DIR}/** ${FAIL_DIR}/**
+        """, excludes: '**/node_modules/**', allowEmptyArchive: true
+        cleanWs(deleteDirs: true)
+      }
     }
-  }
 }
