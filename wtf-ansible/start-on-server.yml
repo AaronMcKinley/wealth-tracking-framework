@@ -19,7 +19,6 @@
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
         state: absent
-        ignore_errors: yes
 
     - name: Remove any containers from previous runs
       shell: |
