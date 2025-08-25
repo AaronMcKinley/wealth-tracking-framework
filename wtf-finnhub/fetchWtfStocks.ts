@@ -46,14 +46,14 @@ const ALL_CHUNKS = chunkArray(ALL_tickerS, CHUNK_SIZE);
 
 async function getUsdToEurRate(): Promise<number> {
   try {
-    const response = await axios.get('https://api.exchangerate.host/latest', {
-      params: { base: 'USD', symbols: 'EUR' },
+    const response = await axios.get('https://finnhub.io/api/v1/forex/rates', {
+      params: { base: 'USD', token: API_KEY },
     });
-    const rate = response.data && response.data.rates && response.data.rates.EUR;
-    if (!rate) throw new Error('No EUR rate found');
+    const rate = response.data?.quote?.EUR;
+    if (!rate) throw new Error('EUR rate missing from Finnhub response');
     return rate;
   } catch (err: any) {
-    console.error('Error fetching USD→EUR rate:', err.message || err);
+    console.error('Error fetching USD→EUR rate from Finnhub:', err.message || err);
     return 1;
   }
 }
