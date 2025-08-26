@@ -22,49 +22,19 @@ const App: React.FC = () => (
   <AuthProvider>
     <Router>
       <Routes>
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/add-investment"
-          element={
-            <PrivateRoute>
-              <AddInvestment />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/transactions/:userId/:ticker"
-          element={
-            <PrivateRoute>
-              <Transactions />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <PrivateRoute>
-              <Settings />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/savings"
-          element={
-            <PrivateRoute>
-              <AddSavings />
-            </PrivateRoute>
-          }
-        />
+
+        {/* PRIVATE ROUTES */}
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/add-investment" element={<PrivateRoute><AddInvestment /></PrivateRoute>} />
+        <Route path="/transactions/:userId/:ticker" element={<PrivateRoute><Transactions /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+        <Route path="/savings" element={<PrivateRoute><AddSavings /></PrivateRoute>} />
+
+        {/* FALLBACK */}
         <Route path="*" element={<ConditionalFallback />} />
       </Routes>
     </Router>
