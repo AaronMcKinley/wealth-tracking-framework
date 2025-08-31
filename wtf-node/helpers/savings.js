@@ -1,30 +1,27 @@
-// Calculate next period's interest payout from total amount (principal + interest) / APR / frequency (daily/weekly/monthly/yearly), returning { nextPaymentAmount }.
+// Calculate next period's interest payout based on principal and APR/frequency.
 function calculateCompoundSavings({
   principal,
   annualRate,
   compoundingFrequency,
-  totalAmount,
-  totalInterestPaid,
-  total_interest_paid,
 }) {
-  const p = Number(principal);
-  const tip = Number(totalInterestPaid ?? total_interest_paid ?? 0);
-  const total = Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : (isNaN(p) ? 0 : p) + (isNaN(tip) ? 0 : tip);
+  const balance = Number(principal); // principal already includes compounding growth
   const apr = Number(annualRate);
 
-  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(apr) || apr <= 0) {
+  if (!Number.isFinite(balance) || balance <= 0 || !Number.isFinite(apr) || apr <= 0) {
     return { nextPaymentAmount: 0 };
   }
 
   const freqMap = { daily: 365, weekly: 52, monthly: 12, yearly: 1 };
-  const periodsPerYear = freqMap[String(compoundingFrequency || 'monthly').toLowerCase()] || 12;
+  const periodsPerYear =
+    freqMap[String(compoundingFrequency || 'monthly').toLowerCase()] || 12;
+
   const ratePerPeriod = (apr / 100) / periodsPerYear;
 
-  const nextPaymentAmount = total * ratePerPeriod;
+  const nextPaymentAmount = balance * ratePerPeriod;
   return { nextPaymentAmount };
 }
 
-// Format a number with prefix and fixed decimals, showing "<threshold" for tiny positives and "—" for invalid input.
+// Format helper unchanged
 function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 }) {
   const num = Number(val);
   if (isNaN(num)) return '—';
