@@ -6,6 +6,7 @@ import NotFound from '../pages/NotFound';
 
 const NotFoundRoute: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  // Show NotFound page if logged in, otherwise redirect to login
   return isAuthenticated ? <NotFound /> : <Navigate to="/login" replace />;
 };
 
