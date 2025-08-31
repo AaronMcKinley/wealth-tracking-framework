@@ -312,12 +312,77 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/savings/:id/interest/apply', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.user;
+    const { id } = req.params;
+
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `SELECT id, principal, total_interest_paid, interest_rate, compounding_frequency
+       FROM savings_accounts
+       WHERE id = $1 AND user_id = $2
+       FOR UPDATE`,
+      [id, userId],
+    );
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Savings account not found' });
+    }
+
+    const acc = rows[0];
+
+    const { nextPaymentAmount } = calculateCompoundSavings({
+      principal: acc.principal,
+      totalInterestPaid: acc.total_interest_paid,
+      annualRate: acc.interest_rate,
+      compoundingFrequency: acc.compounding_frequency,
+    });
+
+    const interest = Math.max(0, Number(nextPaymentAmount) || 0);
+    const newPrincipal = Number(acc.principal) + interest;
+    const newTotalInterest = Number(acc.total_interest_paid) + interest;
+
+    const { nextPaymentAmount: nextAfter } = calculateCompoundSavings({
+      principal: newPrincipal,
+      totalInterestPaid: newTotalInterest,
+      annualRate: acc.interest_rate,
+      compoundingFrequency: acc.compounding_frequency,
+    });
+
+    const upd = await client.query(
+      `UPDATE savings_accounts
+       SET principal = $1,
+           total_interest_paid = $2,
+           next_payment_amount = $3,
+           updated_at = NOW()
+       WHERE id = $4 AND user_id = $5
+       RETURNING id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount`,
+      [newPrincipal, newTotalInterest, nextAfter, id, userId],
+    );
+
+    await client.query('COMMIT');
+    return res.status(200).json({
+      message: 'Interest applied',
+      applied: Number(interest.toFixed(2)),
+      account: upd.rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    return handleError(res, 'Failed to apply interest', 500, err);
+  } finally {
+    client.release();
+  }
+});
+
 // Savings (GET): list user's savings accounts with computed next payout amount.
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const q = `
-      SELECT id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, created_at, updated_at
+      SELECT id, provider, principal, interest_rate, compounding_frequency, total_interest_paid, next_payment_amount, created_at, updated_at
       FROM savings_accounts
       WHERE user_id = $1
       ORDER BY principal DESC
@@ -332,17 +397,21 @@ router.get('/savings', authenticateToken, async (req, res) => {
         interest_rate,
         compounding_frequency,
         total_interest_paid,
+        next_payment_amount,
         created_at,
         updated_at,
       } = account;
 
       const calc = calculateCompoundSavings({
         principal,
+        totalInterestPaid: total_interest_paid,
         annualRate: interest_rate,
         compoundingFrequency: compounding_frequency,
       });
 
-      const next_payout = Number(calc.nextPaymentAmount).toFixed(2);
+      const next_payout = Number(
+        next_payment_amount ?? calc.nextPaymentAmount,
+      ).toFixed(2);
 
       return {
         id,
@@ -377,7 +446,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
     }
 
     const existing = await pool.query(
-      `SELECT id, principal, interest_rate, compounding_frequency
+      `SELECT id, principal, interest_rate, compounding_frequency, total_interest_paid
        FROM savings_accounts
        WHERE user_id = $1 AND LOWER(provider) = LOWER($2)`,
       [userId, provider],
@@ -401,6 +470,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
 
       const updatedCalc = calculateCompoundSavings({
         principal: newPrincipal,
+        totalInterestPaid: current.total_interest_paid,
         annualRate: interest_rate ?? current.interest_rate,
         compoundingFrequency: compounding_frequency,
       });
@@ -434,6 +504,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
 
       const calc = calculateCompoundSavings({
         principal,
+        totalInterestPaid: 0,
         annualRate: interest_rate,
         compoundingFrequency: compounding_frequency,
       });
