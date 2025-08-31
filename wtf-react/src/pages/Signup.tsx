@@ -14,14 +14,17 @@ const Signup: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
 
+  // Handle signup form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate password match
     if (password !== confirmPassword) {
       setMessage('Passwords do not match.');
       return;
     }
 
+    // Enforce password strength (at least one number + one symbol)
     const passReq = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
     if (!passReq.test(password)) {
       setMessage('Password must contain at least one number and one symbol.');
@@ -37,9 +40,9 @@ const Signup: React.FC = () => {
       const data = res.data as any;
 
       if (data.token && data.user) {
+        // Persist auth info locally and sync with context
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        // keep auth context in sync too
         login(data.token);
         navigate('/dashboard');
       } else {
@@ -57,6 +60,7 @@ const Signup: React.FC = () => {
       <div className="card max-w-md mx-auto mt-20 text-textLight">
         <h2 className="text-3xl font-bold mb-6 text-center">Wealth Tracking Framework – Sign Up</h2>
 
+        {/* Signup form */}
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div>
             <label htmlFor="name" className="block mb-2 font-semibold">
@@ -121,6 +125,7 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Action buttons */}
           <div className="flex flex-col gap-4">
             <button type="submit" className="btn btn-primary w-full">
               Sign Up
@@ -130,6 +135,7 @@ const Signup: React.FC = () => {
             </button>
           </div>
 
+          {/* Switch to login */}
           <div className="flex justify-center mt-4">
             <Link to="/login" className="w-1/2">
               <button type="button" className="btn btn-primary w-full text-sm">
@@ -139,6 +145,7 @@ const Signup: React.FC = () => {
           </div>
         </form>
 
+        {/* Error feedback */}
         {message && (
           <p
             className="mt-4 text-center text-red-500 font-semibold"

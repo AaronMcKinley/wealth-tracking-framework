@@ -22,6 +22,7 @@ const initialForm: SavingsAccount = {
   compounding_frequency: 'monthly',
 };
 
+// Format numbers with 2 decimal places and thousand separators
 const formatNumber = (val: number | string) => {
   const n = typeof val === 'number' ? val : Number(val);
   if (isNaN(n)) return '—';
@@ -43,6 +44,7 @@ const AddSavingsAccount: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [removeAmount, setRemoveAmount] = useState('');
 
+  // Load user’s savings accounts only in remove mode
   useEffect(() => {
     if (isRemoveMode) {
       const token = localStorage.getItem('token');
@@ -59,6 +61,7 @@ const AddSavingsAccount: React.FC = () => {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
+  // Validate form before showing confirmation modal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isRemoveMode) {
@@ -81,6 +84,7 @@ const AddSavingsAccount: React.FC = () => {
     setShowConfirm(true);
   };
 
+  // Perform add/remove action after confirmation
   const confirmAction = async () => {
     setShowConfirm(false);
     const token = localStorage.getItem('token');
@@ -153,6 +157,7 @@ const AddSavingsAccount: React.FC = () => {
         </h1>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
+          {/* Switch form based on mode: Add vs Remove */}
           {isRemoveMode ? (
             <>
               <div>
@@ -256,6 +261,7 @@ const AddSavingsAccount: React.FC = () => {
               </div>
             </>
           )}
+          {/* Form action buttons */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
@@ -269,6 +275,7 @@ const AddSavingsAccount: React.FC = () => {
             </button>
           </div>
 
+          {/* Confirmation modal */}
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">

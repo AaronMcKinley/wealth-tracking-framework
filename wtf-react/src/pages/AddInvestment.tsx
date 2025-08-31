@@ -8,6 +8,7 @@ const API_BASE = '/api';
 
 type AssetType = 'crypto' | 'stock' | 'etf' | 'bond' | 'reit' | 'commodity';
 
+// Type guard to validate asset categories
 function isAssetType(val: string): val is AssetType {
   return ['crypto', 'stock', 'etf', 'bond', 'reit', 'commodity'].includes(val);
 }
@@ -39,6 +40,7 @@ const AddInvestment: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
   const [totalSpendManuallyEdited, setTotalSpendManuallyEdited] = useState(false);
 
+  // Fetch user holdings only in sell mode
   useEffect(() => {
     if (isSellMode) {
       const token = localStorage.getItem('token');
@@ -62,6 +64,7 @@ const AddInvestment: React.FC = () => {
     }
   }, [isSellMode]);
 
+  // Fetch latest asset price when selection changes
   useEffect(() => {
     async function fetchPrice(asset: Asset | null) {
       if (!asset) {
@@ -86,6 +89,7 @@ const AddInvestment: React.FC = () => {
     fetchPrice(selectedAsset);
   }, [selectedAsset]);
 
+  // Auto-update total spend unless manually overridden
   useEffect(() => {
     if (assetPrice && amount && selectedAsset && !totalSpendManuallyEdited) {
       const autoValue = (Number(amount) * assetPrice).toFixed(2);
@@ -93,6 +97,7 @@ const AddInvestment: React.FC = () => {
     }
   }, [assetPrice, amount, selectedAsset, totalSpendManuallyEdited]);
 
+  // Pre-fill sell form when asset is chosen
   useEffect(() => {
     if (isSellMode && sellAssetTicker) {
       const holding = userHoldings.find((h) => h.asset_ticker === sellAssetTicker);
@@ -109,6 +114,7 @@ const AddInvestment: React.FC = () => {
     }
   }, [isSellMode, sellAssetTicker, userHoldings]);
 
+  // Search for matching assets when typing
   useEffect(() => {
     if (!isSellMode && searchInput) {
       const searchLower = searchInput.toLowerCase();
@@ -151,6 +157,7 @@ const AddInvestment: React.FC = () => {
     }
   };
 
+  // Validate inputs before showing confirmation dialog
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -187,6 +194,7 @@ const AddInvestment: React.FC = () => {
     setShowConfirm(true);
   };
 
+  // Submit add/sell investment transaction to API
   const confirmAddInvestment = async () => {
     setShowConfirm(false);
     const user = localStorage.getItem('user');
@@ -241,6 +249,7 @@ const AddInvestment: React.FC = () => {
           <div className="text-center mb-4">Loading your holdings…</div>
         )}
         <form onSubmit={handleSubmit} className="card space-y-6 relative" noValidate>
+          {/* Asset selection input (different UI for buy vs sell) */}
           <div className="relative">
             {isSellMode ? (
               <>
@@ -299,6 +308,7 @@ const AddInvestment: React.FC = () => {
               </>
             )}
           </div>
+          {/* Investment amount input */}
           <div>
             <label htmlFor="amount" className="block mb-2 font-semibold">
               {isSellMode ? 'Sell Amount' : 'Amount'} <span className="text-red-500">*</span>
@@ -321,6 +331,7 @@ const AddInvestment: React.FC = () => {
               disabled={isSellMode && !selectedAsset}
             />
           </div>
+          {/* Display current price and computed spend */}
           <div>
             <label htmlFor="unitPrice" className="block mb-2 font-semibold">
               Current Unit Price (€)
@@ -351,6 +362,7 @@ const AddInvestment: React.FC = () => {
               disabled={isSellMode && !selectedAsset}
             />
           </div>
+          {/* Display selected asset type */}
           <div>
             <label className="block mb-2 font-semibold">Type *</label>
             <input
@@ -361,6 +373,7 @@ const AddInvestment: React.FC = () => {
               className="input cursor-not-allowed"
             />
           </div>
+          {/* Action buttons */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
@@ -377,6 +390,7 @@ const AddInvestment: React.FC = () => {
               {isSellMode ? 'Sell' : 'Add Investment'}
             </button>
           </div>
+          {/* Confirmation modal */}
           {showConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
               <div className="card text-center max-w-md w-full">

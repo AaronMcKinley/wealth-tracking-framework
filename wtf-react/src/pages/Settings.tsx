@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { user, token, setUser, logout } = useAuth(); // note: added logout
+  const { user, token, setUser, logout } = useAuth(); // auth context: user data + logout
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -14,6 +14,7 @@ const Settings: React.FC = () => {
   });
   const [message, setMessage] = useState('');
 
+  // Delete account confirmation modal state
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const confirmTarget = user?.email ?? '';
@@ -22,6 +23,7 @@ const Settings: React.FC = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Save updated profile data
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -45,6 +47,7 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Delete user account permanently
   const handleDelete = async () => {
     try {
       const res = await fetch('/api/user', {
@@ -54,7 +57,7 @@ const Settings: React.FC = () => {
         },
       });
       if (res.ok || res.status === 204) {
-        logout?.();
+        logout?.(); // clear auth state
         setUser?.(null as any);
         navigate('/', { replace: true });
       } else {
@@ -73,6 +76,7 @@ const Settings: React.FC = () => {
       <div className="max-w-md mx-auto mt-8 card">
         <h2 className="text-2xl font-bold mb-4">Settings</h2>
 
+        {/* Profile edit form */}
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
@@ -99,6 +103,7 @@ const Settings: React.FC = () => {
             />
           </div>
 
+          {/* Toggle edit/save buttons */}
           {edit ? (
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary flex-1" data-testid="settings-save">
@@ -127,6 +132,7 @@ const Settings: React.FC = () => {
             </button>
           )}
 
+          {/* Danger zone: delete account */}
           <div className="mt-6 border-2 border-negative/60 rounded p-4 bg-negative/10">
             <h3 className="text-lg font-semibold mb-2 text-negative">Danger zone</h3>
             <p className="text-sm opacity-80 mb-3">
@@ -147,6 +153,7 @@ const Settings: React.FC = () => {
         </form>
       </div>
 
+      {/* Delete confirmation modal */}
       {showDelete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"

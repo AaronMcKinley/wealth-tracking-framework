@@ -1,3 +1,4 @@
+# BUILDS CONTAINER IMAGES AND PUSHES TO REGISTRY
 #!/bin/bash
 set -e
 

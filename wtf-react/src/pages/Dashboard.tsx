@@ -31,6 +31,7 @@ interface SavingsAccount {
   next_payout?: string;
 }
 
+// Format numbers consistently with commas and 2 decimals
 const formatNumberWithCommas = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
@@ -39,6 +40,7 @@ const formatNumberWithCommas = (num?: number | string | null) => {
     : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+// Parse euro-formatted strings into numbers
 const parseEuroString = (val: string | undefined | null) => {
   if (!val) return 0;
   return Number(val.replace(/[^0-9.-]+/g, ''));
@@ -53,6 +55,7 @@ const Dashboard: React.FC = () => {
   const { user, token, isAuthenticated } = useAuth();
   const userId = user?.id ?? null;
 
+  // Fetch investments and savings when user is authenticated
   useEffect(() => {
     if (!isAuthenticated || !token) {
       setError('User not logged in');
@@ -63,17 +66,13 @@ const Dashboard: React.FC = () => {
       try {
         const res = await axios.get<Investment[]>(
           `${process.env.REACT_APP_API_URL}/api/investments`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         setInvestments(res.data);
         if (location.state?.newInvestment) {
           window.history.replaceState({}, document.title);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to fetch investments');
       }
     };
@@ -82,20 +81,17 @@ const Dashboard: React.FC = () => {
       try {
         const res = await axios.get<SavingsAccount[]>(
           `${process.env.REACT_APP_API_URL}/api/savings`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         setSavings(res.data);
-      } catch (err) {}
+      } catch {}
     };
 
     fetchInvestments();
     fetchSavings();
   }, [location.state, token, isAuthenticated]);
 
+  // Aggregate portfolio metrics
   const totalValue = investments.reduce((sum, inv) => {
     const val =
       typeof inv.current_value === 'number' ? inv.current_value : Number(inv.current_value);
@@ -131,6 +127,7 @@ const Dashboard: React.FC = () => {
         </p>
       )}
 
+      {/* Portfolio summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-center">
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-2">Total Portfolio Value</h2>
@@ -148,6 +145,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Investments table */}
       <div className="overflow-x-auto shadow-lg mb-6 rounded-lg">
         <table className="table w-full">
           <thead className="bg-cardBg">
@@ -195,6 +193,7 @@ const Dashboard: React.FC = () => {
         </table>
       </div>
 
+      {/* Investment action buttons */}
       <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
         <button
           className="btn btn-primary min-w-[160px]"
@@ -215,6 +214,7 @@ const Dashboard: React.FC = () => {
         <div className="w-full text-center text-sm text-gray-400 italic pt-2">Nothing to sell</div>
       )}
 
+      {/* Savings accounts table */}
       {savings.length > 0 && (
         <div className="overflow-x-auto shadow-lg mt-10 rounded-lg">
           <h2 className="text-xl font-bold text-center py-4">Savings Accounts</h2>
@@ -258,6 +258,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Savings action buttons */}
       <div className="text-center mt-8 flex flex-col sm:flex-row gap-4 justify-center">
         <button
           className="btn btn-primary min-w-[160px]"

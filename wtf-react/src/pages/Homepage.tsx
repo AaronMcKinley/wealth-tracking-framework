@@ -8,8 +8,10 @@ export default function Homepage() {
   return (
     <Layout menuItems={[]}>
       <div className="flex flex-col items-center justify-center px-4 py-12">
+        {/* App logo */}
         <img src={logo} alt="Wealth Tracking Framework Logo" className="w-96 h-auto mb-12" />
 
+        {/* Welcome card with app intro and CTA buttons */}
         <div className="card max-w-xl text-center">
           <h1 className="text-5xl font-extrabold mb-4">Welcome to Wealth Tracking Framework</h1>
           <p className="text-lg text-textMuted mb-8">

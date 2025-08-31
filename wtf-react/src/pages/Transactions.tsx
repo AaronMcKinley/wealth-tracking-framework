@@ -16,6 +16,7 @@ interface Transaction {
   realized_profit_loss?: number | null;
 }
 
+// Format numbers to 2 decimals or fallback to "—"
 const formatNumber = (num?: number | string | null) => {
   if (num === null || num === undefined) return '—';
   const n = typeof num === 'number' ? num : Number(num);
@@ -29,6 +30,7 @@ const Transactions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Fetch transactions for selected asset
   useEffect(() => {
     if (!ticker) {
       setError('Missing asset ticker');
@@ -64,6 +66,7 @@ const Transactions: React.FC = () => {
     <Layout>
       <h1 className="text-3xl font-bold mb-6 text-center">{ticker?.toUpperCase()} Transactions</h1>
 
+      {/* Loading, error, and empty states */}
       {loading && <p className="text-center">Loading transactions...</p>}
 
       {error && (
@@ -76,6 +79,7 @@ const Transactions: React.FC = () => {
         <p className="text-center">No transactions found for this asset.</p>
       )}
 
+      {/* Transactions table */}
       {!loading && !error && transactions.length > 0 && (
         <div className="overflow-x-auto shadow-lg rounded-lg card mb-6">
           <table className="table">
@@ -122,6 +126,7 @@ const Transactions: React.FC = () => {
         </div>
       )}
 
+      {/* Back navigation */}
       <div className="text-center">
         <button onClick={() => navigate('/dashboard')} className="btn btn-primary">
           Back to Dashboard

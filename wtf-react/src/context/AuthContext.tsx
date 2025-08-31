@@ -25,6 +25,7 @@ interface AuthContextType {
   setUser: Dispatch<SetStateAction<UserType | null>>;
 }
 
+// Create authentication context
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -32,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserType | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Clear auth state and redirect to home
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -40,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/';
   };
 
+  // Decode JWT payload and validate before setting user
   const decodeAndSetUser = (jwt: string): boolean => {
     try {
       const payload = JSON.parse(atob(jwt.split('.')[1]));
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Save token and initialize user session
   const login = (jwt: string) => {
     localStorage.setItem('token', jwt);
     setToken(jwt);
@@ -66,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     else setAuthLoading(false);
   };
 
+  // Re-check token validity on mount or token change
   useEffect(() => {
     if (token) {
       const valid = decodeAndSetUser(token);
@@ -80,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!token && !!user;
 
   return (
+    // Provide authentication state and actions via context
     <AuthContext.Provider
       value={{
         token,
@@ -96,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// Hook to consume AuthContext safely
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
