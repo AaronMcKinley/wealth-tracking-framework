@@ -267,4 +267,45 @@ router.post('/investments', authenticateToken, async (req, res) => {
   }
 });
 
+// Savings (GET)
+router.get('/savings', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const q = `
+      SELECT id, provider, principal, interest_rate, compounding_frequency,
+             total_interest_paid, created_at, updated_at
+      FROM savings_accounts
+      WHERE user_id = $1
+      ORDER BY principal DESC
+    `;
+    const result = await pool.query(q, [userId]);
+
+    const savingsWithCalc = result.rows.map((account) => {
+      const { nextPaymentAmount } = calculateCompoundSavings({
+        principal: account.principal,
+        totalInterestPaid: account.total_interest_paid,
+        annualRate: account.interest_rate,
+        compoundingFrequency: account.compounding_frequency,
+      });
+
+      return {
+        id: account.id,
+        provider: account.provider,
+        principal: Number(account.principal).toFixed(2),
+        interest_rate: Number(account.interest_rate).toFixed(2),
+        compounding_frequency: account.compounding_frequency,
+        total_interest_paid: Number(account.total_interest_paid).toFixed(2),
+        created_at: account.created_at,
+        updated_at: account.updated_at,
+        next_payout: Number(nextPaymentAmount).toFixed(2),
+      };
+    });
+
+    res.json(savingsWithCalc);
+  } catch (err) {
+    console.error('Savings API error:', err);
+    res.status(500).json({ message: 'Failed to fetch savings accounts', error: err.message });
+  }
+});
+
 module.exports = router;
