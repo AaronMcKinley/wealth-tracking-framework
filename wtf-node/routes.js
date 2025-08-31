@@ -582,4 +582,76 @@ router.delete('/user', authenticateToken, async (req, res) => {
   }
 });
 
+// Apply one period of interest to all of the current user's savings with the given frequency.
+router.post('/savings/interest/apply/:frequency', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.user;
+    const freq = String(req.params.frequency || '').toLowerCase();
+    const allowed = ['daily', 'weekly', 'monthly', 'yearly'];
+    if (!allowed.includes(freq)) return res.status(400).json({ message: 'Invalid frequency' });
+
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `SELECT id, principal, total_interest_paid, interest_rate, compounding_frequency
+         FROM savings_accounts
+        WHERE user_id = $1 AND compounding_frequency = $2
+        FOR UPDATE`,
+      [userId, freq],
+    );
+
+    let totalApplied = 0;
+    const accounts = [];
+
+    for (const acc of rows) {
+      const { nextPaymentAmount } = calculateCompoundSavings({
+        principal: acc.principal,
+        totalInterestPaid: acc.total_interest_paid,
+        annualRate: acc.interest_rate,
+        compoundingFrequency: acc.compounding_frequency,
+      });
+
+      const interest = Math.max(0, Number(nextPaymentAmount) || 0);
+      if (interest === 0) continue;
+
+      const newPrincipal = Number(acc.principal) + interest;
+      const newTotalInterest = Number(acc.total_interest_paid) + interest;
+
+      const { nextPaymentAmount: nextAfter } = calculateCompoundSavings({
+        principal: newPrincipal,
+        totalInterestPaid: newTotalInterest,
+        annualRate: acc.interest_rate,
+        compoundingFrequency: acc.compounding_frequency,
+      });
+
+      await client.query(
+        `UPDATE savings_accounts
+           SET principal = $1,
+               total_interest_paid = $2,
+               next_payment_amount = $3,
+               updated_at = NOW()
+         WHERE id = $4`,
+        [newPrincipal, newTotalInterest, nextAfter, acc.id],
+      );
+
+      totalApplied += interest;
+      accounts.push({ id: acc.id, applied: Number(interest.toFixed(2)) });
+    }
+
+    await client.query('COMMIT');
+    return res.status(200).json({
+      message: 'Interest applied',
+      frequency: freq,
+      totalApplied: Number(totalApplied.toFixed(2)),
+      accounts,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    return handleError(res, 'Failed to apply interest', 500, err);
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
