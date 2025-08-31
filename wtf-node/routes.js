@@ -456,16 +456,26 @@ router.post('/savings', authenticateToken, async (req, res) => {
       const current = existing.rows[0];
       const currentPrincipal = Number(current.principal);
       const change = Number(principal);
-      const newPrincipal =
-        mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+
+      let newPrincipal = mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+
+      if (mode === 'remove') {
+        const rounding = 0.01; // allow up to 1 cent over
+
+        // if removing exactly or within 0.01 over → delete
+        if (change >= currentPrincipal && change - currentPrincipal <= rounding) {
+          await pool.query(`DELETE FROM savings_accounts WHERE id = $1`, [current.id]);
+          return res.status(200).json({ message: 'Savings account removed completely' });
+        }
+
+        // if trying to remove more than allowed → error
+        if (change > currentPrincipal + rounding) {
+          return handleError(res, 'Cannot withdraw more than the current balance', 400);
+        }
+      }
 
       if (newPrincipal < 0) {
         return handleError(res, 'Cannot withdraw more than the current balance', 400);
-      }
-
-      if (newPrincipal === 0) {
-        await pool.query(`DELETE FROM savings_accounts WHERE id = $1`, [current.id]);
-        return res.status(200).json({ message: 'Savings account removed completely' });
       }
 
       const updatedCalc = calculateCompoundSavings({
