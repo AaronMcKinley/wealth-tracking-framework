@@ -17,22 +17,19 @@ const handleError = (res, msg = 'Internal server error', code = 500, err = null)
   return res.status(code).json({ message: msg });
 };
 
-// Health check: confirms API is up and DB is reachable.
+// Health check
 router.get('/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1');
-    if (result) {
-      return res.status(200).json({ status: 'healthy' });
-    } else {
-      return res.status(500).json({ status: 'db query failed' });
-    }
+    if (result) return res.status(200).json({ status: 'healthy' });
+    return res.status(500).json({ status: 'db query failed' });
   } catch (err) {
     console.error('Healthcheck error:', err);
     return res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
 
-// Login: authenticate by email/password; returns 1h JWT + basic user info.
+// Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -59,7 +56,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Signup: create a new user; returns 1h JWT + created profile.
+// Signup
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
@@ -92,7 +89,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Investments (GET): return current user's holdings joined with live prices and P/L.
+// Investments (GET)
 router.get('/investments', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -130,7 +127,7 @@ router.get('/investments', authenticateToken, async (req, res) => {
   }
 });
 
-// Investments (POST): record a buy/sell transaction and update aggregated holdings.
+// Investments (POST)
 router.post('/investments', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.userId;
@@ -270,7 +267,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
   }
 });
 
-// Transactions (GET): list user's transactions for a ticker (most recent first).
+// Transactions (GET)
 router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -288,7 +285,7 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
-// Asset price (GET): fetch current price for a crypto or stock/ETF by ticker.
+// Asset price (GET)
 router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   const { ticker } = req.params;
   try {
@@ -312,6 +309,7 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
+// Apply one period of interest to a single account
 router.post('/savings/:id/interest/apply', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -342,8 +340,8 @@ router.post('/savings/:id/interest/apply', authenticateToken, async (req, res) =
     });
 
     const interest = Math.max(0, Number(nextPaymentAmount) || 0);
-    const newPrincipal = Number(acc.principal) + interest;
-    const newTotalInterest = Number(acc.total_interest_paid) + interest;
+    const newPrincipal = Number((Number(acc.principal) + interest).toFixed(2));
+    const newTotalInterest = Number((Number(acc.total_interest_paid) + interest).toFixed(2));
 
     const { nextPaymentAmount: nextAfter } = calculateCompoundSavings({
       principal: newPrincipal,
@@ -377,7 +375,7 @@ router.post('/savings/:id/interest/apply', authenticateToken, async (req, res) =
   }
 });
 
-// Savings (GET): list user's savings accounts with computed next payout amount.
+// Savings (GET)
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -409,9 +407,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
         compoundingFrequency: compounding_frequency,
       });
 
-      const next_payout = Number(
-        next_payment_amount ?? calc.nextPaymentAmount,
-      ).toFixed(2);
+      const next_payout = Number(next_payment_amount ?? calc.nextPaymentAmount).toFixed(2);
 
       return {
         id,
@@ -435,7 +431,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
   }
 });
 
-// Savings (POST): create/update/remove savings amounts; recalculates next payout.
+// Savings (POST)
 router.post('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -456,16 +452,38 @@ router.post('/savings', authenticateToken, async (req, res) => {
       const current = existing.rows[0];
       const currentPrincipal = Number(current.principal);
       const change = Number(principal);
-      const newPrincipal =
-        mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+      const rawNewPrincipal = mode === 'remove' ? currentPrincipal - change : currentPrincipal + change;
+      let newPrincipal = Number(rawNewPrincipal.toFixed(2));
 
       if (newPrincipal < 0) {
         return handleError(res, 'Cannot withdraw more than the current balance', 400);
       }
 
       if (newPrincipal === 0) {
-        await pool.query(`DELETE FROM savings_accounts WHERE id = $1`, [current.id]);
-        return res.status(200).json({ message: 'Savings account removed completely' });
+        const zeroCalc = calculateCompoundSavings({
+          principal: 0,
+          totalInterestPaid: current.total_interest_paid,
+          annualRate: Number(interest_rate ?? current.interest_rate),
+          compoundingFrequency: compounding_frequency,
+        });
+
+        await pool.query(
+          `UPDATE savings_accounts
+             SET principal = 0,
+                 interest_rate = $1,
+                 compounding_frequency = $2,
+                 next_payment_amount = $3,
+                 updated_at = NOW()
+           WHERE id = $4`,
+          [
+            Number(interest_rate ?? current.interest_rate),
+            compounding_frequency,
+            zeroCalc.nextPaymentAmount,
+            current.id,
+          ],
+        );
+
+        return res.status(200).json({ message: 'Balance set to €0 (account kept)', principal: 0 });
       }
 
       const updatedCalc = calculateCompoundSavings({
@@ -493,8 +511,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
       );
 
       return res.status(200).json({
-        message:
-          mode === 'remove' ? 'Amount withdrawn from savings' : 'Updated existing savings account',
+        message: mode === 'remove' ? 'Amount withdrawn from savings' : 'Updated existing savings account',
         principal: newPrincipal,
       });
     } else {
@@ -502,8 +519,10 @@ router.post('/savings', authenticateToken, async (req, res) => {
         return handleError(res, 'No savings account found to remove from', 404);
       }
 
+      const roundedPrincipal = Number(Number(principal).toFixed(2));
+
       const calc = calculateCompoundSavings({
-        principal,
+        principal: roundedPrincipal,
         totalInterestPaid: 0,
         annualRate: interest_rate,
         compoundingFrequency: compounding_frequency,
@@ -516,7 +535,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
         [
           userId,
           provider,
-          Number(principal),
+          roundedPrincipal,
           Number(interest_rate),
           compounding_frequency,
           calc.nextPaymentAmount,
@@ -532,7 +551,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
   }
 });
 
-// User (GET): return current user's basic profile.
+// User (GET)
 router.get('/user', authenticateToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -546,7 +565,7 @@ router.get('/user', authenticateToken, async (req, res) => {
   }
 });
 
-// User (PUT): update current user's name/email (validates email format + uniqueness).
+// User (PUT)
 router.put('/user', authenticateToken, async (req, res) => {
   const { name, email } = req.body || {};
 
@@ -571,7 +590,7 @@ router.put('/user', authenticateToken, async (req, res) => {
   }
 });
 
-// User (DELETE): delete current user's account.
+// User (DELETE)
 router.delete('/user', authenticateToken, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.user.userId]);
@@ -582,7 +601,7 @@ router.delete('/user', authenticateToken, async (req, res) => {
   }
 });
 
-// Apply one period of interest to all of the current user's savings with the given frequency.
+// Apply one period of interest to all of the current user's savings with the given frequency
 router.post('/savings/interest/apply/:frequency', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -615,8 +634,8 @@ router.post('/savings/interest/apply/:frequency', authenticateToken, async (req,
       const interest = Math.max(0, Number(nextPaymentAmount) || 0);
       if (interest === 0) continue;
 
-      const newPrincipal = Number(acc.principal) + interest;
-      const newTotalInterest = Number(acc.total_interest_paid) + interest;
+      const newPrincipal = Number((Number(acc.principal) + interest).toFixed(2));
+      const newTotalInterest = Number((Number(acc.total_interest_paid) + interest).toFixed(2));
 
       const { nextPaymentAmount: nextAfter } = calculateCompoundSavings({
         principal: newPrincipal,

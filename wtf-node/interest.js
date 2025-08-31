@@ -69,7 +69,7 @@ function isLastDayOfMonth() {
 }
 
 // Daily at 23:59 Dublin
-cron.schedule('15 19 * * *', () => applyInterest('daily'), { timezone: TZ });
+cron.schedule('0 0 * * *', () => applyInterest('daily'), { timezone: TZ });
 
 // Monthly at 23:59 on the last day of month
 cron.schedule('59 23 28-31 * *', () => { if (isLastDayOfMonth()) applyInterest('monthly'); }, { timezone: TZ });
