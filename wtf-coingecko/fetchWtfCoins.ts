@@ -7,6 +7,7 @@ import COIN_IDS from './coinList';
 
 dotenv.config({ path: '../.env' });
 
+// Define the Coin shape used for DB upserts and JSON artifact
 interface Coin {
   id: string;
   ticker: string;
@@ -27,6 +28,7 @@ const VS_CURRENCY = 'eur';
 
 const pool = new Pool();
 
+// Main job: fetch selected coins, save raw JSON, map to schema, and UPSERT into DB
 const fetchSelectedCoins = async () => {
   console.log('Fetching CoinGecko data...');
 

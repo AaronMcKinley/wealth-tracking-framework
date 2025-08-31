@@ -17,6 +17,7 @@ const handleError = (res, msg = 'Internal server error', code = 500, err = null)
   return res.status(code).json({ message: msg });
 };
 
+// Health check: confirms API is up and DB is reachable.
 router.get('/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1');
@@ -31,6 +32,7 @@ router.get('/health', async (req, res) => {
   }
 });
 
+// Login: authenticate by email/password; returns 1h JWT + basic user info.
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -57,6 +59,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Signup: create a new user; returns 1h JWT + created profile.
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
@@ -89,6 +92,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Investments (GET): return current user's holdings joined with live prices and P/L.
 router.get('/investments', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -126,6 +130,7 @@ router.get('/investments', authenticateToken, async (req, res) => {
   }
 });
 
+// Investments (POST): record a buy/sell transaction and update aggregated holdings.
 router.post('/investments', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.userId;
@@ -265,6 +270,7 @@ router.post('/investments', authenticateToken, async (req, res) => {
   }
 });
 
+// Transactions (GET): list user's transactions for a ticker (most recent first).
 router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -282,6 +288,7 @@ router.get('/transactions/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
+// Asset price (GET): fetch current price for a crypto or stock/ETF by ticker.
 router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   const { ticker } = req.params;
   try {
@@ -305,6 +312,7 @@ router.get('/assets/:ticker', authenticateToken, async (req, res) => {
   }
 });
 
+// Savings (GET): list user's savings accounts with computed next payout amount.
 router.get('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -358,6 +366,7 @@ router.get('/savings', authenticateToken, async (req, res) => {
   }
 });
 
+// Savings (POST): create/update/remove savings amounts; recalculates next payout.
 router.post('/savings', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
@@ -452,6 +461,7 @@ router.post('/savings', authenticateToken, async (req, res) => {
   }
 });
 
+// User (GET): return current user's basic profile.
 router.get('/user', authenticateToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -465,6 +475,7 @@ router.get('/user', authenticateToken, async (req, res) => {
   }
 });
 
+// User (PUT): update current user's name/email (validates email format + uniqueness).
 router.put('/user', authenticateToken, async (req, res) => {
   const { name, email } = req.body || {};
 
@@ -489,6 +500,7 @@ router.put('/user', authenticateToken, async (req, res) => {
   }
 });
 
+// User (DELETE): delete current user's account.
 router.delete('/user', authenticateToken, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.user.userId]);

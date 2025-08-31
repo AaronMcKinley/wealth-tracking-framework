@@ -1,3 +1,4 @@
+// Calculate next period's interest payout from principal/APR/frequency (EUR/daily/weekly/monthly/yearly), returning { nextPaymentAmount }.
 function calculateCompoundSavings({ principal, annualRate, compoundingFrequency }) {
   principal = Number(principal);
   annualRate = Number(annualRate);
@@ -21,6 +22,7 @@ function calculateCompoundSavings({ principal, annualRate, compoundingFrequency 
   return { nextPaymentAmount };
 }
 
+// Format a number with prefix and fixed decimals, showing "<threshold" for tiny positives and "—" for invalid input.
 function formatAmount(val, options = { lessThan: 0.01, prefix: '', minDigits: 2 }) {
   const num = Number(val);
   if (isNaN(num)) return '—';

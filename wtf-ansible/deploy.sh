@@ -1,4 +1,5 @@
 #!/bin/bash
+# Deploys the app via Ansible from a CI/container context.
 set -ex
 
 GREEN='\033[0;32m'
@@ -18,11 +19,13 @@ error() {
 
 log "Starting deploy container..."
 
+# Give the target/server a short grace period
 echo "[DEPLOY] Delaying for 30 seconds before starting deployment..."
 python3 -c "import time; print('[DEPLOY] Waiting 30 seconds...'); time.sleep(30)"
 
 log "Starting deployment..."
 
+# Require the Ansible Vault password to decrypt secrets
 if [ -z "$ANSIBLE_VAULT_PASSWORD" ]; then
   error "ANSIBLE_VAULT_PASSWORD is not set. Exiting."
   exit 1
@@ -31,6 +34,7 @@ fi
 log "Vault password found. Writing temporary vault password file..."
 echo "$ANSIBLE_VAULT_PASSWORD" > /tmp/.vault_pass.txt
 
+# Run the playbook against the provided inventory, using the vault password file
 log "Running Ansible playbook..."
 ansible-playbook /app/start-on-server.yml \
   --inventory /app/inventory \

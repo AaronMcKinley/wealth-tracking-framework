@@ -1,122 +1,137 @@
 # Wealth Tracking Framework (WTF)
 
-## Project Overview
+A full-stack, Dockerized app for tracking crypto, stocks/ETFs, fixed savings, and alternative assets (e.g., whiskey, property). JWT-secured API, automated data fetchers, CI/CD, and Cypress E2E.
 
-The Wealth Tracking Framework is a full-stack, Dockerized investment tracking app for managing crypto, stocks, ETFs, fixed savings, and alternative assets like whiskey or property.
-
-### Tech Stack
-
-- **Frontend:** React + Tailwind CSS
-- **Backend:** Node.js/Express
-- **Database:** PostgreSQL
-- **Infrastructure:** Docker Compose, Ansible
-- **E2E Testing:** Cypress
-- **CI/CD:** Jenkins
-- **Test Reporting:** Allure
+> **Status:** **Local development is temporarily disabled.** **Allure reporting is WIP** (not enabled in this submission).
 
 ---
 
-## Prerequisites
+## Overview
 
-- macOS 12+ (for local dev)
-- [Homebrew](https://brew.sh/)
-- Ansible (`brew install ansible`)
-- Docker Desktop (for local, not needed for server)
-- SSH access for production server setup
+- Track crypto, equities/ETFs, and savings accounts
+- Live pricing (CoinGecko, Finnhub)
+- P/L, current value, basic analytics
+- JWT auth (1h)
+- Ansible playbooks for automated server setup
+- Jenkins CI (build/test/deploy)
+- **Allure:** planned/WIP
 
----
-
-## Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/AaronMcKinley/wealth-tracking-framework.git
-cd wealth-tracking-framework/ansible
-```
-
-### 2. Run the Setup Playbook (Local macOS)
-
-This installs required packages, starts Docker, and generates your `.env` file.
-
-```bash
-ansible-playbook -i inventory setup-darwin.yml --ask-vault-pass
-```
-
-### 3. Provision an Ubuntu Server (Production/Cloud)
-
-Replace `<your-server-ip>` and `<path-to-your-ssh-key>`:
-
-```bash
-ansible-playbook -i <your-server-ip>, setup-ubuntu.yml --ask-vault-pass --ask-become-pass -u root --private-key <path-to-your-ssh-key>
-```
-
-### 4. Start the Full Stack (Local or Server)
-
-**Local:**
-
-```bash
-ansible-playbook start-locally.yml
-```
-
-**Server:**  
-(SSH into your server, then run Docker Compose or use the provided Ansible playbook.)
-
-#### Reset the Database (Optional)
-
-```bash
-ansible-playbook start-locally.yml -e reset_db=true
-```
+**Stack:** React + Tailwind • Node/Express • PostgreSQL • Docker Compose • Ansible • Jenkins
 
 ---
 
-## Access the App
+## Server Quick Start
 
-### **Local Environment**
+1) **Clone**
+    ```bash
+    git clone https://github.com/AaronMcKinley/wealth-tracking-framework.git
+    cd wealth-tracking-framework/ansible
+    ```
 
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:4000
-- **Jenkins:** http://localhost:8080
-- **Allure Report Viewer:** http://localhost:5252
+2) **Provision Ubuntu server**
+    ```bash
+    ansible-playbook -i <server-ip>, setup-ubuntu.yml       --ask-vault-pass --ask-become-pass -u root --private-key <ssh-key>
+    ```
 
-### **Production/Server Environment**
+3) **Deploy stack**
+    ```bash
+    ansible-playbook -i <server-ip>, start-on-server.yml       --ask-vault-pass --ask-become-pass -u root --private-key <ssh-key>
+    ```
+
+> Local workflow (`start-locally.yml`) is currently disabled.
+
+---
+
+## Access (Server)
 
 - **Frontend:** https://wealth-tracking-framework.com
+- **API:** proxied under `/api` on the frontend domain (health: `/api/health`)
 - **Jenkins:** https://jenkins.wealth-tracking-framework.com
 
-_Note: The API is proxied under `/api` on the production frontend URL._
+If you use different domains/ports, update NGINX and `.env` accordingly.
 
 ---
 
-## Ansible Vault
+## Environment
 
-Secrets are encrypted in `secrets.yml` and used to generate the `.env` file during setup.  
-No real credentials are ever committed.
+Generated from Ansible Vault into `.env` on the server.
 
-Edit secrets with:
 
+
+Edit secrets:
 ```bash
 ansible-vault edit secrets.yml
 ```
 
 ---
 
-## Testing
+## API Snapshot
 
-- Cypress E2E tests (work in progress)
-- Jenkins CI pipeline (auto-builds, E2E tests, and Allure reporting)
+- `POST /api/login` – returns JWT
+- `POST /api/signup` – create user, returns JWT
+- `GET /api/investments` – holdings + prices/P&L
+- `POST /api/investments` – record buy/sell
+- `GET /api/transactions/:ticker` – user transactions
+- `GET /api/assets/:ticker` – current price
+- `GET /api/savings` – savings with computed `next_payout`
+- `POST /api/savings` – create/update/remove savings
+- `GET /api/user` / `PUT /api/user` / `DELETE /api/user`
+
+**Auth:** `Authorization: Bearer <token>` (expires in 1h)
 
 ---
 
-## Coming Soon
+## Data Fetchers
 
-- Investment filtering and analytics features
-- Custom investment types and asset classes
-- Portfolio visualizations
-- More robust test coverage
+- **Crypto (CoinGecko → EUR)** → UPSERT `cryptocurrencies`, saves `./data/wtfCoins.json`
+- **Stocks/ETFs (Finnhub → USD→EUR)** → UPSERT `stocks_and_funds`, saves `./data/assets-chunk.json`
+
+Run via npm scripts or directly with Node/ts-node.
 
 ---
 
-## Contributing
+## Savings Interest
+
+- Per-period interest computed based on `daily|weekly|monthly|yearly`.
+- UI displays `next_payout` per account.
+- **Note:** Refinements to persistence/rounding are **in progress**.
+
+---
+
+## Testing & CI
+
+- **Cypress:** headless smoke tests in CI (artifacts archived in Jenkins).
+- **Allure:** WIP (not enabled).
+
+Example run:
+```bash
+npx cypress run --browser chrome --headless
+```
+
+---
+
+## Operational Notes
+
+- Backend refuses to start if `JWT_SECRET` is missing.
+- NGINX serves the frontend and proxies `/api/*` to the backend.
+- UPSERTs (`ON CONFLICT`) make fetcher runs idempotent.
+- Fetchers rate-limit requests and rotate through ticker chunks.
+
+---
+
+## Troubleshooting
+
+- **JWT secret missing** → set `JWT_SECRET` via Vault → `.env`.
+- **DB connection** → verify `PG*` vars and Docker network.
+- **Finnhub 429s** → confirm `FINNHUB_API_KEY`, slow the fetch cadence.
+- **No test report** → Allure is WIP; rely on Cypress artifacts in Jenkins.
+
+---
+
+## Roadmap
+
+- Savings interest persistence/rounding improvements
+- Filtering/analytics and portfolio visualizations
+- Expanded test coverage / Allure enablement
 
 ---

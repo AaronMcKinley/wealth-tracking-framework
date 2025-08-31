@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const dataDir = path.resolve(__dirname, './data');
 mkdirSync(dataDir, { recursive: true });
 
+// Require Finnhub API key; abort early if missing
 const API_KEY = process.env.FINNHUB_API_KEY;
 if (!API_KEY) {
   console.error('FINNHUB_API_KEY not found in environment. Check your .env file.');
@@ -19,6 +20,7 @@ if (!API_KEY) {
 
 const pool = new Pool();
 
+// Define the asset shape used for DB upserts and JSON output
 interface Asset {
   name: string;
   ticker: string;
@@ -34,6 +36,7 @@ interface Asset {
 const CHUNK_SIZE = 20;
 const CHUNK_INTERVAL_MS = 2 * 60 * 1000;
 
+// Utility to split an array into fixed-size chunks
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const res: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -42,8 +45,10 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return res;
 }
 
+// Precompute ticker batches to iterate over in a loop
 const ALL_CHUNKS = chunkArray(ALL_tickerS, CHUNK_SIZE);
 
+// Fetch USD→EUR FX rate with a safe fallback of 1.0
 async function getUsdToEurRate(): Promise<number> {
   try {
     const { data } = await axios.get('https://api.frankfurter.app/latest', {
@@ -59,6 +64,7 @@ async function getUsdToEurRate(): Promise<number> {
   }
 }
 
+// Fetch quotes/profiles for a chunk, convert to EUR, upsert into DB, and save JSON
 async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
   const results: Asset[] = [];
   const usdToEur = await getUsdToEurRate();
@@ -136,6 +142,7 @@ async function fetchAndUpsertChunk(chunk: typeof ALL_tickerS) {
   console.log(`Saved ${results.length} assets to ${outputPath}`);
 }
 
+// Main loop: cycle through all chunks with a fixed sleep between runs
 async function main() {
   let chunkIdx = 0;
   while (true) {
