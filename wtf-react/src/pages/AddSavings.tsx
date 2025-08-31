@@ -22,6 +22,15 @@ const initialForm: SavingsAccount = {
   compounding_frequency: 'monthly',
 };
 
+const formatNumber = (val: number | string) => {
+  const n = typeof val === 'number' ? val : Number(val);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 const AddSavingsAccount: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -157,7 +166,7 @@ const AddSavingsAccount: React.FC = () => {
                   <option value="">Choose an account…</option>
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
-                      {acc.provider} — €{Number(acc.principal).toFixed(2)}
+                      {acc.provider} — €{formatNumber(acc.principal)}
                     </option>
                   ))}
                 </select>
