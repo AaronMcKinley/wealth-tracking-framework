@@ -157,7 +157,7 @@ const AddSavingsAccount: React.FC = () => {
                   <option value="">Choose an account…</option>
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
-                      {acc.provider} — €{acc.principal}
+                      {acc.provider} — €{Number(acc.principal).toFixed(2)}
                     </option>
                   ))}
                 </select>
